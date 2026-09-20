@@ -80,7 +80,18 @@ class MainActivity : AppCompatActivity() {
             R.string.tab_banking,
             R.string.tab_notifications
         )
-        labels.forEach { binding.tabs.addTab(binding.tabs.newTab().setText(it)) }
+        val icons = listOf(
+            R.drawable.ic_tab_all,
+            R.drawable.ic_tab_suspicious,
+            R.drawable.ic_tab_spam,
+            R.drawable.ic_tab_banking,
+            R.drawable.ic_tab_service
+        )
+        labels.forEachIndexed { index, label ->
+            binding.tabs.addTab(
+                binding.tabs.newTab().setText(label).setIcon(icons[index])
+            )
+        }
         // A nested class cannot be referenced through its fully-qualified outer
         // name in Kotlin, so TabLayout is imported and used unqualified.
         binding.tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
@@ -262,14 +273,25 @@ class MainActivity : AppCompatActivity() {
             override fun getItem(position: Int): Any = palette[position]
             override fun getItemId(position: Int): Long = position.toLong()
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val tv = (convertView as? TextView) ?: TextView(this@MainActivity).apply {
-                    setPadding(56, 40, 56, 40)
-                    textSize = 16f
-                }
-                tv.text = palette[position]
-                tv.setBackgroundColor(Color.parseColor(palette[position]))
-                tv.setTextColor(Color.WHITE)
-                return tv
+                val density = parent.resources.displayMetrics.density
+                val row = (convertView as? android.widget.LinearLayout)
+                    ?: android.widget.LinearLayout(this@MainActivity).apply {
+                        orientation = android.widget.LinearLayout.HORIZONTAL
+                    }
+                row.removeAllViews()
+                row.addView(
+                    View(this@MainActivity).apply {
+                        layoutParams = android.widget.LinearLayout.LayoutParams(
+                            (36 * density).toInt(), (36 * density).toInt()
+                        ).apply { marginStart = (24 * density).toInt() }
+                        background = android.graphics.drawable.GradientDrawable().apply {
+                            shape = android.graphics.drawable.GradientDrawable.OVAL
+                            setColor(Color.parseColor(palette[position]))
+                        }
+                    }
+                )
+                row.setPadding(0, (12 * density).toInt(), 0, (12 * density).toInt())
+                return row
             }
         }
         AlertDialog.Builder(this)
@@ -307,7 +329,7 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.blocked_empty)
         } else {
             blocked.joinToString("\n\n") {
-                "${Dates.full(it.date)}\n${it.address}\n${it.body}\n[${it.rulePattern}]"
+                "${Dates.full(this, it.date)}\n${it.address}\n${it.body}\n[${it.rulePattern}]"
             }
         }
         AlertDialog.Builder(this)

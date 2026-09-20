@@ -42,7 +42,7 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.VH>() {
         val bubble = holder.binding.textBubble
 
         bubble.text = item.body
-        holder.binding.textTime.text = Dates.full(item.date)
+        holder.binding.textTime.text = Dates.full(context, item.date)
 
         val params = bubble.layoutParams as ViewGroup.MarginLayoutParams
         if (item.isIncoming) {

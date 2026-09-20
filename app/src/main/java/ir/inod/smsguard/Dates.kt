@@ -1,25 +1,124 @@
 package ir.inod.smsguard
 
+import android.content.Context
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-/** Date/time labels used by the lists. */
+/**
+ * Date labels.
+ *
+ * Persian uses the Jalali calendar with Persian day names and Persian digits;
+ * every other locale falls back to the platform formatter. The active locale
+ * comes from the resources configuration, so it follows the in-app language
+ * picker rather than only the device setting.
+ */
 object Dates {
 
     private const val DAY_MS = 24L * 60L * 60L * 1000L
 
-    fun listLabel(millis: Long): String {
-        val now = System.currentTimeMillis()
-        val age = now - millis
+    private val FA_MONTHS = arrayOf(
+        "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
+        "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
+    )
+
+    /** Calendar.DAY_OF_WEEK is 1=Sunday, so index 0 is Sunday. */
+    private val FA_DAYS = arrayOf(
+        "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"
+    )
+
+    fun isPersian(context: Context): Boolean =
+        localeOf(context).language == "fa"
+
+    private fun localeOf(context: Context): Locale =
+        context.resources.configuration.locales[0]
+
+    fun listLabel(context: Context, millis: Long): String {
+        val age = System.currentTimeMillis() - millis
+        if (isPersian(context)) {
+            return when {
+                age < DAY_MS -> faTime(millis)
+                age < 7 * DAY_MS -> faDayName(millis)
+                else -> faDate(millis)
+            }
+        }
         val pattern = when {
             age < DAY_MS -> "HH:mm"
             age < 7 * DAY_MS -> "EEE"
             else -> "yyyy/MM/dd"
         }
-        return SimpleDateFormat(pattern, Locale.getDefault()).format(Date(millis))
+        return SimpleDateFormat(pattern, localeOf(context)).format(Date(millis))
     }
 
-    fun full(millis: Long): String =
-        SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(millis))
+    /** Full stamp shown under each message bubble. */
+    fun full(context: Context, millis: Long): String =
+        if (isPersian(context)) {
+            faDate(millis) + " · " + faTime(millis)
+        } else {
+            SimpleDateFormat("yyyy/MM/dd HH:mm", localeOf(context)).format(Date(millis))
+        }
+
+    // ------------------------------------------------------------ Jalali
+
+    /** Gregorian -> Jalali, returns [year, month, day]. */
+    private fun jalali(millis: Long): IntArray {
+        val cal = Calendar.getInstance().apply { timeInMillis = millis }
+        val gy = cal.get(Calendar.YEAR)
+        val gm = cal.get(Calendar.MONTH) + 1
+        val gd = cal.get(Calendar.DAY_OF_MONTH)
+
+        val gDaysInMonth = intArrayOf(0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334)
+        val gy2 = if (gm > 2) gy + 1 else gy
+        var days = 355666 + (365 * gy) + ((gy2 + 3) / 4) - ((gy2 + 99) / 100) +
+            ((gy2 + 399) / 400) + gd + gDaysInMonth[gm - 1]
+
+        var jy = -1595 + (33 * (days / 12053))
+        days %= 12053
+        jy += 4 * (days / 1461)
+        days %= 1461
+        if (days > 365) {
+            jy += (days - 1) / 365
+            days = (days - 1) % 365
+        }
+        val jm: Int
+        val jd: Int
+        if (days < 186) {
+            jm = 1 + (days / 31)
+            jd = 1 + (days % 31)
+        } else {
+            jm = 7 + ((days - 186) / 30)
+            jd = 1 + ((days - 186) % 30)
+        }
+        return intArrayOf(jy, jm, jd)
+    }
+
+    private fun faDate(millis: Long): String {
+        val j = jalali(millis)
+        return faDigits("${j[2]} ${FA_MONTHS[j[1] - 1]} ${j[0]}")
+    }
+
+    private fun faDayName(millis: Long): String {
+        val cal = Calendar.getInstance().apply { timeInMillis = millis }
+        return FA_DAYS[cal.get(Calendar.DAY_OF_WEEK) - 1]
+    }
+
+    private fun faTime(millis: Long): String {
+        val cal = Calendar.getInstance().apply { timeInMillis = millis }
+        return faDigits(
+            String.format(
+                Locale.US, "%02d:%02d",
+                cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE)
+            )
+        )
+    }
+
+    /** Latin digits -> Persian digits. */
+    fun faDigits(input: String): String {
+        val sb = StringBuilder(input.length)
+        for (ch in input) {
+            sb.append(if (ch in '0'..'9') ('\u06F0' + (ch - '0')) else ch)
+        }
+        return sb.toString()
+    }
 }

@@ -2,6 +2,7 @@ package ir.inod.smsguard
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -61,7 +62,7 @@ class ThreadAdapter(
         val display = ContactNames.displayName(context, item.address)
         b.textAddress.text = display
         b.textSnippet.text = item.snippet
-        b.textDate.text = Dates.listLabel(item.date)
+        b.textDate.text = Dates.listLabel(context, item.date)
 
         TextDir.apply(b.textAddress, display)
         TextDir.apply(b.textSnippet, item.snippet)
@@ -69,10 +70,15 @@ class ThreadAdapter(
         b.colorStripe.setBackgroundColor(parseColor(item.colorHex))
 
         val category = categories(context)[item.categoryId]
-        b.textCategory.text = category?.label(context).orEmpty()
-        b.textCategory.setBackgroundColor(parseColor(category?.colorHex ?: "#616161"))
-        b.textCategory.visibility =
-            if (category == null || item.categoryId == Cat.OTHER) View.GONE else View.VISIBLE
+        val showChip = category != null && item.categoryId != Cat.OTHER
+        if (showChip && category != null) {
+            b.textCategory.text = category.label(context)
+            // A rounded pill instead of a hard rectangle.
+            b.textCategory.background = pill(parseColor(category.colorHex))
+            b.textCategory.visibility = View.VISIBLE
+        } else {
+            b.textCategory.visibility = View.GONE
+        }
 
         // The confirmation prompt: a red badge until the user decides.
         b.iconWarning.visibility =
@@ -80,7 +86,7 @@ class ThreadAdapter(
 
         if (item.unreadCount > 0) {
             b.textUnread.visibility = View.VISIBLE
-            b.textUnread.text = item.unreadCount.toString()
+            b.textUnread.text = Dates.faDigits(item.unreadCount.toString())
         } else {
             b.textUnread.visibility = View.GONE
         }
@@ -90,6 +96,12 @@ class ThreadAdapter(
             onLongClick(item)
             true
         }
+    }
+
+    private fun pill(color: Int): GradientDrawable = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = 40f
+        setColor(color)
     }
 
     private fun parseColor(hex: String): Int = try {

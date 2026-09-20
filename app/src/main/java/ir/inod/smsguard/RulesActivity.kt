@@ -87,7 +87,7 @@ class RulesActivity : AppCompatActivity() {
             getString(R.string.blocked_empty)
         } else {
             blocked.joinToString("\n\n") {
-                "${Dates.full(it.date)}\n${it.address}\n${it.body}\n[${it.rulePattern}]"
+                "${Dates.full(this, it.date)}\n${it.address}\n${it.body}\n[${it.rulePattern}]"
             }
         }
         AlertDialog.Builder(this)
