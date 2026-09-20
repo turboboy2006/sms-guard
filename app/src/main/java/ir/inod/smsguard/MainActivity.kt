@@ -19,6 +19,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.tabs.TabLayout
 import ir.inod.smsguard.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -80,15 +81,16 @@ class MainActivity : AppCompatActivity() {
             R.string.tab_notifications
         )
         labels.forEach { binding.tabs.addTab(binding.tabs.newTab().setText(it)) }
-        binding.tabs.addOnTabSelectedListener(object :
-            com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab) {
+        // A nested class cannot be referenced through its fully-qualified outer
+        // name in Kotlin, so TabLayout is imported and used unqualified.
+        binding.tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
                 selectedTab = tab.position
                 applyFilter()
             }
 
-            override fun onTabUnselected(tab: com.google.android.material.tabs.Tab?) = Unit
-            override fun onTabReselected(tab: com.google.android.material.tabs.Tab?) = Unit
+            override fun onTabUnselected(tab: TabLayout.Tab) = Unit
+            override fun onTabReselected(tab: TabLayout.Tab) = Unit
         })
     }
 
