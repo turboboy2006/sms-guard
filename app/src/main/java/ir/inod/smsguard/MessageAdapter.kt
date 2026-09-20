@@ -3,6 +3,7 @@ package ir.inod.smsguard
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import ir.inod.smsguard.databinding.ItemMessageBinding
@@ -35,7 +36,9 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.VH>() {
     override fun onBindViewHolder(holder: VH, position: Int) {
         val item = items[position]
         val context = holder.itemView.context
-        val row = holder.binding.root as ViewGroup
+        // item_message.xml has a LinearLayout root; `gravity` is a
+        // LinearLayout property, which is why ViewGroup would not compile.
+        val row = holder.itemView as LinearLayout
         val bubble = holder.binding.textBubble
 
         bubble.text = item.body
