@@ -5,23 +5,29 @@ import android.net.Uri
 import android.provider.ContactsContract
 
 /**
- * The offline brain. It runs in microseconds and decides two things:
- *   - the baseline category of a message
- *   - a suspicion score used to gate the (slow, networked) AI stage
+ * The offline brain. It runs in microseconds and never touches the network,
+ * which is what keeps SMS delivery inside the latency budget.
  *
- * Nothing here performs network I/O, which is what keeps SMS delivery under
- * the latency budget.
+ * This stage must stand on its own: the AI connector is optional, so the
+ * scoring below is the product, not a fallback.
  */
 object Classifier {
 
-    private val PROMO_WORDS = listOf(
+    // ---------------------------------------------------------------- lexicons
+
+    private val PROMO = listOf(
         "تخفیف", "جشنواره", "جایزه", "برنده", "قرعه", "رایگان", "هدیه", "فرصت",
         "حراج", "کد تخفیف", "وام", "بونوس", "لاتاری", "شرط بندی", "سرمایه",
         "سیگنال", "فقط امروز", "آخرین فرصت", "کش بک", "cashback", "bonus",
-        "discount", "offer", "winner", "prize", "free gift"
+        "discount", "offer", "winner", "prize", "free gift", "lottery", "casino"
     )
-    private val URGENT_WORDS = listOf(
-        "فوری", "همین حالا", "امشب", "مهلت", "فقط تا", "آخرین روز", "فقط ۱ روز", "فقط 1 روز"
+    private val URGENT = listOf(
+        "فوری", "همین حالا", "امشب", "مهلت", "فقط تا", "آخرین روز", "فقط ۱ روز",
+        "فقط 1 روز", "act now", "limited time", "urgent"
+    )
+    private val MONEY_LURE = listOf(
+        "میلیون تومان", "میلیارد", "جایزه نقدی", "سود تضمینی", "بدون ضامن",
+        "وام فوری", "کد بورسی", "ارز دیجیتال", "استخراج", "سرمایه‌گذاری"
     )
     private val OTP_WORDS = listOf(
         "رمز پویا", "رمز دوم", "رمز یکبار", "رمز یک بار", "کد تایید", "کد تأیید",
@@ -45,15 +51,25 @@ object Classifier {
         "bit.ly", "t.co", "tinyurl", "goo.gl", "is.gd", "rb.gy", "cutt.ly",
         "ow.ly", "shorturl", "linktr.ee", "t.me", "wa.me", "whatsapp.com"
     )
+    /** TLDs disproportionately used by throwaway campaign domains. */
+    private val RISKY_TLDS = listOf(
+        ".xyz", ".top", ".click", ".shop", ".live", ".icu", ".buzz", ".rest",
+        ".monster", ".cyou", ".sbs", ".cfd", ".loan", ".work"
+    )
 
     private val LINK_REGEX = Regex("(https?://|www\\.)[^\\s]+", RegexOption.IGNORE_CASE)
     private val OPT_OUT_REGEX = Regex("(لغو\\s*1?1)|(off\\s*-?\\s*\\d{3,})", RegexOption.IGNORE_CASE)
     private val BULK_SENDER_REGEX = Regex("^\\+?98?\\d{4,}$|^\\d{5,}$")
+    private val NUMBER_REGEX = Regex("[0-9\u06F0-\u06F9]{4,}")
+    /** Zero-width joiners used to slip words past naive keyword filters. */
+    private val ZERO_WIDTH_REGEX = Regex("[\u200B-\u200F\u202A-\u202E\uFEFF]")
 
     private fun containsAny(haystack: String, needles: List<String>): Boolean {
         val h = haystack.lowercase()
         return needles.any { h.contains(it.lowercase()) }
     }
+
+    // ------------------------------------------------------------- predicates
 
     fun looksLikeOtp(body: String): Boolean = containsAny(body, OTP_WORDS)
 
@@ -64,7 +80,6 @@ object Classifier {
 
     fun looksLikeNotification(body: String): Boolean = containsAny(body, NOTIFY_WORDS)
 
-    /** True when the sender is one of the device's saved contacts. */
     /** Contact lookups are cached: the read path resolves a category per row. */
     private val contactCache = HashMap<String, Boolean>()
 
@@ -94,34 +109,85 @@ object Classifier {
         }
     }
 
-    /** Local suspicion score. Higher means more likely to be junk. */
+    // ---------------------------------------------------------------- scoring
+
+    private data class Signal(val weight: Int, val tag: String)
+
+    /**
+     * Weighted offline score, 0..100.
+     *
+     * Positive signals accumulate suspicion; a small number of negative
+     * signals pull the score back down so ordinary service traffic (reminders,
+     * delivery notices) is not swept up with advertising.
+     */
     fun localScore(address: String, body: String): Int {
-        var score = 0
+        val signals = mutableListOf<Signal>()
         val lower = body.lowercase()
-
-        if (LINK_REGEX.containsMatchIn(body)) score += 30
-        if (containsAny(lower, PROMO_WORDS)) score += 30
-        if (containsAny(lower, URGENT_WORDS)) score += 20
-        if (OPT_OUT_REGEX.containsMatchIn(body)) score += 15
-        if (containsAny(lower, SHORTENERS)) score += 20
-
         val links = LINK_REGEX.findAll(body).map { it.value }.toList()
-        if (links.any { link -> SHORTENERS.any { link.contains(it, ignoreCase = true) } }) score += 15
 
-        // Persian/Arabic-Indic digits mixed with money words is a classic lure.
-        if (Regex("[0-9\u06F0-\u06F9]{4,}").containsMatchIn(body) &&
+        if (links.isNotEmpty()) signals.add(Signal(28, "link"))
+        if (containsAny(lower, PROMO)) signals.add(Signal(30, "promo"))
+        if (containsAny(lower, URGENT)) signals.add(Signal(18, "urgency"))
+        if (containsAny(lower, MONEY_LURE)) signals.add(Signal(28, "money-lure"))
+        if (OPT_OUT_REGEX.containsMatchIn(body)) signals.add(Signal(14, "bulk-optout"))
+
+        // A link is far more suspicious when the domain is a throwaway.
+        if (links.any { link ->
+                SHORTENERS.any { link.contains(it, ignoreCase = true) } ||
+                    RISKY_TLDS.any { link.contains(it, ignoreCase = true) }
+            }
+        ) signals.add(Signal(22, "risky-domain"))
+
+        // Raw-IP links and deep subdomain chains are hallmarks of phishing.
+        if (links.any { Regex("https?://\\d{1,3}(\\.\\d{1,3}){3}").containsMatchIn(it) }) {
+            signals.add(Signal(25, "ip-link"))
+        }
+        if (links.any { link ->
+                // Host only: counting dots in the whole URL counts the scheme too.
+                val host = link.substringAfter("://", link).substringBefore('/')
+                host.count { it == '.' } >= 4
+            }
+        ) {
+            signals.add(Signal(12, "deep-subdomain"))
+        }
+
+        // Amounts combined with prize wording is the classic lure.
+        if (NUMBER_REGEX.containsMatchIn(body) &&
             containsAny(lower, listOf("میلیون", "میلیارد", "تومان", "جایزه", "وام"))
-        ) score += 20
+        ) signals.add(Signal(20, "amount-lure"))
 
-        if (BULK_SENDER_REGEX.matches(address.replace(" ", ""))) score += 10
+        if (BULK_SENDER_REGEX.matches(address.replace(" ", ""))) signals.add(Signal(10, "bulk-sender"))
 
-        return score.coerceIn(0, 100)
+        // Obfuscation attempts.
+        if (ZERO_WIDTH_REGEX.containsMatchIn(body)) signals.add(Signal(20, "obfuscated"))
+        val emojiCount = body.codePoints().filter { it > 0x1F000 }.count()
+        if (emojiCount >= 4) signals.add(Signal(8, "emoji-heavy"))
+
+        // Negative signals: legitimate service traffic.
+        if (looksLikeNotification(body)) signals.add(Signal(-22, "notification"))
+        if (body.length > 400) signals.add(Signal(-8, "long-form"))
+
+        val total = signals.sumOf { it.weight }
+        return total.coerceIn(0, 100)
     }
+
+    fun reasonsFor(body: String): List<String> {
+        val out = mutableListOf<String>()
+        val lower = body.lowercase()
+        if (LINK_REGEX.containsMatchIn(body)) out.add("link")
+        if (containsAny(lower, PROMO)) out.add("promo")
+        if (containsAny(lower, URGENT)) out.add("urgency")
+        if (containsAny(lower, MONEY_LURE)) out.add("money")
+        if (OPT_OUT_REGEX.containsMatchIn(body)) out.add("bulk")
+        if (ZERO_WIDTH_REGEX.containsMatchIn(body)) out.add("obfuscated")
+        return out
+    }
+
+    // ------------------------------------------------------------ decisioning
 
     /** Baseline decision that never touches the network. */
     fun classifyLocal(context: Context, address: String, body: String): LocalVerdict {
-        val reasons = mutableListOf<String>()
-
+        // Hard exemptions come first, so protected traffic is never scored.
         if (isKnownContact(context, address)) {
             return LocalVerdict(Cat.PERSONAL, 0, listOf("contact"), false)
         }
@@ -133,29 +199,18 @@ object Classifier {
         }
 
         val score = localScore(address, body)
-        if (LINK_REGEX.containsMatchIn(body)) reasons.add("link")
-        if (containsAny(body, PROMO_WORDS)) reasons.add("promo-words")
-        if (containsAny(body, URGENT_WORDS)) reasons.add("urgency")
-        if (OPT_OUT_REGEX.containsMatchIn(body)) reasons.add("bulk-optout")
-
         val threshold = SettingsStore(context).threshold
         val suspicious = score >= threshold
 
         val category = when {
-            looksLikeNotification(body) && !suspicious -> Cat.NOTIFICATION
             suspicious -> Cat.SUSPICIOUS
-            containsAny(body, PROMO_WORDS) -> Cat.PROMOTION
+            containsAny(body, PROMO) -> Cat.PROMOTION
+            looksLikeNotification(body) -> Cat.NOTIFICATION
             else -> Cat.OTHER
         }
-        return LocalVerdict(category, score, reasons, suspicious)
+        return LocalVerdict(category, score, reasonsFor(body), suspicious)
     }
 
-    /**
-     * Final category for a message, in priority order:
-     * manual/AI override -> remembered sender category -> local classification.
-     * Remembering the sender is what makes bank and OTP senders permanently
-     * exempt from re-analysis.
-     */
     /** Read-only resolution used while listing messages. Performs no writes. */
     fun resolveRead(context: Context, address: String, body: String, messageId: Long): String {
         MessageCategoryStore(context).categoryFor(messageId)?.let { return it }
