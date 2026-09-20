@@ -231,6 +231,28 @@ class SenderStore(context: Context) {
     fun colorFor(sender: String): String? =
         entry(sender).optString("color").ifBlank { null }
 
+    /**
+     * Snapshot accessors. The conversation list resolves a category per row, so
+     * reading the whole document per row is far too expensive.
+     */
+    fun allCategories(): Map<String, String> {
+        val out = HashMap<String, String>()
+        for ((sender, obj) in load()) {
+            val c = obj.optString("cat")
+            if (c.isNotBlank()) out[sender] = c
+        }
+        return out
+    }
+
+    fun allColors(): Map<String, String> {
+        val out = HashMap<String, String>()
+        for ((sender, obj) in load()) {
+            val c = obj.optString("color")
+            if (c.isNotBlank()) out[sender] = c
+        }
+        return out
+    }
+
     fun setColor(sender: String, hex: String?) {
         val o = entry(sender)
         if (hex == null) o.remove("color") else o.put("color", hex)

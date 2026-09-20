@@ -107,33 +107,93 @@ object Classifier {
     fun looksLikeNotification(body: String): Boolean =
         Normalizer.containsAny(body, NOTIFY_WORDS)
 
-    /** Contact lookups are cached: the read path resolves a category per row. */
-    private val contactCache = HashMap<String, Boolean>()
+    /**
+     * App-wide caches.
+     *
+     * The conversation list calls [resolveRead] once per row. Every store read
+     * parses its entire JSON document and a contact check used to hit
+     * ContactsProvider, so doing that per row made the list O(rows x parse) and
+     * caused an ANR. Everything is now loaded once and reused until a write
+     * calls [invalidateCaches].
+     */
+    private var cachedCategories: Map<String, Category>? = null
+    private var cachedOverrides: Map<Long, String>? = null
+    private var cachedSenderCats: Map<String, String>? = null
+    private var cachedSenderColors: Map<String, String>? = null
+    private var cachedThreshold: Int = -1
+    private var cachedContacts: Set<String>? = null
 
-    fun isKnownContact(context: Context, address: String): Boolean {
-        if (address.isBlank()) return false
-        contactCache[address]?.let { return it }
-        val result = queryContact(context, address)
-        contactCache[address] = result
-        return result
+    fun invalidateCaches() {
+        cachedCategories = null
+        cachedOverrides = null
+        cachedSenderCats = null
+        cachedSenderColors = null
+        cachedThreshold = -1
+        cachedContacts = null
     }
 
-    private fun queryContact(context: Context, address: String): Boolean {
+    private fun categories(context: Context): Map<String, Category> =
+        cachedCategories ?: CategoryStore(context).all().associateBy { it.id }
+            .also { cachedCategories = it }
+
+    private fun overrides(context: Context): Map<Long, String> =
+        cachedOverrides ?: MessageCategoryStore(context).all().also { cachedOverrides = it }
+
+    private fun senderCategories(context: Context): Map<String, String> =
+        cachedSenderCats ?: SenderStore(context).allCategories().also { cachedSenderCats = it }
+
+    private fun senderColors(context: Context): Map<String, String> =
+        cachedSenderColors ?: SenderStore(context).allColors().also { cachedSenderColors = it }
+
+    private fun threshold(context: Context): Int {
+        if (cachedThreshold < 0) cachedThreshold = SettingsStore(context).threshold
+        return cachedThreshold
+    }
+
+    // ------------------------------------------------------------- contacts
+
+    /**
+     * One query for the whole address book instead of one query per sender:
+     * 204 ContactsProvider hits were showing up in logcat on a real device.
+     */
+    private fun contactNumbers(context: Context): Set<String> {
+        cachedContacts?.let { return it }
+        val set = HashSet<String>()
         var cursor: android.database.Cursor? = null
-        return try {
-            val uri: Uri = Uri.withAppendedPath(
-                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
-                Uri.encode(address)
-            )
+        try {
             cursor = context.contentResolver.query(
-                uri, arrayOf(ContactsContract.PhoneLookup._ID), null, null, null
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+                null, null, null
             )
-            cursor != null && cursor.count > 0
+            if (cursor != null) {
+                val idx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                if (idx >= 0) {
+                    while (cursor.moveToNext()) {
+                        cursor.getString(idx)?.let { set.add(matchKey(it)) }
+                    }
+                }
+            }
         } catch (e: Exception) {
-            false
+            // READ_CONTACTS missing or provider unavailable: treat as no contacts.
         } finally {
             cursor?.close()
         }
+        cachedContacts = set
+        return set
+    }
+
+    /** Last 10 digits, so +98…, 0098… and 0… all compare equal. */
+    private fun matchKey(raw: String): String {
+        val digits = raw.filter { it.isDigit() }
+        return if (digits.length > 10) digits.takeLast(10) else digits
+    }
+
+    fun isKnownContact(context: Context, address: String): Boolean {
+        if (address.isBlank()) return false
+        val key = matchKey(address)
+        if (key.length < 7) return false
+        return contactNumbers(context).contains(key)
     }
 
     // --------------------------------------------------------------- scoring
@@ -215,8 +275,7 @@ object Classifier {
         }
 
         val score = localScore(address, body)
-        val threshold = SettingsStore(context).threshold
-        val suspicious = score >= threshold
+        val suspicious = score >= threshold(context)
 
         val category = when {
             suspicious -> Cat.SUSPICIOUS
@@ -229,8 +288,8 @@ object Classifier {
 
     /** Read-only resolution used while listing messages. Performs no writes. */
     fun resolveRead(context: Context, address: String, body: String, messageId: Long): String {
-        MessageCategoryStore(context).categoryFor(messageId)?.let { return it }
-        SenderStore(context).categoryFor(address)?.let { return it }
+        overrides(context)[messageId]?.let { return it }
+        senderCategories(context)[address]?.let { return it }
         return classifyLocal(context, address, body).categoryId
     }
 
@@ -244,16 +303,17 @@ object Classifier {
         if (senders.categoryFor(address) == null) {
             senders.setCategory(address, verdict.categoryId)
         }
-        val cat = CategoryStore(context).byId(verdict.categoryId)
+        val cat = categories(context)[verdict.categoryId]
         if (cat != null && cat.skipAi) {
             senders.setPolicy(address, SenderPolicy.NEVER_ANALYZE)
         }
+        invalidateCaches()
         return verdict.categoryId
     }
 
     /** Colour for a conversation: explicit sender colour wins, else category. */
     fun colorFor(context: Context, address: String, categoryId: String): String =
-        SenderStore(context).colorFor(address)
-            ?: CategoryStore(context).byId(categoryId)?.colorHex
+        senderColors(context)[address]
+            ?: categories(context)[categoryId]?.colorHex
             ?: "#616161"
 }

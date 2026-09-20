@@ -74,10 +74,12 @@ object AnalysisPipeline {
                 // Trust the AI only when it agrees the message is unwanted.
                 if (ai.categoryId == Cat.SUSPICIOUS || ai.categoryId == Cat.SPAM) {
                     MessageCategoryStore(appContext).set(messageId, ai.categoryId)
+                    Classifier.invalidateCaches()
                     MessageBus.notifyChanged()
                     onDone?.invoke()
                 } else if (ai.categoryId == Cat.PROMOTION) {
                     MessageCategoryStore(appContext).set(messageId, Cat.PROMOTION)
+                    Classifier.invalidateCaches()
                     MessageBus.notifyChanged()
                 }
             } catch (t: Throwable) {

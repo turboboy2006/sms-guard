@@ -165,9 +165,30 @@ class MainActivity : AppCompatActivity() {
 
     // ------------------------------------------------------------------ data
 
+    private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
+
+    /**
+     * Scanning the SMS provider and classifying every row is far too heavy for
+     * the main thread: doing it there produced
+     * "ANR in ir.inod.smsguard (MainActivity)" on a real device.
+     */
     private fun loadThreads() {
-        allThreads = repo.loadThreads()
-        applyFilter()
+        worker.execute {
+            val threads = try {
+                repo.loadThreads()
+            } catch (t: Throwable) {
+                emptyList()
+            }
+            runOnUiThread {
+                allThreads = threads
+                applyFilter()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        worker.shutdownNow()
+        super.onDestroy()
     }
 
     private fun applyFilter() {
@@ -272,6 +293,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun reloadAfterAssign(thread: ThreadSummary) {
+        // Writes invalidate the app-wide classify caches.
+        Classifier.invalidateCaches()
         Toast.makeText(this, R.string.applied, Toast.LENGTH_SHORT).show()
         loadThreads()
     }
