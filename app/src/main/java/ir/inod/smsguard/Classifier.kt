@@ -383,11 +383,11 @@ object Classifier {
     }
 
     /**
-     * Sum of learned token weights.
+     * Sum of learned feature weights.
      *
-     * Log-odds run roughly -4..+4 per token, so the sum is scaled down and
-     * capped: a handful of corrected messages must never be able to run away
-     * with the score.
+     * Log-odds run roughly -4..+4 per feature. n-gram features are numerous, so
+     * the sum is scaled down and capped: a handful of corrected messages must
+     * never be able to run away with the score.
      */
     private fun learnedScore(context: Context, body: String): Int {
         val w = weights(context)
@@ -396,7 +396,7 @@ object Classifier {
         for (token in Learning.tokens(body)) {
             w[token]?.let { sum += it }
         }
-        return (sum * 6.0).toInt().coerceIn(-30, 40)
+        return (sum * 3.0).toInt().coerceIn(-30, 40)
     }
 
     // ------------------------------------------------------------ decisioning

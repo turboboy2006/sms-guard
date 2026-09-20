@@ -239,18 +239,59 @@ class LearnedWeights(context: Context) {
 
     private companion object {
         const val KEY = "weights"
-        const val MAX_TOKENS = 600
+
+        /** n-gram features triple the table, so the ceiling moved with it. */
+        const val MAX_TOKENS = 1500
     }
 }
 
 object Learning {
 
     private const val MIN_TOKEN_LEN = 3
+    private const val MAX_CHAR_GRAMS = 60
 
-    /** Normalised, de-duplicated word tokens used as learning features. */
-    fun tokens(body: String): List<String> =
-        Normalizer.normalize(body)
+    /**
+     * Feature keys for one message.
+     *
+     * Three families, each prefixed so they cannot collide:
+     *   w:  words               — the original signal
+     *   b:  word bigrams        — catches phrases like "فروش ویژه"
+     *   c:  character trigrams  — catches morphology and misspellings, so
+     *                             تخفیف / تخفیفات / تخفیفی / تخفیفف all share
+     *                             grams, with no stemming library needed
+     *
+     * Feeding all three into one log-odds table is what gives the model reach
+     * without a trained vectoriser. The log-odds ratio already behaves like an
+     * inverse-document-frequency term: features that show up everywhere are
+     * pushed toward zero by the smoothing, while features concentrated in spam
+     * dominate.
+     */
+    fun tokens(body: String): List<String> {
+        val words = Normalizer.normalize(body)
             .split(' ')
             .filter { it.length >= MIN_TOKEN_LEN && it.any { c -> c.isLetter() } }
-            .distinct()
+        if (words.isEmpty()) return emptyList()
+
+        val out = LinkedHashSet<String>(words.size * 3)
+        words.forEach { out.add("w:" + it) }
+
+        for (i in 0 until words.size - 1) {
+            out.add("b:" + words[i] + "_" + words[i + 1])
+        }
+
+        // Character trigrams over the compacted text, capped so one long
+        // message cannot flood the table.
+        val compact = words.joinToString("")
+        if (compact.length >= 3) {
+            var added = 0
+            val limit = compact.length - 3
+            var i = 0
+            while (i <= limit && added < MAX_CHAR_GRAMS) {
+                out.add("c:" + compact.substring(i, i + 3))
+                added++
+                i++
+            }
+        }
+        return out.toList()
+    }
 }
