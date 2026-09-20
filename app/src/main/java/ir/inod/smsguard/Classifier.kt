@@ -41,6 +41,31 @@ object Classifier {
     private val RISKY_EMOJI = listOf(
         "🎁", "💰", "🔥", "🚨", "⭐", "🎉", "💸", "🏆", "🎯", "⚡", "❗", "🤑"
     )
+    /**
+     * Financial vocabulary that is completely innocent coming from a bank and
+     * suspicious coming from anyone else. Kept separate from both the fraud
+     * list and the spam verdict so it can be weighted by context.
+     */
+    private val FINANCIAL = listOf(
+        "موجودی", "مانده", "واریز", "برداشت", "تراکنش", "شبا", "شماره حساب",
+        "شماره کارت", "درگاه", "کیف پول", "رمز کارت", "پرداخت", "تسویه", "سود"
+    )
+    /**
+     * Sentence shapes. One keyword is weak evidence; the whole construction is
+     * much stronger, and it survives rewording of the individual words.
+     */
+    private val PATTERNS = listOf(
+        Regex("با\\s+خرید.{0,20}(تخفیف|هدیه|جایزه)"),
+        Regex("برای\\s+(دریافت|شرکت).{0,20}(کلیک|لینک|ثبت)"),
+        Regex("فقط\\s+تا\\s+(پایان|امروز|فردا)"),
+        Regex("بهترین\\s+قیمت"),
+        Regex("جهت\\s+(سفارش|خرید).{0,20}(تماس|مراجعه)"),
+        Regex("(برنده|انتخاب)\\s+شد(ه|ید)"),
+        Regex("(جایزه|هدیه).{0,15}(دریافت|بگیرید)"),
+        Regex("همین\\s+حالا.{0,15}(کلیک|تماس|ثبت)"),
+        Regex("limited\\s+time.{0,20}(click|order)"),
+        Regex("you.{0,12}(won|winner).{0,20}(claim|prize)")
+    )
     private val MONEY_LURE = listOf(
         "میلیون تومان", "میلیارد", "جایزه نقدی", "سود تضمینی", "بدون ضامن",
         "وام فوری", "کد بورسی", "ارز دیجیتال", "سرمایه گذاری", "درآمد تضمینی"
@@ -276,6 +301,20 @@ object Classifier {
         val lure = RISKY_EMOJI.count { body.contains(it) }
         if (lure >= 2) out.add(Signal(18, "emoji-lure"))
         else if (emoji >= 5) out.add(Signal(10, "emoji-heavy"))
+
+        // Sentence templates, matched against the normalised text so Arabic
+        // letter forms and kashida do not defeat them.
+        val normalized = Normalizer.normalize(body)
+        val templateHits = PATTERNS.count { it.containsMatchIn(normalized) }
+        if (templateHits > 0) {
+            out.add(Signal((templateHits * 14).coerceAtMost(28), "pattern"))
+        }
+
+        // Financial wording from a non-bank sender: innocent in context,
+        // suspicious outside it.
+        if (!senderLooksBank(address) && Normalizer.containsAny(body, FINANCIAL)) {
+            out.add(Signal(18, "financial-out-of-context"))
+        }
         if (Normalizer.containsAny(body, MONEY_LURE)) out.add(Signal(24, "money"))
         if (OPT_OUT_REGEX.containsMatchIn(body)) out.add(Signal(14, "bulk-optout"))
         if (BULK_SENDER_REGEX.matches(address.replace(" ", ""))) out.add(Signal(8, "bulk-sender"))
