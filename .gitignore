@@ -12,3 +12,6 @@ local.properties
 *.apk
 *.keystore
 !debug.keystore
+
+# Local build output pulled from GitHub Actions artifacts
+/dist/
