@@ -19,6 +19,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayout
 import ir.inod.smsguard.databinding.ActivityMainBinding
 
@@ -270,86 +272,136 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.mark_not_spam),
             getString(R.string.block_sender)
         )
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle(ContactNames.displayName(this, thread.address))
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> pickCategory(thread)
                     1 -> pickColor(thread)
-                    2 -> assign(thread, Cat.SPAM, null)
-                    3 -> {
+                    2 -> confirm(R.string.mark_spam, getString(R.string.confirm_spam_msg)) {
+                        changeCategory(thread, Cat.SPAM)
+                    }
+                    3 -> confirm(R.string.mark_not_spam, getString(R.string.confirm_ham_msg)) {
                         // Negative feedback: stop flagging this sender and tell
                         // the AI stage to leave it alone from now on.
                         senderStore.setPolicy(thread.address, SenderPolicy.NEVER_ANALYZE)
-                        assign(thread, Cat.OTHER, null)
+                        changeCategory(thread, Cat.OTHER)
                     }
-                    4 -> {
+                    4 -> confirm(R.string.block_sender, getString(R.string.confirm_block_msg)) {
                         RuleStore(this).add(thread.address, RuleTarget.SENDER, false)
-                        Toast.makeText(this, R.string.sender_blocked, Toast.LENGTH_SHORT).show()
+                        toast(R.string.sender_blocked)
                     }
                 }
             }
             .show()
     }
 
+    /** Every state-changing choice passes through here, so nothing is one-tap. */
+    private fun confirm(titleRes: Int, message: String, onYes: () -> Unit) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(titleRes)
+            .setMessage(message)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.confirm) { _, _ -> onYes() }
+            .show()
+    }
+
     private fun pickCategory(thread: ThreadSummary) {
         val cats = CategoryStore(this).all()
         val labels = cats.map { it.label(this) }.toTypedArray()
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle(R.string.change_category)
-            .setItems(labels) { _, which -> assign(thread, cats[which].id, null) }
+            .setItems(labels) { _, which ->
+                val chosen = cats[which]
+                confirm(R.string.change_category, getString(R.string.confirm_category_msg)) {
+                    changeCategory(thread, chosen.id)
+                }
+            }
             .show()
     }
 
-    /** Coloured rows rendered without needing another layout file. */
+    /**
+     * Colour picker as a grid of tappable circles, so the whole palette is
+     * visible at once instead of scrolled past as wide rows.
+     */
     private fun pickColor(thread: ThreadSummary) {
-        val palette = Categories.PALETTE
-        val listAdapter = object : BaseAdapter() {
-            override fun getCount(): Int = palette.size
-            override fun getItem(position: Int): Any = palette[position]
-            override fun getItemId(position: Int): Long = position.toLong()
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val density = parent.resources.displayMetrics.density
-                val row = (convertView as? android.widget.LinearLayout)
-                    ?: android.widget.LinearLayout(this@MainActivity).apply {
-                        orientation = android.widget.LinearLayout.HORIZONTAL
+        val density = resources.displayMetrics.density
+        val pad = (8 * density).toInt()
+        val cell = (44 * density).toInt()
+        val current = senderStore.colorFor(thread.address)
+
+        val grid = android.widget.GridLayout(this).apply {
+            columnCount = 4
+            setPadding(pad * 2, pad * 2, pad * 2, pad * 2)
+        }
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.pick_color)
+            .setView(grid)
+            .setNeutralButton(R.string.color_default) { _, _ ->
+                confirm(R.string.pick_color, getString(R.string.confirm_color_msg)) {
+                    applyColor(thread, null)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+
+        Categories.PALETTE.forEach { hex ->
+            val wrapper = android.widget.FrameLayout(this).apply {
+                layoutParams = android.widget.GridLayout.LayoutParams().apply {
+                    width = cell + pad * 2
+                    height = cell + pad * 2
+                }
+                setPadding(pad, pad, pad, pad)
+            }
+            val circle = View(this).apply {
+                layoutParams = android.widget.FrameLayout.LayoutParams(cell, cell)
+                background = swatch(hex, hex == current)
+                contentDescription = hex
+                setOnClickListener {
+                    dialog.dismiss()
+                    confirm(R.string.pick_color, getString(R.string.confirm_color_msg)) {
+                        applyColor(thread, hex)
                     }
-                row.removeAllViews()
-                row.addView(
-                    View(this@MainActivity).apply {
-                        layoutParams = android.widget.LinearLayout.LayoutParams(
-                            (36 * density).toInt(), (36 * density).toInt()
-                        ).apply { marginStart = (24 * density).toInt() }
-                        background = android.graphics.drawable.GradientDrawable().apply {
-                            shape = android.graphics.drawable.GradientDrawable.OVAL
-                            setColor(Color.parseColor(palette[position]))
-                        }
-                    }
-                )
-                row.setPadding(0, (12 * density).toInt(), 0, (12 * density).toInt())
-                return row
+                }
+            }
+            wrapper.addView(circle)
+            grid.addView(wrapper)
+        }
+        dialog.show()
+    }
+
+    /** Colour circle; the active one carries a white ring. */
+    private fun swatch(hex: String, selected: Boolean): android.graphics.drawable.GradientDrawable =
+        android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.OVAL
+            setColor(Color.parseColor(hex))
+            if (selected) {
+                setStroke((3 * resources.displayMetrics.density).toInt(), Color.WHITE)
             }
         }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.pick_color)
-            .setAdapter(listAdapter) { _, which ->
-                senderStore.setColor(thread.address, palette[which])
-                reloadAfterAssign(thread)
-            }
-            .setNeutralButton(R.string.color_default) { _, _ ->
-                senderStore.setColor(thread.address, null)
-                reloadAfterAssign(thread)
-            }
-            .show()
+
+    private fun applyColor(thread: ThreadSummary, hex: String?) {
+        val previous = senderStore.colorFor(thread.address)
+        senderStore.setColor(thread.address, hex)
+        Classifier.invalidateCaches()
+        loadThreads()
+        showUndo {
+            senderStore.setColor(thread.address, previous)
+            Classifier.invalidateCaches()
+            loadThreads()
+        }
     }
 
-    private fun assign(thread: ThreadSummary, categoryId: String, colorHex: String?) {
+    private fun changeCategory(thread: ThreadSummary, categoryId: String) {
+        val previousCat = senderStore.categoryFor(thread.address)
+        val previousOverride = messageCats.categoryFor(thread.messageId)
+
         senderStore.setCategory(thread.address, categoryId)
         messageCats.set(thread.messageId, categoryId)
-        if (colorHex != null) senderStore.setColor(thread.address, colorHex)
 
         // Learning loop. Only labels carrying a clear verdict train the model;
-        // ambiguous categories (promotional, suspicious) are left alone.
+        // ambiguous categories are left alone.
         val isSpam = categoryId == Cat.SPAM
         val isHam = categoryId == Cat.OTHER ||
             categoryId == Cat.NOTIFICATION ||
@@ -359,9 +411,8 @@ class MainActivity : AppCompatActivity() {
             LearnedWeights(this).record(thread.snippet, isSpam)
         }
 
-        // Guarded domain learning: only a sender the user has already marked
-        // repeatedly can teach the domain blocklist, so one mis-tap cannot
-        // blacklist a legitimate domain for good.
+        // Guarded domain learning: only a sender already marked repeatedly can
+        // teach the blocklist, so one mis-tap cannot blacklist a real domain.
         if (isSpam) {
             val profile = SenderProfileStore(this).snapshot()[thread.address]
             if (profile?.hostile == true) {
@@ -370,15 +421,34 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        reloadAfterAssign(thread)
+        Classifier.invalidateCaches()
+        loadThreads()
+
+        showUndo {
+            // Put the labels back AND take the training sample out again,
+            // otherwise an undone decision would still have taught the model.
+            if (isSpam || isHam) {
+                SenderProfileStore(this).revertFeedback(thread.address, isSpam)
+                LearnedWeights(this).revert(thread.snippet, isSpam)
+            }
+            senderStore.setCategory(thread.address, previousCat ?: Cat.OTHER)
+            messageCats.set(
+                thread.messageId,
+                previousOverride ?: previousCat ?: Cat.OTHER
+            )
+            Classifier.invalidateCaches()
+            loadThreads()
+        }
     }
 
-    private fun reloadAfterAssign(thread: ThreadSummary) {
-        // Writes invalidate the app-wide classify caches.
-        Classifier.invalidateCaches()
-        Toast.makeText(this, R.string.applied, Toast.LENGTH_SHORT).show()
-        loadThreads()
+    /** Five-second undo affordance shown after every change. */
+    private fun showUndo(onUndo: () -> Unit) {
+        Snackbar.make(binding.root, R.string.applied, 5000)
+            .setAction(R.string.undo) { onUndo() }
+            .show()
     }
+
+    private fun toast(res: Int) = Toast.makeText(this, res, Toast.LENGTH_SHORT).show()
 
     // ------------------------------------------------------------ blocked log
 

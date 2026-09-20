@@ -87,6 +87,23 @@
     <string name="lang_fa">فارسی</string>
     <string name="lang_en">English</string>
     <string name="saved">Saved</string>
+    <string name="confirm">Confirm</string>
+    <string name="undo">Undo</string>
+    <string name="confirm_spam_msg">Mark this sender as spam?</string>
+    <string name="confirm_ham_msg">Mark this as not spam?</string>
+    <string name="confirm_category_msg">Change the category for this conversation?</string>
+    <string name="confirm_color_msg">Apply this colour to the conversation?</string>
+    <string name="confirm_block_msg">Block this sender? Future messages will be dropped.</string>
+
+    <!-- Trash -->
+    <string name="tab_trash">Trash</string>
+    <string name="move_to_trash">Move to trash</string>
+    <string name="moved_to_trash">Moved to trash</string>
+    <string name="delete_forever">Delete permanently</string>
+    <string name="delete_all">Empty trash</string>
+    <string name="trash_empty">Trash is empty.</string>
+    <string name="delete_message">Delete this message</string>
+    <string name="selected_count">%1$d selected</string>
 
     <!-- Categories management -->
     <string name="manage_categories">Manage categories</string>

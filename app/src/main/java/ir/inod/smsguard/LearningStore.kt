@@ -190,6 +190,22 @@ class LearnedWeights(context: Context) {
         save(map, totals)
     }
 
+    /** Undo path: removes the effect of one [record] call. */
+    fun revert(body: String, isSpam: Boolean) {
+        val (map, totals) = load()
+        for (t in Learning.tokens(body)) {
+            val old = map[t] ?: continue
+            map[t] = if (isSpam) {
+                old.copy(spam = (old.spam - 1).coerceAtLeast(0))
+            } else {
+                old.copy(ham = (old.ham - 1).coerceAtLeast(0))
+            }
+        }
+        if (isSpam) totals[0] = (totals[0] - 1).coerceAtLeast(0)
+        else totals[1] = (totals[1] - 1).coerceAtLeast(0)
+        save(map, totals)
+    }
+
     /**
      * Log-odds weight per token. Positive means "seen more in spam".
      * The +1/+2 terms are Laplace smoothing, so a token seen once in spam does
