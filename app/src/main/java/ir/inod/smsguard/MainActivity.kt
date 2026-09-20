@@ -359,6 +359,17 @@ class MainActivity : AppCompatActivity() {
             LearnedWeights(this).record(thread.snippet, isSpam)
         }
 
+        // Guarded domain learning: only a sender the user has already marked
+        // repeatedly can teach the domain blocklist, so one mis-tap cannot
+        // blacklist a legitimate domain for good.
+        if (isSpam) {
+            val profile = SenderProfileStore(this).snapshot()[thread.address]
+            if (profile?.hostile == true) {
+                val blocks = BlockStore(this)
+                UrlIntel.extract(thread.snippet).forEach { blocks.blockDomain(it.host) }
+            }
+        }
+
         reloadAfterAssign(thread)
     }
 

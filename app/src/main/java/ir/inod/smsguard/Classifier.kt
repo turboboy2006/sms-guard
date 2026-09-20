@@ -124,6 +124,8 @@ object Classifier {
     private var cachedContacts: Set<String>? = null
     private var cachedWeights: Map<String, Double>? = null
     private var cachedProfiles: Map<String, SenderProfile>? = null
+    private var cachedDomains: Set<String>? = null
+    private var cachedPrefixes: Set<String>? = null
 
     fun invalidateCaches() {
         cachedCategories = null
@@ -134,6 +136,29 @@ object Classifier {
         cachedContacts = null
         cachedWeights = null
         cachedProfiles = null
+        cachedDomains = null
+        cachedPrefixes = null
+    }
+
+    private fun blockedDomains(context: Context): Set<String> =
+        cachedDomains ?: BlockStore(context).domains().also { cachedDomains = it }
+
+    private fun blockedPrefixes(context: Context): Set<String> =
+        cachedPrefixes ?: BlockStore(context).prefixes().also { cachedPrefixes = it }
+
+    /** Mirrors BlockStore.matchesDomain but against the cached snapshot. */
+    private fun domainBlocked(context: Context, host: String): Boolean {
+        if (host.isBlank()) return false
+        return blockedDomains(context).any { host == it || host.endsWith(".$it") }
+    }
+
+    /** A prefix entry ending in '*' matches the whole range. */
+    private fun prefixBlocked(context: Context, address: String): Boolean {
+        val a = address.replace(" ", "")
+        return blockedPrefixes(context).any { p ->
+            val clean = p.replace(" ", "")
+            if (clean.endsWith("*")) a.startsWith(clean.dropLast(1)) else a == clean
+        }
     }
 
     /** Learned token weights. Empty until the user has labelled some messages. */
@@ -238,26 +263,35 @@ object Classifier {
         if (CARD_REGEX.containsMatchIn(compact)) out.add(Signal(35, "card-number"))
         if (SHEBA_REGEX.containsMatchIn(compact)) out.add(Signal(30, "sheba"))
         if (Normalizer.looksObfuscated(body)) out.add(Signal(30, "obfuscated"))
-        if (links.any { Regex("https?://\\d{1,3}(\\.\\d{1,3}){3}").containsMatchIn(it) }) {
-            out.add(Signal(35, "ip-link"))
-        }
-        if (links.any { l -> SHORTENERS.any { hostOf(l).contains(it) } }) {
-            out.add(Signal(20, "shortener"))
-        }
-        if (links.any { l -> RISKY_TLDS.any { hostOf(l).contains(it) } }) {
-            out.add(Signal(22, "risky-tld"))
-        }
+        // --- URL intelligence, all offline ---
+        val urls = UrlIntel.extract(body)
+        if (urls.any { it.isIp }) out.add(Signal(35, "ip-link"))
+        if (urls.any { it.isShortener }) out.add(Signal(20, "shortener"))
+        if (urls.any { it.riskyTld }) out.add(Signal(22, "risky-tld"))
+        if (urls.any { it.isPunycode }) out.add(Signal(30, "punycode"))
+        if (urls.any { it.subdomains >= 3 }) out.add(Signal(14, "deep-subdomain"))
+        if (urls.any { it.length > 90 }) out.add(Signal(10, "url-length"))
+        if (urls.any { it.entropy > 3.7 }) out.add(Signal(14, "host-entropy"))
+        if (urls.any { it.digitRatio > 0.35 }) out.add(Signal(18, "digit-host"))
+        if (urls.any { it.hasRedirectParam }) out.add(Signal(16, "redirect-param"))
+
+        // --- blocklists the user has built up ---
+        if (urls.any { domainBlocked(context, it.host) }) out.add(Signal(50, "domain-blocked"))
+        if (prefixBlocked(context, address)) out.add(Signal(45, "prefix-blocked"))
+
         // Brand named in the text but the link points elsewhere.
         for ((brand, domains) in BRANDS) {
-            if (Normalizer.containsAny(body, brand) && links.isNotEmpty() &&
-                links.none { l -> domains.any { hostOf(l).contains(it) } }
+            if (Normalizer.containsAny(body, brand) && urls.isNotEmpty() &&
+                urls.none { u -> domains.any { u.host == it || u.host.endsWith(".$it") } }
             ) {
                 out.add(Signal(35, "brand-mismatch"))
                 break
             }
         }
-        if (links.any { hostOf(it).count { c -> c == '.' } >= 4 }) {
-            out.add(Signal(12, "deep-subdomain"))
+
+        // Typosquatted brand domains, e.g. digikalaa.xyz / bankmellii.ir
+        if (urls.any { u -> BRANDS.values.any { UrlIntel.looksLikeImpersonation(u.host, it) } }) {
+            out.add(Signal(40, "brand-impersonation"))
         }
         if (NUMBER_REGEX.containsMatchIn(Normalizer.normalize(body)) &&
             Normalizer.containsAny(body, listOf("میلیون", "میلیارد", "تومان", "جایزه", "وام"))
