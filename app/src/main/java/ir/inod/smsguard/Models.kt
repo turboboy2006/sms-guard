@@ -11,6 +11,7 @@ object Cat {
     const val PROMOTION = "promotion"
     const val SUSPICIOUS = "suspicious"
     const val SPAM = "spam"
+    const val TRASH = "trash"
     const val OTHER = "other"
 }
 
@@ -86,7 +87,9 @@ object Categories {
         Category(Cat.PROMOTION, R.string.cat_promotion, "", "#EF6C00", true, false, false, false, 4),
         Category(Cat.SUSPICIOUS, R.string.cat_suspicious, "", "#D32F2F", true, false, false, false, 5),
         Category(Cat.SPAM, R.string.cat_spam, "", "#B71C1C", true, true, true, false, 6),
-        Category(Cat.OTHER, R.string.cat_other, "", "#616161", true, false, false, false, 7)
+        // Trash is its own place: hidden from Every, but not counted as spam.
+        Category(Cat.TRASH, R.string.tab_trash, "", "#546E7A", true, false, true, false, 7),
+        Category(Cat.OTHER, R.string.cat_other, "", "#616161", true, false, false, false, 8)
     )
 
     /** Palette offered by the long-press colour picker. */

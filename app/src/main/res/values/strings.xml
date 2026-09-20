@@ -104,6 +104,10 @@
     <string name="trash_empty">Trash is empty.</string>
     <string name="delete_message">Delete this message</string>
     <string name="selected_count">%1$d selected</string>
+    <string name="confirm_trash_msg">Move this conversation to the trash?</string>
+    <string name="confirm_delete_thread">“%1$s” will be deleted permanently. This cannot be undone.</string>
+    <string name="confirm_empty_trash">Permanently delete everything in the trash?</string>
+    <string name="confirm_delete_message">Delete this message permanently?</string>
 
     <!-- Categories management -->
     <string name="manage_categories">Manage categories</string>

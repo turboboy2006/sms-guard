@@ -132,6 +132,34 @@ class SmsRepository(private val context: Context) {
             Classifier.colorFor(context, address, categoryId)
         }
 
+    /**
+     * Removes one message from the provider for good.
+     *
+     * There is deliberately no undo for this: a real deletion is the only
+     * irreversible action in the app, which is why every call site confirms
+     * first and why "trash" exists as a reversible staging step.
+     */
+    fun deleteMessage(messageId: Long): Boolean = try {
+        resolver.delete(
+            Telephony.Sms.CONTENT_URI,
+            "${Telephony.Sms._ID} = ?",
+            arrayOf(messageId.toString())
+        ) > 0
+    } catch (e: Exception) {
+        false
+    }
+
+    /** Removes a whole conversation from the provider for good. */
+    fun deleteThread(threadId: Long): Boolean = try {
+        resolver.delete(
+            Telephony.Sms.CONTENT_URI,
+            "${Telephony.Sms.THREAD_ID} = ?",
+            arrayOf(threadId.toString())
+        ) > 0
+    } catch (e: Exception) {
+        false
+    }
+
     fun addressForThread(threadId: Long): String {
         try {
             resolver.query(

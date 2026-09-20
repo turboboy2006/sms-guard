@@ -49,7 +49,7 @@ class ConversationActivity : AppCompatActivity() {
 
         supportActionBar?.title = ContactNames.displayName(this, address)
 
-        adapter = MessageAdapter()
+        adapter = MessageAdapter { message -> confirmDeleteMessage(message) }
         binding.recyclerMessages.layoutManager =
             LinearLayoutManager(this).apply { stackFromEnd = true }
         binding.recyclerMessages.adapter = adapter
@@ -87,6 +87,27 @@ class ConversationActivity : AppCompatActivity() {
         }
         if (threadId < 0) threadId = repo.threadIdFor(address)
         load()
+    }
+
+    /**
+     * Single-message deletion. Removing one message from a conversation is
+     * allowed here rather than in a trash flow, because the rest of the thread
+     * still exists as context.
+     */
+    private fun confirmDeleteMessage(message: SmsMessage) {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.delete_message)
+            .setMessage(R.string.confirm_delete_message)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.confirm) { _, _ ->
+                if (repo.deleteMessage(message.id)) {
+                    Toast.makeText(this, R.string.cleared, Toast.LENGTH_SHORT).show()
+                    load()
+                } else {
+                    Toast.makeText(this, R.string.send_failed, Toast.LENGTH_SHORT).show()
+                }
+            }
+            .show()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

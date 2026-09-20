@@ -80,14 +80,16 @@ class MainActivity : AppCompatActivity() {
             R.string.tab_suspicious,
             R.string.tab_spam,
             R.string.tab_banking,
-            R.string.tab_notifications
+            R.string.tab_notifications,
+            R.string.tab_trash
         )
         val icons = listOf(
             R.drawable.ic_tab_all,
             R.drawable.ic_tab_suspicious,
             R.drawable.ic_tab_spam,
             R.drawable.ic_tab_banking,
-            R.drawable.ic_tab_service
+            R.drawable.ic_tab_service,
+            R.drawable.ic_tab_trash
         )
         labels.forEachIndexed { index, label ->
             binding.tabs.addTab(
@@ -247,9 +249,16 @@ class MainActivity : AppCompatActivity() {
             2 -> allThreads.filter { it.categoryId in spamIds }
             3 -> allThreads.filter { it.categoryId == Cat.BANKING || it.categoryId == Cat.OTP }
             4 -> allThreads.filter { it.categoryId == Cat.NOTIFICATION }
-            else -> allThreads.filterNot { it.categoryId in spamIds }
+            5 -> allThreads.filter { it.categoryId == Cat.TRASH }
+            // "All" hides the spam folder and the trash alike.
+            else -> allThreads.filterNot {
+                it.categoryId in spamIds || it.categoryId == Cat.TRASH
+            }
         }
         adapter.submit(filtered)
+        binding.textEmpty.setText(
+            if (selectedTab == 5) R.string.trash_empty else R.string.no_threads
+        )
         binding.textEmpty.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
     }
 
@@ -265,11 +274,16 @@ class MainActivity : AppCompatActivity() {
     // ------------------------------------------------- long-press: categorise
 
     private fun showOptions(thread: ThreadSummary) {
+        if (selectedTab == 5) {
+            showTrashOptions(thread)
+            return
+        }
         val options = arrayOf(
             getString(R.string.change_category),
             getString(R.string.pick_color),
             getString(R.string.mark_spam),
             getString(R.string.mark_not_spam),
+            getString(R.string.move_to_trash),
             getString(R.string.block_sender)
         )
         MaterialAlertDialogBuilder(this)
@@ -287,13 +301,61 @@ class MainActivity : AppCompatActivity() {
                         senderStore.setPolicy(thread.address, SenderPolicy.NEVER_ANALYZE)
                         changeCategory(thread, Cat.OTHER)
                     }
-                    4 -> confirm(R.string.block_sender, getString(R.string.confirm_block_msg)) {
+                    4 -> confirm(R.string.move_to_trash, getString(R.string.confirm_trash_msg)) {
+                        changeCategory(thread, Cat.TRASH)
+                    }
+                    5 -> confirm(R.string.block_sender, getString(R.string.confirm_block_msg)) {
                         RuleStore(this).add(thread.address, RuleTarget.SENDER, false)
                         toast(R.string.sender_blocked)
                     }
                 }
             }
             .show()
+    }
+
+    /**
+     * Trash actions. A permanent delete is the only irreversible thing in the
+     * app and has no undo, so the sender is named back in the confirmation.
+     */
+    private fun showTrashOptions(thread: ThreadSummary) {
+        val label = ContactNames.displayName(this, thread.address)
+        val options = arrayOf(
+            getString(R.string.delete_forever),
+            getString(R.string.delete_all)
+        )
+        MaterialAlertDialogBuilder(this)
+            .setTitle(label)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> confirm(
+                        R.string.delete_forever,
+                        getString(R.string.confirm_delete_thread, label)
+                    ) { deleteThreadForever(thread) }
+                    1 -> confirm(
+                        R.string.delete_all,
+                        getString(R.string.confirm_empty_trash)
+                    ) { emptyTrash() }
+                }
+            }
+            .show()
+    }
+
+    private fun deleteThreadForever(thread: ThreadSummary) {
+        if (repo.deleteThread(thread.threadId)) {
+            Classifier.invalidateCaches()
+            loadThreads()
+            toast(R.string.cleared)
+        } else {
+            toast(R.string.send_failed)
+        }
+    }
+
+    private fun emptyTrash() {
+        allThreads.filter { it.categoryId == Cat.TRASH }
+            .forEach { repo.deleteThread(it.threadId) }
+        Classifier.invalidateCaches()
+        loadThreads()
+        toast(R.string.cleared)
     }
 
     /** Every state-changing choice passes through here, so nothing is one-tap. */

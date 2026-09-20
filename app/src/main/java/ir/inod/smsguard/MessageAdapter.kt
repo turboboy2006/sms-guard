@@ -12,7 +12,9 @@ import ir.inod.smsguard.databinding.ItemMessageBinding
  * One bubble layout is reused for both directions; gravity and background are
  * switched in code so only a single binding class is needed.
  */
-class MessageAdapter : RecyclerView.Adapter<MessageAdapter.VH>() {
+class MessageAdapter(
+    private val onLongClick: (SmsMessage) -> Unit
+) : RecyclerView.Adapter<MessageAdapter.VH>() {
 
     private val items = mutableListOf<SmsMessage>()
 
@@ -57,5 +59,10 @@ class MessageAdapter : RecyclerView.Adapter<MessageAdapter.VH>() {
             params.marginStart = 48
         }
         bubble.layoutParams = params
+
+        holder.itemView.setOnLongClickListener {
+            onLongClick(item)
+            true
+        }
     }
 }

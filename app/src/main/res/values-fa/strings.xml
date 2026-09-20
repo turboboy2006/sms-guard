@@ -94,6 +94,10 @@
     <string name="trash_empty">سطل زباله خالی است.</string>
     <string name="delete_message">حذف این پیام</string>
     <string name="selected_count">%1$d مورد انتخاب شده</string>
+    <string name="confirm_trash_msg">این گفتگو به سطل زباله برود؟</string>
+    <string name="confirm_delete_thread">«%1$s» برای همیشه حذف شود؟ این کار برگشت‌پذیر نیست.</string>
+    <string name="confirm_empty_trash">همه‌ی پیام‌های سطل زباله برای همیشه حذف شوند؟</string>
+    <string name="confirm_delete_message">این پیام برای همیشه حذف شود؟</string>
 
     <string name="manage_categories">مدیریت دسته‌بندی‌ها</string>
     <string name="new_category">دسته جدید</string>
