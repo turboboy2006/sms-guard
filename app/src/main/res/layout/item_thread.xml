@@ -1,30 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Stock-Messages-like row plus a category colour stripe, a suspicion badge and
-  a category label. Direction is set per-View in code so Persian snippets read
-  right-to-left while Latin sender IDs stay left-to-right.
+  Avatar on the start side (left in LTR, right in RTL automatically), then the
+  text block, then date and unread count. Unread emphasis is applied in code.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="?android:attr/selectableItemBackground"
-    android:orientation="horizontal">
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="@dimen/gutter"
+    android:paddingTop="@dimen/space_12"
+    android:paddingEnd="@dimen/gutter"
+    android:paddingBottom="@dimen/space_12">
 
-    <View
-        android:id="@+id/colorStripe"
-        android:layout_width="5dp"
-        android:layout_height="match_parent"
-        android:minHeight="64dp" />
+    <FrameLayout
+        android:id="@+id/avatar"
+        android:layout_width="@dimen/avatar"
+        android:layout_height="@dimen/avatar">
+
+        <ImageView
+            android:id="@+id/avatarImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop" />
+
+        <TextView
+            android:id="@+id/avatarLetter"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </FrameLayout>
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/space_12"
         android:layout_weight="1"
-        android:orientation="vertical"
-        android:paddingStart="12dp"
-        android:paddingTop="10dp"
-        android:paddingEnd="8dp"
-        android:paddingBottom="10dp">
+        android:orientation="vertical">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -36,7 +53,7 @@
                 android:id="@+id/iconWarning"
                 android:layout_width="18dp"
                 android:layout_height="18dp"
-                android:layout_marginEnd="6dp"
+                android:layout_marginEnd="@dimen/space_4"
                 android:contentDescription="@string/cat_suspicious"
                 android:src="@drawable/ic_warning"
                 android:visibility="gone" />
@@ -48,18 +65,17 @@
                 android:layout_weight="1"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:textAppearance="@style/TextAppearance.SmsGuard.Title" />
 
             <TextView
                 android:id="@+id/textCategory"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:paddingStart="6dp"
-                android:paddingTop="1dp"
-                android:paddingEnd="6dp"
-                android:paddingBottom="1dp"
+                android:layout_marginStart="@dimen/space_4"
+                android:paddingStart="@dimen/space_8"
+                android:paddingTop="2dp"
+                android:paddingEnd="@dimen/space_8"
+                android:paddingBottom="2dp"
                 android:textColor="@android:color/white"
                 android:textSize="11sp" />
         </LinearLayout>
@@ -68,37 +84,35 @@
             android:id="@+id/textSnippet"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
+            android:layout_marginTop="@dimen/space_4"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textSize="14sp" />
+            android:textAppearance="@style/TextAppearance.SmsGuard.Body" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="4dp"
+        android:layout_marginStart="@dimen/space_4"
         android:gravity="end"
-        android:orientation="vertical"
-        android:paddingTop="10dp"
-        android:paddingEnd="12dp">
+        android:orientation="vertical">
 
         <TextView
             android:id="@+id/textDate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="12sp" />
+            android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
 
         <TextView
             android:id="@+id/textUnread"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="@dimen/space_4"
             android:background="@drawable/badge"
             android:gravity="center"
             android:minWidth="22dp"
-            android:paddingStart="6dp"
-            android:paddingEnd="6dp"
+            android:paddingStart="@dimen/space_8"
+            android:paddingEnd="@dimen/space_8"
             android:textColor="@android:color/white"
             android:textSize="12sp"
             android:visibility="gone" />

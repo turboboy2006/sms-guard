@@ -25,6 +25,7 @@
 
     <!-- Content -->
     <dimen name="gutter">16dp</dimen>
+    <dimen name="avatar">46dp</dimen>
     <dimen name="color_stripe_width">4dp</dimen>
     <dimen name="swatch">40dp</dimen>
 

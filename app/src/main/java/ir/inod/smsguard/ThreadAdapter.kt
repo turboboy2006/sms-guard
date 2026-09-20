@@ -2,11 +2,15 @@ package ir.inod.smsguard
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
 import androidx.recyclerview.widget.RecyclerView
 import ir.inod.smsguard.databinding.ItemThreadBinding
 
@@ -67,11 +71,10 @@ class ThreadAdapter(
         TextDir.apply(b.textAddress, display)
         TextDir.apply(b.textSnippet, item.snippet)
 
-        b.colorStripe.setBackgroundColor(parseColor(item.colorHex))
+        bindAvatar(context, b, item, display)
 
         val category = categories(context)[item.categoryId]
-        val showChip = category != null && item.categoryId != Cat.OTHER
-        if (showChip && category != null) {
+        if (category != null && item.categoryId != Cat.OTHER) {
             b.textCategory.text = category.label(context)
             // A rounded pill instead of a hard rectangle.
             b.textCategory.background = pill(parseColor(category.colorHex))
@@ -84,7 +87,17 @@ class ThreadAdapter(
         b.iconWarning.visibility =
             if (item.categoryId == Cat.SUSPICIOUS) View.VISIBLE else View.GONE
 
-        if (item.unreadCount > 0) {
+        // Unread reads stronger, read recedes. This is the single clearest cue
+        // for "what still needs my attention".
+        val unread = item.unreadCount > 0
+        val primary = ContextCompat.getColor(context, R.color.text_primary)
+        val secondary = ContextCompat.getColor(context, R.color.text_secondary)
+        b.textAddress.setTextColor(if (unread) primary else secondary)
+        b.textAddress.setTypeface(null, if (unread) Typeface.BOLD else Typeface.NORMAL)
+        b.textSnippet.setTextColor(if (unread) primary else secondary)
+        b.textDate.alpha = if (unread) 1f else 0.7f
+
+        if (unread) {
             b.textUnread.visibility = View.VISIBLE
             b.textUnread.text = Dates.faDigits(item.unreadCount.toString())
         } else {
@@ -96,6 +109,46 @@ class ThreadAdapter(
             onLongClick(item)
             true
         }
+    }
+
+    /**
+     * Photo, else a coloured monogram, else a blank silhouette. Every branch
+     * resets the ImageView, because rows are recycled.
+     */
+    private fun bindAvatar(
+        context: Context,
+        b: ItemThreadBinding,
+        item: ThreadSummary,
+        display: String
+    ) {
+        val photo = AvatarHelper.photo(context, item.address)
+        if (photo != null) {
+            val rounded = RoundedBitmapDrawableFactory
+                .create(context.resources, photo)
+                .apply { isCircular = true }
+            b.avatar.background = null
+            b.avatarImage.setPadding(0, 0, 0, 0)
+            b.avatarImage.scaleType = ImageView.ScaleType.CENTER_CROP
+            b.avatarImage.setImageDrawable(rounded)
+            b.avatarLetter.text = null
+            return
+        }
+
+        val letter = AvatarHelper.monogram(display)
+        if (letter != null) {
+            b.avatar.background = AvatarHelper.circle(AvatarHelper.colorFor(display))
+            b.avatarImage.setImageDrawable(null)
+            b.avatarLetter.text = letter
+            return
+        }
+
+        // Unknown sender: a blank person, never a meaningless digit.
+        val pad = (10 * context.resources.displayMetrics.density).toInt()
+        b.avatar.background = AvatarHelper.circle(AvatarHelper.placeholderColor())
+        b.avatarLetter.text = null
+        b.avatarImage.setPadding(pad, pad, pad, pad)
+        b.avatarImage.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        b.avatarImage.setImageResource(R.drawable.ic_person)
     }
 
     private fun pill(color: Int): GradientDrawable = GradientDrawable().apply {
