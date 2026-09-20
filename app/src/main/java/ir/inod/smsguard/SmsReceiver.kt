@@ -54,6 +54,11 @@ class SmsReceiver : BroadcastReceiver() {
         // 2. Local classification. No network, so this is instant.
         val localCategory = Classifier.rememberSender(context, address, body)
 
+        // 2b. Feed the behavioural profile: volume, burst and recency. This is
+        // what later lets the classifier trust or distrust a sender.
+        SenderProfileStore(context).recordIncoming(address, timestamp)
+        Classifier.invalidateCaches()
+
         // 3. Persist and notify: this is the point the user sees the message.
         val repo = SmsRepository(context)
         val messageId = repo.storeIncoming(address, body, timestamp)

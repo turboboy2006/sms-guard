@@ -347,6 +347,18 @@ class MainActivity : AppCompatActivity() {
         senderStore.setCategory(thread.address, categoryId)
         messageCats.set(thread.messageId, categoryId)
         if (colorHex != null) senderStore.setColor(thread.address, colorHex)
+
+        // Learning loop. Only labels carrying a clear verdict train the model;
+        // ambiguous categories (promotional, suspicious) are left alone.
+        val isSpam = categoryId == Cat.SPAM
+        val isHam = categoryId == Cat.OTHER ||
+            categoryId == Cat.NOTIFICATION ||
+            categoryId == Cat.PERSONAL
+        if (isSpam || isHam) {
+            SenderProfileStore(this).recordFeedback(thread.address, isSpam)
+            LearnedWeights(this).record(thread.snippet, isSpam)
+        }
+
         reloadAfterAssign(thread)
     }
 

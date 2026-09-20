@@ -105,7 +105,9 @@ data class LocalVerdict(
     val categoryId: String,
     val score: Int,
     val reasons: List<String>,
-    val isSuspicious: Boolean
+    val isSuspicious: Boolean,
+    /** 50..99 — heuristic distance from the decision boundary, not a calibrated probability. */
+    val confidence: Int = 50
 )
 
 /** Result returned by the AI stage. */

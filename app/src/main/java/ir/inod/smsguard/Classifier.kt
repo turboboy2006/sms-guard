@@ -122,6 +122,8 @@ object Classifier {
     private var cachedSenderColors: Map<String, String>? = null
     private var cachedThreshold: Int = -1
     private var cachedContacts: Set<String>? = null
+    private var cachedWeights: Map<String, Double>? = null
+    private var cachedProfiles: Map<String, SenderProfile>? = null
 
     fun invalidateCaches() {
         cachedCategories = null
@@ -130,7 +132,16 @@ object Classifier {
         cachedSenderColors = null
         cachedThreshold = -1
         cachedContacts = null
+        cachedWeights = null
+        cachedProfiles = null
     }
+
+    /** Learned token weights. Empty until the user has labelled some messages. */
+    private fun weights(context: Context): Map<String, Double> =
+        cachedWeights ?: LearnedWeights(context).weights().also { cachedWeights = it }
+
+    private fun profiles(context: Context): Map<String, SenderProfile> =
+        cachedProfiles ?: SenderProfileStore(context).snapshot().also { cachedProfiles = it }
 
     private fun categories(context: Context): Map<String, Category> =
         cachedCategories ?: CategoryStore(context).all().associateBy { it.id }
@@ -203,13 +214,13 @@ object Classifier {
     private fun hostOf(link: String): String =
         link.substringAfter("://", link).substringBefore('/').lowercase()
 
-    fun localScore(address: String, body: String): Int =
-        signals(address, body).sumOf { it.weight }.coerceIn(0, 100)
+    fun localScore(context: Context, address: String, body: String): Int =
+        signals(context, address, body).sumOf { it.weight }.coerceIn(0, 100)
 
-    fun reasonsFor(address: String, body: String): List<String> =
-        signals(address, body).filter { it.weight > 0 }.map { it.tag }.distinct()
+    fun reasonsFor(context: Context, address: String, body: String): List<String> =
+        signals(context, address, body).filter { it.weight > 0 }.map { it.tag }.distinct()
 
-    private fun signals(address: String, body: String): List<Signal> {
+    private fun signals(context: Context, address: String, body: String): List<Signal> {
         val out = mutableListOf<Signal>()
         val links = LINK_REGEX.findAll(body).map { it.value }.toList()
         val compact = Normalizer.normalize(body).replace(" ", "").replace("-", "")
@@ -252,11 +263,41 @@ object Classifier {
             Normalizer.containsAny(body, listOf("میلیون", "میلیارد", "تومان", "جایزه", "وام"))
         ) out.add(Signal(18, "amount-lure"))
 
+        // --- learned signals: the user's own corrections ---
+        val learned = learnedScore(context, body)
+        if (learned != 0) out.add(Signal(learned, "learned"))
+
+        profiles(context)[address]?.let { p ->
+            when {
+                p.hostile -> out.add(Signal(30, "sender-hostile"))
+                p.trusted -> out.add(Signal(-35, "sender-trusted"))
+            }
+            // Three or more messages inside ten minutes is a bulk signature.
+            if (p.burst >= 3) out.add(Signal(14, "burst"))
+        }
+
         // --- negative signals: legitimate service traffic ---
         if (looksLikeNotification(body)) out.add(Signal(-22, "notification"))
         if (body.length > 400) out.add(Signal(-8, "long-form"))
 
         return out
+    }
+
+    /**
+     * Sum of learned token weights.
+     *
+     * Log-odds run roughly -4..+4 per token, so the sum is scaled down and
+     * capped: a handful of corrected messages must never be able to run away
+     * with the score.
+     */
+    private fun learnedScore(context: Context, body: String): Int {
+        val w = weights(context)
+        if (w.isEmpty()) return 0
+        var sum = 0.0
+        for (token in Learning.tokens(body)) {
+            w[token]?.let { sum += it }
+        }
+        return (sum * 6.0).toInt().coerceIn(-30, 40)
     }
 
     // ------------------------------------------------------------ decisioning
@@ -274,8 +315,9 @@ object Classifier {
             return LocalVerdict(Cat.BANKING, 0, listOf("bank"), false)
         }
 
-        val score = localScore(address, body)
-        val suspicious = score >= threshold(context)
+        val boundary = threshold(context)
+        val score = localScore(context, address, body)
+        val suspicious = score >= boundary
 
         val category = when {
             suspicious -> Cat.SUSPICIOUS
@@ -283,7 +325,18 @@ object Classifier {
             looksLikeNotification(body) -> Cat.NOTIFICATION
             else -> Cat.OTHER
         }
-        return LocalVerdict(category, score, reasonsFor(address, body), suspicious)
+
+        // Heuristic spread, NOT a calibrated probability: it only reports how
+        // far the score sits from the decision boundary.
+        val confidence = (50 + kotlin.math.abs(score - boundary)).coerceIn(50, 99)
+
+        return LocalVerdict(
+            categoryId = category,
+            score = score,
+            reasons = reasonsFor(context, address, body),
+            isSuspicious = suspicious,
+            confidence = confidence
+        )
     }
 
     /** Read-only resolution used while listing messages. Performs no writes. */
