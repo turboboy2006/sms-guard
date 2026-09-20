@@ -177,13 +177,18 @@ class MainActivity : AppCompatActivity() {
     // ------------------------------------------------------------------ data
 
     private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private var skeletonPulse: android.animation.ObjectAnimator? = null
 
     /**
      * Scanning the SMS provider and classifying every row is far too heavy for
      * the main thread: doing it there produced
      * "ANR in ir.inod.smsguard (MainActivity)" on a real device.
+     *
+     * A skeleton placeholder covers the wait, so the screen never looks frozen
+     * or empty while the work runs.
      */
     private fun loadThreads() {
+        if (allThreads.isEmpty()) showSkeleton(true)
         worker.execute {
             val threads = try {
                 repo.loadThreads()
@@ -192,12 +197,43 @@ class MainActivity : AppCompatActivity() {
             }
             runOnUiThread {
                 allThreads = threads
+                showSkeleton(false)
                 applyFilter()
             }
         }
     }
 
+    private fun showSkeleton(visible: Boolean) {
+        binding.skeleton.visibility = if (visible) View.VISIBLE else View.GONE
+        binding.recyclerThreads.visibility = if (visible) View.INVISIBLE else View.VISIBLE
+        skeletonPulse?.cancel()
+        skeletonPulse = if (visible) {
+            android.animation.ObjectAnimator
+                .ofFloat(binding.skeleton, "alpha", 1f, 0.45f)
+                .apply {
+                    duration = 700
+                    repeatMode = android.animation.ValueAnimator.REVERSE
+                    repeatCount = android.animation.ValueAnimator.INFINITE
+                    start()
+                }
+        } else {
+            binding.skeleton.alpha = 1f
+            null
+        }
+    }
+
+    /**
+     * One override covers every forward navigation, so the 220ms transition
+     * cannot be forgotten at a call site.
+     */
+    override fun startActivity(intent: Intent) {
+        super.startActivity(intent)
+        @Suppress("DEPRECATION")
+        overridePendingTransition(R.anim.nav_enter, R.anim.nav_exit)
+    }
+
     override fun onDestroy() {
+        skeletonPulse?.cancel()
         worker.shutdownNow()
         super.onDestroy()
     }

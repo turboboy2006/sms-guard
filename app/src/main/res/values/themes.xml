@@ -26,6 +26,11 @@
 
         <item name="android:colorBackground">@color/screen_bg</item>
         <item name="android:windowBackground">@color/screen_bg</item>
+
+        <!-- Vazirmatn app-wide: correct Persian shaping and a real bold weight -->
+        <item name="fontFamily">@font/vazirmatn</item>
+        <item name="android:fontFamily">@font/vazirmatn</item>
+
         <item name="android:statusBarColor">@color/colorPrimaryDark</item>
         <item name="android:navigationBarColor">@color/card_bg</item>
 

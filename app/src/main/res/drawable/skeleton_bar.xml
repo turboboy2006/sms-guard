@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Neutral grey bar used by the skeleton placeholder rows. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/skeleton" />
+    <corners android:radius="@dimen/radius_sm" />
+</shape>

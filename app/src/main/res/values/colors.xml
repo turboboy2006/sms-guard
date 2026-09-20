@@ -19,6 +19,7 @@
     <color name="text_primary">#10243A</color>
     <color name="text_secondary">#5B7290</color>
     <color name="divider">#E3EAF3</color>
+    <color name="skeleton">#E7EDF4</color>
 
     <!-- Chat bubbles -->
     <color name="bubble_incoming">#EEF3F9</color>

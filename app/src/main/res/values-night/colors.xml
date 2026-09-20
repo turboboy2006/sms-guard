@@ -18,6 +18,7 @@
     <color name="text_primary">#E6EDF6</color>
     <color name="text_secondary">#9BAEC4</color>
     <color name="divider">#1E2E40</color>
+    <color name="skeleton">#1B2A3B</color>
 
     <color name="bubble_incoming">#17293B</color>
     <color name="bubble_outgoing">#1B3A5C</color>
