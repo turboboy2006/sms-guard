@@ -55,6 +55,9 @@ class MainActivity : AppCompatActivity() {
         binding.buttonRules.setOnClickListener {
             startActivity(Intent(this, RulesActivity::class.java))
         }
+        binding.buttonSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
         binding.buttonBlocked.setOnClickListener { showBlockedLog() }
 
         ensurePermissions()

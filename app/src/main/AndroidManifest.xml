@@ -73,6 +73,11 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
         <!-- Receives incoming SMS while this app is the default SMS app -->
         <receiver
             android:name=".SmsReceiver"
