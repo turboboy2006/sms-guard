@@ -67,7 +67,12 @@ class SmsReceiver : BroadcastReceiver() {
             Notifier(context).notifyIncoming(threadId, address, body)
         }
 
-        // 4. Only now, off the critical path, may the AI look at it.
+        // 4. Fold the message into a campaign cluster. Local and cheap.
+        if (messageId >= 0) {
+            CampaignStore(context).record(messageId, address, body, timestamp)
+        }
+
+        // 5. Only now, off the critical path, may the AI look at it.
         if (messageId >= 0) {
             AnalysisPipeline.submitIfNeeded(
                 context = context,

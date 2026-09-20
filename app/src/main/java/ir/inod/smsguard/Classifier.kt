@@ -301,6 +301,10 @@ object Classifier {
         val learned = learnedScore(context, body)
         if (learned != 0) out.add(Signal(learned, "learned"))
 
+        // --- campaign evidence: one verdict generalised to a whole template ---
+        val campaign = CampaignStore(context).campaignSignal(body)
+        if (campaign != 0) out.add(Signal(campaign, "campaign"))
+
         profiles(context)[address]?.let { p ->
             when {
                 p.hostile -> out.add(Signal(30, "sender-hostile"))

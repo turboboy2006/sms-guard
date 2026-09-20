@@ -476,6 +476,9 @@ class MainActivity : AppCompatActivity() {
         // Guarded domain learning: only a sender already marked repeatedly can
         // teach the blocklist, so one mis-tap cannot blacklist a real domain.
         if (isSpam) {
+            // Generalise the verdict: every number running the same template
+            // becomes suspect, including ones never seen before.
+            CampaignStore(this).markSpam(thread.messageId)
             val profile = SenderProfileStore(this).snapshot()[thread.address]
             if (profile?.hostile == true) {
                 val blocks = BlockStore(this)
