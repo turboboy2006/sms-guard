@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Chat bubble with a shield notch, kept inside the 66x66 safe zone. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,32h36c2.2,0 4,1.8 4,4v24c0,2.2 -1.8,4 -4,4H52l-11,9v-9h-5c-2.2,0 -4,-1.8 -4,-4V36c0,-2.2 1.8,-4 4,-4z" />
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M46,40h16v3H46zM46,46h16v3H46zM46,52h10v3H46z" />
+</vector>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">پیام‌بان</string>
+
+    <string name="channel_name">پیامک‌های دریافتی</string>
+    <string name="channel_description">اعلان پیامک‌های جدید</string>
+
+    <string name="not_default_banner">این برنامه هنوز اپ پیش‌فرض پیامک نیست. تا وقتی پیش‌فرض نشود، پیامکی دریافت نمی‌کند و قواعد مسدودسازی کار نمی‌کنند.</string>
+    <string name="make_default">تعیین به‌عنوان اپ پیامک پیش‌فرض</string>
+    <string name="open_settings_manually">لطفاً از تنظیمات گوشی، بخش «اپ‌های پیش‌فرض»، این برنامه را به‌عنوان اپ پیامک انتخاب کنید.</string>
+
+    <string name="rules">قواعد مسدودسازی</string>
+    <string name="blocked_log">گزارش مسدودشده‌ها</string>
+    <string name="add_rule">افزودن قاعده</string>
+    <string name="save">ذخیره</string>
+    <string name="cancel">انصراف</string>
+    <string name="close">بستن</string>
+    <string name="clear">پاک کردن</string>
+    <string name="cleared">پاک شد</string>
+    <string name="delete">حذف</string>
+
+    <string name="target_both">فرستنده و متن</string>
+    <string name="target_sender">فقط فرستنده</string>
+    <string name="target_body">فقط متن پیام</string>
+    <string name="rule_target_label">این قاعده کجا را بررسی کند؟</string>
+    <string name="pattern_hint">الگو (مثلاً: تبلیغ یا 20007)</string>
+    <string name="regex_label">الگو یک عبارت باقاعده (Regex) است</string>
+    <string name="regex_hint">اگر مطمئن نیستی این گزینه را خالی بگذار. الگوی ساده کافی است.</string>
+
+    <string name="no_threads">هنوز پیامکی وجود ندارد.</string>
+    <string name="no_rules">هنوز قاعده‌ای نساخته‌ای.\nبا «افزودن قاعده» شروع کن.</string>
+    <string name="blocked_empty">هنوز پیامکی مسدود نشده است.</string>
+
+    <string name="message_hint">پیام…</string>
+    <string name="send">ارسال</string>
+    <string name="send_failed">ارسال نشد</string>
+    <string name="no_recipient">شماره گیرنده مشخص نیست</string>
+    <string name="block_sender">مسدود کردن این فرستنده</string>
+    <string name="sender_blocked">فرستنده مسدود شد</string>
+</resources>
