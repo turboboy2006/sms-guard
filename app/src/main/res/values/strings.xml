@@ -37,4 +37,14 @@
     <string name="no_recipient">شماره گیرنده مشخص نیست</string>
     <string name="block_sender">مسدود کردن این فرستنده</string>
     <string name="sender_blocked">فرستنده مسدود شد</string>
+
+    <!-- Message categories -->
+    <string name="cat_personal">مخاطبین</string>
+    <string name="cat_banking">بانکی</string>
+    <string name="cat_otp">رمز پویا</string>
+    <string name="cat_notification">اطلاع‌رسانی</string>
+    <string name="cat_promotion">تبلیغاتی</string>
+    <string name="cat_suspicious">مشکوک</string>
+    <string name="cat_spam">اسپم</string>
+    <string name="cat_other">سایر</string>
 </resources>

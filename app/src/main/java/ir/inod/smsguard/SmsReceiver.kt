@@ -9,10 +9,9 @@ import android.util.Log
 /**
  * Receives incoming SMS while this app holds the default-SMS role.
  *
- * Because the platform does not write messages to the provider for the default
- * app, this receiver decides what happens to each message:
- *   - a rule matches  -> message is dropped, logged locally, no notification
- *   - otherwise       -> message is written to the inbox and a notification is shown
+ * Latency contract: everything up to and including the notification is local
+ * and synchronous. The AI stage is submitted only afterwards, so a slow or
+ * unreachable provider can never delay delivery or delay an OTP.
  */
 class SmsReceiver : BroadcastReceiver() {
 
@@ -31,7 +30,6 @@ class SmsReceiver : BroadcastReceiver() {
 
         val timestamp = messages.firstOrNull()?.timestampMillis ?: System.currentTimeMillis()
 
-        // Work must finish after onReceive returns, so keep the process alive.
         val pending = goAsync()
         Thread {
             try {
@@ -45,33 +43,41 @@ class SmsReceiver : BroadcastReceiver() {
     }
 
     private fun handle(context: Context, address: String, body: String, timestamp: Long) {
+        // 1. Hard blocking rules come first.
         val rule = RuleStore(context).blockingRuleFor(address, body)
-
         if (rule != null) {
-            BlockedStore(context).add(
-                BlockedMessage(
-                    address = address,
-                    body = body,
-                    date = timestamp,
-                    rulePattern = rule.pattern
-                )
-            )
-            // Deliberately no provider insert and no notification.
+            BlockedStore(context).add(BlockedMessage(address, body, timestamp, rule.pattern))
             Log.i(TAG, "Blocked SMS from $address by rule '${rule.pattern}'")
             return
         }
 
-        val threadId = SmsRepository(context).storeIncoming(address, body, timestamp)
-        if (threadId >= 0) {
+        // 2. Local classification. No network, so this is instant.
+        val localCategory = Classifier.rememberSender(context, address, body)
+
+        // 3. Persist and notify: this is the point the user sees the message.
+        val repo = SmsRepository(context)
+        val messageId = repo.storeIncoming(address, body, timestamp)
+        val threadId = repo.threadIdFor(address)
+        if (messageId >= 0 && threadId >= 0) {
             Notifier(context).notifyIncoming(threadId, address, body)
+        }
+
+        // 4. Only now, off the critical path, may the AI look at it.
+        if (messageId >= 0) {
+            AnalysisPipeline.submitIfNeeded(
+                context = context,
+                messageId = messageId,
+                address = address,
+                body = body,
+                localCategory = localCategory
+            )
         }
     }
 
     /**
      * A multipart SMS arrives as several SmsMessage objects. Some platform
      * versions return the fully reassembled body for every part, others return
-     * a single segment each. Detect the duplicated case before joining,
-     * otherwise the stored body would be repeated N times.
+     * one segment each. Detect the duplicated case before joining.
      */
     private fun joinBodies(parts: List<String>): String {
         if (parts.isEmpty()) return ""

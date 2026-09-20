@@ -7,24 +7,22 @@ import android.provider.Telephony
 import android.telephony.SmsManager
 
 /**
- * All interaction with the system SMS provider lives here.
+ * All interaction with the system SMS provider.
  *
- * As the default SMS app this app is responsible for writing incoming messages
- * into the provider itself: the platform does not do it for us.
+ * The read path resolves a category for every row, so it must stay cheap:
+ * [Classifier.resolveRead] does no writes and caches contact lookups.
  */
 class SmsRepository(private val context: Context) {
 
     private val resolver get() = context.contentResolver
 
-    // ---------------------------------------------------------------- reading
+    /** Categories are resolved once per distinct sender during a load. */
+    private val categoryCache = HashMap<String, String>()
+    private val colorCache = HashMap<String, String>()
 
-    /**
-     * Builds the conversation list by paging the SMS table newest-first and
-     * grouping rows by thread_id. The first row seen for a thread is therefore
-     * the newest message, which becomes the snippet.
-     */
-    fun loadThreads(scanLimit: Int = 4000): List<ThreadSummary> {
+    fun loadThreads(scanLimit: Int = 3000): List<ThreadSummary> {
         val projection = arrayOf(
+            Telephony.Sms._ID,
             Telephony.Sms.THREAD_ID,
             Telephony.Sms.ADDRESS,
             Telephony.Sms.BODY,
@@ -36,13 +34,11 @@ class SmsRepository(private val context: Context) {
 
         try {
             resolver.query(
-                Telephony.Sms.CONTENT_URI,
-                projection,
-                null,
-                null,
+                Telephony.Sms.CONTENT_URI, projection, null, null,
                 "${Telephony.Sms.DATE} DESC"
             )?.use { c ->
                 var scanned = 0
+                val iId = c.getColumnIndexOrThrow(Telephony.Sms._ID)
                 val iThread = c.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID)
                 val iAddr = c.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
                 val iBody = c.getColumnIndexOrThrow(Telephony.Sms.BODY)
@@ -53,35 +49,35 @@ class SmsRepository(private val context: Context) {
                 while (c.moveToNext() && scanned < scanLimit) {
                     scanned++
                     val threadId = c.getLong(iThread)
-                    val address = c.getString(iAddr) ?: ""
-                    val body = c.getString(iBody) ?: ""
-                    val date = c.getLong(iDate)
-                    val read = c.getInt(iRead)
-                    val type = c.getInt(iType)
-
                     val existing = byThread[threadId]
+                    val type = c.getInt(iType)
+                    val unread = type == Telephony.Sms.MESSAGE_TYPE_INBOX && c.getInt(iRead) == 0
+
                     if (existing == null) {
+                        val messageId = c.getLong(iId)
+                        val address = c.getString(iAddr) ?: ""
+                        val body = c.getString(iBody) ?: ""
+                        val categoryId = categoryFor(address, body, messageId)
                         byThread[threadId] = ThreadSummary(
                             threadId = threadId,
+                            messageId = messageId,
                             address = address,
                             snippet = body,
-                            date = date,
-                            unreadCount = if (isUnreadInbox(type, read)) 1 else 0
+                            date = c.getLong(iDate),
+                            unreadCount = if (unread) 1 else 0,
+                            categoryId = categoryId,
+                            colorHex = colorFor(address, categoryId)
                         )
-                    } else if (isUnreadInbox(type, read)) {
+                    } else if (unread) {
                         byThread[threadId] = existing.copy(unreadCount = existing.unreadCount + 1)
                     }
                 }
             }
         } catch (e: Exception) {
-            // Return whatever was collected instead of crashing the UI.
+            // return whatever was collected
         }
-
         return byThread.values.toList()
     }
-
-    private fun isUnreadInbox(type: Int, read: Int): Boolean =
-        type == Telephony.Sms.MESSAGE_TYPE_INBOX && read == 0
 
     fun loadMessages(threadId: Long, limit: Int = 500): List<SmsMessage> {
         val out = mutableListOf<SmsMessage>()
@@ -94,10 +90,8 @@ class SmsRepository(private val context: Context) {
         )
         try {
             resolver.query(
-                Telephony.Sms.CONTENT_URI,
-                projection,
-                "${Telephony.Sms.THREAD_ID} = ?",
-                arrayOf(threadId.toString()),
+                Telephony.Sms.CONTENT_URI, projection,
+                "${Telephony.Sms.THREAD_ID} = ?", arrayOf(threadId.toString()),
                 "${Telephony.Sms.DATE} ASC"
             )?.use { c ->
                 val iId = c.getColumnIndexOrThrow(Telephony.Sms._ID)
@@ -107,14 +101,17 @@ class SmsRepository(private val context: Context) {
                 val iType = c.getColumnIndexOrThrow(Telephony.Sms.TYPE)
 
                 while (c.moveToNext()) {
-                    val type = c.getInt(iType)
+                    val id = c.getLong(iId)
+                    val address = c.getString(iAddr) ?: ""
+                    val body = c.getString(iBody) ?: ""
                     out.add(
                         SmsMessage(
-                            id = c.getLong(iId),
-                            address = c.getString(iAddr) ?: "",
-                            body = c.getString(iBody) ?: "",
+                            id = id,
+                            address = address,
+                            body = body,
                             date = c.getLong(iDate),
-                            isIncoming = type == Telephony.Sms.MESSAGE_TYPE_INBOX
+                            isIncoming = c.getInt(iType) == Telephony.Sms.MESSAGE_TYPE_INBOX,
+                            categoryId = categoryFor(address, body, id)
                         )
                     )
                 }
@@ -125,17 +122,23 @@ class SmsRepository(private val context: Context) {
         return if (out.size > limit) out.takeLast(limit) else out
     }
 
+    private fun categoryFor(address: String, body: String, messageId: Long): String =
+        categoryCache.getOrPut(address + "#" + messageId) {
+            Classifier.resolveRead(context, address, body, messageId)
+        }
+
+    private fun colorFor(address: String, categoryId: String): String =
+        colorCache.getOrPut(address + "#" + categoryId) {
+            Classifier.colorFor(context, address, categoryId)
+        }
+
     fun addressForThread(threadId: Long): String {
         try {
             resolver.query(
-                Telephony.Sms.CONTENT_URI,
-                arrayOf(Telephony.Sms.ADDRESS),
-                "${Telephony.Sms.THREAD_ID} = ?",
-                arrayOf(threadId.toString()),
+                Telephony.Sms.CONTENT_URI, arrayOf(Telephony.Sms.ADDRESS),
+                "${Telephony.Sms.THREAD_ID} = ?", arrayOf(threadId.toString()),
                 "${Telephony.Sms.DATE} DESC"
-            )?.use { c ->
-                if (c.moveToFirst()) return c.getString(0) ?: ""
-            }
+            )?.use { c -> if (c.moveToFirst()) return c.getString(0) ?: "" }
         } catch (e: Exception) {
             // ignore
         }
@@ -144,10 +147,9 @@ class SmsRepository(private val context: Context) {
 
     fun markThreadRead(threadId: Long) {
         try {
-            val values = ContentValues().apply { put(Telephony.Sms.READ, 1) }
             resolver.update(
                 Telephony.Sms.CONTENT_URI,
-                values,
+                ContentValues().apply { put(Telephony.Sms.READ, 1) },
                 "${Telephony.Sms.THREAD_ID} = ? AND ${Telephony.Sms.READ} = 0",
                 arrayOf(threadId.toString())
             )
@@ -156,15 +158,9 @@ class SmsRepository(private val context: Context) {
         }
     }
 
-    // ---------------------------------------------------------------- writing
-
-    /**
-     * Stores an incoming message and returns the thread it landed in,
-     * or -1 when it could not be stored.
-     */
+    /** Stores an incoming message and returns its row id, or -1 on failure. */
     fun storeIncoming(address: String, body: String, timestamp: Long): Long {
         return try {
-            val threadId = threadIdFor(address)
             val values = ContentValues().apply {
                 put(Telephony.Sms.ADDRESS, address)
                 put(Telephony.Sms.BODY, body)
@@ -173,10 +169,9 @@ class SmsRepository(private val context: Context) {
                 put(Telephony.Sms.READ, 0)
                 put(Telephony.Sms.SEEN, 0)
                 put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_INBOX)
-                put(Telephony.Sms.THREAD_ID, threadId)
+                put(Telephony.Sms.THREAD_ID, threadIdFor(address))
             }
-            resolver.insert(Telephony.Sms.CONTENT_URI, values)
-            threadId
+            resolver.insert(Telephony.Sms.CONTENT_URI, values)?.lastPathSegment?.toLongOrNull() ?: -1L
         } catch (e: Exception) {
             -1L
         }
@@ -184,7 +179,6 @@ class SmsRepository(private val context: Context) {
 
     private fun storeSent(address: String, body: String, timestamp: Long) {
         try {
-            val threadId = threadIdFor(address)
             val values = ContentValues().apply {
                 put(Telephony.Sms.ADDRESS, address)
                 put(Telephony.Sms.BODY, body)
@@ -192,7 +186,7 @@ class SmsRepository(private val context: Context) {
                 put(Telephony.Sms.READ, 1)
                 put(Telephony.Sms.SEEN, 1)
                 put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_SENT)
-                put(Telephony.Sms.THREAD_ID, threadId)
+                put(Telephony.Sms.THREAD_ID, threadIdFor(address))
             }
             resolver.insert(Telephony.Sms.CONTENT_URI, values)
         } catch (e: Exception) {
@@ -225,12 +219,9 @@ class SmsRepository(private val context: Context) {
             SmsManager.getDefault()
         }
 
-    /** Resolves (creating if needed) the provider thread id for a raw address. */
-    fun threadIdFor(address: String): Long {
-        return try {
-            Telephony.Threads.getOrCreateThreadId(context, address)
-        } catch (e: Exception) {
-            -1L
-        }
+    fun threadIdFor(address: String): Long = try {
+        Telephony.Threads.getOrCreateThreadId(context, address)
+    } catch (e: Exception) {
+        -1L
     }
 }
