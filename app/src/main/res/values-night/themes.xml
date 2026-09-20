@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Intentionally empty.
+
+  Redefining Theme.SmsGuard here would REPLACE the light definition instead of
+  extending it, dropping every colour role and falling back to the Material 3
+  default purple. Night support comes from values-night/colors.xml, which swaps
+  the palette the single theme already points at.
+-->
+<resources />

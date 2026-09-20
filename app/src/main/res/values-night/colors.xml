@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark palette. The same roles as values/colors.xml, re-toned for night. -->
+<resources>
+    <color name="blue_50">#12243A</color>
+    <color name="blue_100">#1B3A5C</color>
+    <color name="blue_300">#4C8DDB</color>
+    <color name="blue_500">#7FB2F0</color>
+    <color name="blue_600">#9AC4F5</color>
+    <color name="blue_700">#5A96DA</color>
+    <color name="blue_900">#DCE9FA</color>
+
+    <color name="colorPrimary">@color/blue_500</color>
+    <color name="colorPrimaryDark">#0B1826</color>
+    <color name="colorAccent">@color/blue_600</color>
+
+    <color name="screen_bg">#0B1622</color>
+    <color name="card_bg">#111F2E</color>
+    <color name="text_primary">#E6EDF6</color>
+    <color name="text_secondary">#9BAEC4</color>
+    <color name="divider">#1E2E40</color>
+
+    <color name="bubble_incoming">#17293B</color>
+    <color name="bubble_outgoing">#1B3A5C</color>
+    <color name="bubble_in_text">#E6EDF6</color>
+    <color name="bubble_out_text">#DCE9FA</color>
+
+    <color name="ic_launcher_background">#1B3A5C</color>
+</resources>

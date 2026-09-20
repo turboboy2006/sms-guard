@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Design tokens. Every spacing value is a multiple of 4dp, so the whole app sits
+  on one 8pt grid (8 / 16 / 24 / 32) with 4dp used only for tight pairs.
+  Add new dimensions here rather than hard-coding values in layouts.
+-->
+<resources>
+    <!-- 8pt grid -->
+    <dimen name="space_2">2dp</dimen>
+    <dimen name="space_4">4dp</dimen>
+    <dimen name="space_8">8dp</dimen>
+    <dimen name="space_12">12dp</dimen>
+    <dimen name="space_16">16dp</dimen>
+    <dimen name="space_24">24dp</dimen>
+    <dimen name="space_32">32dp</dimen>
+
+    <!-- Unified corner radius: one scale, no ad-hoc values -->
+    <dimen name="radius_sm">8dp</dimen>
+    <dimen name="radius_md">14dp</dimen>
+    <dimen name="radius_lg">20dp</dimen>
+    <dimen name="radius_pill">999dp</dimen>
+
+    <!-- Minimum accessible touch target -->
+    <dimen name="touch_target">48dp</dimen>
+
+    <!-- Content -->
+    <dimen name="gutter">16dp</dimen>
+    <dimen name="color_stripe_width">4dp</dimen>
+    <dimen name="swatch">40dp</dimen>
+
+    <!-- Typography scale: 4 sizes, 2 weights (skill guidance) -->
+    <dimen name="text_display">22sp</dimen>
+    <dimen name="text_title">16sp</dimen>
+    <dimen name="text_body">14sp</dimen>
+    <dimen name="text_label">12sp</dimen>
+</resources>
