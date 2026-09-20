@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">پیام‌بان</string>
+
+    <string name="channel_name">پیامک‌های دریافتی</string>
+    <string name="channel_description">اعلان پیامک‌های جدید</string>
+
+    <string name="not_default_banner">این برنامه هنوز اپ پیش‌فرض پیامک نیست. تا وقتی پیش‌فرض نشود، پیامکی دریافت نمی‌کند و قواعد مسدودسازی کار نمی‌کنند.</string>
+    <string name="make_default">تعیین به‌عنوان اپ پیامک پیش‌فرض</string>
+    <string name="open_settings_manually">لطفاً از تنظیمات گوشی، بخش «اپ‌های پیش‌فرض»، این برنامه را به‌عنوان اپ پیامک انتخاب کنید.</string>
+
+    <string name="tab_all">همه</string>
+    <string name="tab_suspicious">مشکوک</string>
+    <string name="tab_spam">اسپم</string>
+    <string name="tab_banking">بانکی</string>
+    <string name="tab_notifications">اطلاع‌رسانی</string>
+
+    <string name="cat_personal">مخاطبین</string>
+    <string name="cat_banking">بانکی</string>
+    <string name="cat_otp">رمز پویا</string>
+    <string name="cat_notification">اطلاع‌رسانی</string>
+    <string name="cat_promotion">تبلیغاتی</string>
+    <string name="cat_suspicious">مشکوک</string>
+    <string name="cat_spam">اسپم</string>
+    <string name="cat_other">سایر</string>
+
+    <string name="thread_options">گزینه‌های گفتگو</string>
+    <string name="change_category">تغییر دسته</string>
+    <string name="pick_color">انتخاب رنگ</string>
+    <string name="mark_spam">اسپم است</string>
+    <string name="mark_not_spam">اسپم نیست</string>
+    <string name="block_sender">مسدود کردن این فرستنده</string>
+    <string name="sender_blocked">فرستنده مسدود شد</string>
+    <string name="applied">اعمال شد</string>
+    <string name="color_default">رنگ دسته</string>
+
+    <string name="no_threads">هنوز پیامکی وجود ندارد.</string>
+    <string name="rules">قواعد مسدودسازی</string>
+    <string name="blocked_log">مسدودشده‌ها</string>
+    <string name="settings">تنظیمات</string>
+    <string name="blocked_empty">هنوز پیامکی مسدود نشده است.</string>
+    <string name="clear">پاک کردن</string>
+    <string name="cleared">پاک شد</string>
+    <string name="close">بستن</string>
+    <string name="delete">حذف</string>
+
+    <string name="message_hint">پیام…</string>
+    <string name="send">ارسال</string>
+    <string name="send_failed">ارسال نشد</string>
+    <string name="no_recipient">شماره گیرنده مشخص نیست</string>
+
+    <string name="add_rule">افزودن قاعده</string>
+    <string name="no_rules">هنوز قاعده‌ای نساخته‌ای.\nبا «افزودن قاعده» شروع کن.</string>
+    <string name="save">ذخیره</string>
+    <string name="cancel">انصراف</string>
+    <string name="target_both">فرستنده و متن</string>
+    <string name="target_sender">فقط فرستنده</string>
+    <string name="target_body">فقط متن پیام</string>
+    <string name="rule_target_label">این قاعده کجا را بررسی کند؟</string>
+    <string name="pattern_hint">الگو (مثلاً: تبلیغ یا 20007)</string>
+    <string name="regex_label">الگو یک عبارت باقاعده (Regex) است</string>
+    <string name="regex_hint">اگر مطمئن نیستی این گزینه را خالی بگذار. الگوی ساده کافی است.</string>
+
+    <string name="settings_title">تنظیمات</string>
+    <string name="ai_section">تحلیل هوش مصنوعی (اختیاری)</string>
+    <string name="ai_enable">اتصال به API هوش مصنوعی</string>
+    <string name="ai_hint_off">خاموش است. هیچ پیامکی از گوشی خارج نمی‌شود و همه‌چیز آفلاین کار می‌کند.</string>
+    <string name="ai_base">آدرس سرویس (مثلاً https://api.deepseek.com/v1)</string>
+    <string name="ai_key">کلید API</string>
+    <string name="ai_model">نام مدل</string>
+    <string name="ai_timeout">مهلت پاسخ (میلی‌ثانیه)</string>
+    <string name="test_connection">تست اتصال</string>
+    <string name="testing">در حال تست…</string>
+    <string name="local_section">تشخیص آفلاین</string>
+    <string name="threshold_hint">آستانه مشکوک‌شدن (۱۰ تا ۹۵)</string>
+    <string name="language">زبان برنامه</string>
+    <string name="lang_system">زبان گوشی</string>
+    <string name="lang_fa">فارسی</string>
+    <string name="lang_en">English</string>
+    <string name="saved">ذخیره شد</string>
+
+    <string name="manage_categories">مدیریت دسته‌بندی‌ها</string>
+    <string name="new_category">دسته جدید</string>
+    <string name="category_name_hint">نام دسته</string>
+    <string name="add">افزودن</string>
+</resources>

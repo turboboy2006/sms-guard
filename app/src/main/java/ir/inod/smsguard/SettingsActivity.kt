@@ -1,9 +1,16 @@
 package ir.inod.smsguard
 
+import android.graphics.Color
 import android.os.Bundle
 import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.BaseAdapter
+import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
@@ -54,6 +61,68 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.buttonSave.setOnClickListener { save() }
         binding.buttonTest.setOnClickListener { testConnection() }
+        binding.buttonCategories.setOnClickListener { manageCategories() }
+    }
+
+    // ------------------------------------------------------- category manager
+
+    private fun manageCategories() {
+        val store = CategoryStore(this)
+        val custom = store.custom()
+        val labels = (
+            custom.map { getString(R.string.delete) + " · " + it.customName } +
+                listOf(getString(R.string.new_category))
+            ).toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.manage_categories)
+            .setItems(labels) { _, which ->
+                if (which < custom.size) {
+                    store.delete(custom[which].id)
+                    Toast.makeText(this, R.string.cleared, Toast.LENGTH_SHORT).show()
+                } else {
+                    addCategory()
+                }
+            }
+            .setNegativeButton(R.string.close, null)
+            .show()
+    }
+
+    private fun addCategory() {
+        val input = EditText(this).apply { hint = getString(R.string.category_name_hint) }
+        val palette = Categories.PALETTE
+        val listAdapter = object : BaseAdapter() {
+            override fun getCount(): Int = palette.size
+            override fun getItem(position: Int): Any = palette[position]
+            override fun getItemId(position: Int): Long = position.toLong()
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val tv = (convertView as? TextView) ?: TextView(this@SettingsActivity).apply {
+                    setPadding(56, 36, 56, 36)
+                    textSize = 15f
+                }
+                tv.text = palette[position]
+                tv.setBackgroundColor(Color.parseColor(palette[position]))
+                tv.setTextColor(Color.WHITE)
+                return tv
+            }
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.new_category)
+            .setView(input)
+            .setPositiveButton(R.string.add) { _, _ ->
+                val name = input.text?.toString()?.trim().orEmpty()
+                if (name.isEmpty()) return@setPositiveButton
+                // Name first, then colour: two short steps beat one cramped form.
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.pick_color)
+                    .setAdapter(listAdapter) { _, which ->
+                        CategoryStore(this).add(name, palette[which])
+                        Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
+                    }
+                    .show()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun setAiFieldsEnabled(enabled: Boolean) {
