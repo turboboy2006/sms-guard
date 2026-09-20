@@ -112,6 +112,18 @@ class SenderProfileStore(context: Context) {
         write(map)
     }
 
+    /** Undo path: removes the effect of one [recordFeedback] call. */
+    fun revertFeedback(address: String, isSpam: Boolean) {
+        if (address.isBlank()) return
+        val map = snapshot().toMutableMap()
+        val old = map[address] ?: return
+        map[address] = old.copy(
+            spam = (old.spam - if (isSpam) 1 else 0).coerceAtLeast(0),
+            ham = (old.ham - if (isSpam) 0 else 1).coerceAtLeast(0)
+        )
+        write(map)
+    }
+
     fun clear() = prefs.edit().remove(KEY).apply()
 
     /** Keeps the store bounded: drop the least recently seen senders. */
