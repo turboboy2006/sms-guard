@@ -30,6 +30,17 @@ object Classifier {
         "فوری", "همین حالا", "امشب", "مهلت", "فقط تا", "آخرین روز", "از دست ندهید",
         "act now", "limited time", "urgent"
     )
+    /** Call-to-action phrasing: the part that asks the reader to do something. */
+    private val CTA = listOf(
+        "کلیک کنید", "کلیک", "تماس بگیرید", "تماس حاصل", "ثبت نام", "ثبت‌نام",
+        "برای دریافت", "لینک زیر", "وارد شوید", "مشاهده کنید", "سفارش دهید",
+        "همین حالا اقدام", "اطلاعات بیشتر", "click here", "sign up", "call now",
+        "order now", "register", "subscribe"
+    )
+    /** Emoji that reliably accompany lures, especially combined with a link. */
+    private val RISKY_EMOJI = listOf(
+        "🎁", "💰", "🔥", "🚨", "⭐", "🎉", "💸", "🏆", "🎯", "⚡", "❗", "🤑"
+    )
     private val MONEY_LURE = listOf(
         "میلیون تومان", "میلیارد", "جایزه نقدی", "سود تضمینی", "بدون ضامن",
         "وام فوری", "کد بورسی", "ارز دیجیتال", "سرمایه گذاری", "درآمد تضمینی"
@@ -254,6 +265,17 @@ object Classifier {
         if (links.isNotEmpty()) out.add(Signal(24, "link"))
         if (Normalizer.containsAny(body, PROMO)) out.add(Signal(26, "promo"))
         if (Normalizer.containsAny(body, URGENT)) out.add(Signal(16, "urgency"))
+        if (Normalizer.containsAny(body, CTA)) out.add(Signal(22, "cta"))
+
+        // Emoji carry intent cheaply: a couple of lure emoji plus a link is a
+        // far stronger combination than either alone.
+        val emoji = body.codePoints()
+            .filter { it in 0x1F300..0x1FAFF || it in 0x2600..0x27BF }
+            .count()
+            .toInt()
+        val lure = RISKY_EMOJI.count { body.contains(it) }
+        if (lure >= 2) out.add(Signal(18, "emoji-lure"))
+        else if (emoji >= 5) out.add(Signal(10, "emoji-heavy"))
         if (Normalizer.containsAny(body, MONEY_LURE)) out.add(Signal(24, "money"))
         if (OPT_OUT_REGEX.containsMatchIn(body)) out.add(Signal(14, "bulk-optout"))
         if (BULK_SENDER_REGEX.matches(address.replace(" ", ""))) out.add(Signal(8, "bulk-sender"))

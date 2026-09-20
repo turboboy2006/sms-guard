@@ -79,6 +79,8 @@ object Normalizer {
         if (DIACRITICS.containsMatchIn(raw) && raw.length > 12) return true
         // "ت خ ف ی ف" — a long run of single letters separated by spaces
         if (Regex("(?:\\S\\s){4,}\\S").containsMatchIn(raw)) return true
+        // "ت.خ.ف.ی.ف" / "ت-خ-ف-ی-ف" — single characters joined by separators
+        if (Regex("(?:\\S[.\\-•_*]){3,}\\S").containsMatchIn(raw)) return true
         if (REPEATS.containsMatchIn(raw)) return true
         return false
     }
