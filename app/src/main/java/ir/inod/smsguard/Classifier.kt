@@ -366,6 +366,23 @@ object Classifier {
         val campaign = CampaignStore(context).campaignSignal(body)
         if (campaign != 0) out.add(Signal(campaign, "campaign"))
 
+        // --- sender intelligence ---
+        if (PhoneIntel.isShortCode(address)) out.add(Signal(6, "short-code"))
+        val senderKey = PhoneIntel.canonical(address)
+        if (senderKey.length >= 10 && PhoneIntel.numbersIn(body).any { it != senderKey }) {
+            // "Call this other number" carries no link at all, so nothing else
+            // in the pipeline would notice it.
+            out.add(Signal(15, "callback-number"))
+        }
+
+        // --- temporal ---
+        val hour = java.util.Calendar.getInstance()
+            .get(java.util.Calendar.HOUR_OF_DAY)
+        if ((hour >= 23 || hour < 7) && Normalizer.containsAny(body, PROMO)) {
+            // Late-night promotional traffic is almost never anything but bulk.
+            out.add(Signal(12, "late-night"))
+        }
+
         profiles(context)[address]?.let { p ->
             when {
                 p.hostile -> out.add(Signal(30, "sender-hostile"))

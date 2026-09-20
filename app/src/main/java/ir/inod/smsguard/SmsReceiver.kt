@@ -63,7 +63,18 @@ class SmsReceiver : BroadcastReceiver() {
         val repo = SmsRepository(context)
         val messageId = repo.storeIncoming(address, body, timestamp)
         val threadId = repo.threadIdFor(address)
-        if (messageId >= 0 && threadId >= 0) {
+
+        // Quiet hours: promotional traffic is still stored, it just does not
+        // buzz between 23:00 and 07:00. Banking, OTP and contact messages are
+        // never suppressed, because those are exactly the ones that matter at
+        // night.
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val quiet = hour >= QUIET_FROM || hour < QUIET_TO
+        val suppressible = localCategory == Cat.PROMOTION ||
+            localCategory == Cat.SUSPICIOUS ||
+            localCategory == Cat.SPAM
+
+        if (messageId >= 0 && threadId >= 0 && !(quiet && suppressible)) {
             Notifier(context).notifyIncoming(threadId, address, body)
         }
 
@@ -97,5 +108,9 @@ class SmsReceiver : BroadcastReceiver() {
 
     private companion object {
         const val TAG = "SmsReceiver"
+
+        /** Quiet window, inclusive of the start hour and exclusive of the end. */
+        const val QUIET_FROM = 23
+        const val QUIET_TO = 7
     }
 }

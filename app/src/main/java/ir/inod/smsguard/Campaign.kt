@@ -203,6 +203,9 @@ class CampaignStore(context: Context) {
         val c = best ?: return 0
         return when {
             c.spamFlagged -> 45
+            // One template rotating through several numbers is the strongest
+            // structural signal short of a user verdict.
+            c.senders.size >= 3 && c.members >= 3 -> 30
             c.members >= 5 && c.senders.size >= 2 -> 25
             c.members >= 8 -> 18
             else -> 0
