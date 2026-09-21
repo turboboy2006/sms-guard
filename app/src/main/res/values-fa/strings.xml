@@ -126,6 +126,8 @@
     <string name="unblock">لغو مسدودسازی</string>
     <string name="confirm_unblock">«%1$s» از لیست مسدود خارج شود؟</string>
     <string name="confirm_clear_override">نام، آیکون و رنگ سفارشی این فرستنده پاک شود؟</string>
+    <string name="today">امروز</string>
+    <string name="yesterday">دیروز</string>
 
     <string name="manage_categories">مدیریت دسته‌بندی‌ها</string>
     <string name="new_category">دسته جدید</string>

@@ -69,8 +69,10 @@ class ConversationActivity : AppCompatActivity() {
     private fun load() {
         val messages = if (threadId >= 0) repo.loadMessages(threadId) else emptyList()
         adapter.submit(messages)
-        if (messages.isNotEmpty()) {
-            binding.recyclerMessages.scrollToPosition(messages.size - 1)
+        // The adapter also emits day dividers, so scroll to its own last row
+        // rather than to messages.size.
+        if (adapter.itemCount > 0) {
+            binding.recyclerMessages.scrollToPosition(adapter.itemCount - 1)
         }
     }
 

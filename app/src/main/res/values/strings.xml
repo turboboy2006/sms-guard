@@ -138,6 +138,8 @@
     <string name="unblock">Unblock</string>
     <string name="confirm_unblock">Remove “%1$s” from the blocklist?</string>
     <string name="confirm_clear_override">Remove the custom name, icon and colour for this sender?</string>
+    <string name="today">Today</string>
+    <string name="yesterday">Yesterday</string>
 
     <!-- Categories management -->
     <string name="manage_categories">Manage categories</string>
