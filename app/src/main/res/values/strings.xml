@@ -109,6 +109,20 @@
     <string name="confirm_empty_trash">Permanently delete everything in the trash?</string>
     <string name="confirm_delete_message">Delete this message permanently?</string>
 
+    <!-- Risk reasons: the "why", never colour alone -->
+    <string name="risk_link">Unknown link</string>
+    <string name="risk_promo">Promotional wording</string>
+    <string name="risk_money">Money offer</string>
+    <string name="risk_cta">Asks you to act</string>
+    <string name="risk_fraud">Asks for bank details</string>
+    <string name="risk_bank_details">Card or IBAN present</string>
+    <string name="risk_brand">Impersonates a brand</string>
+    <string name="risk_campaign">Bulk campaign</string>
+    <string name="risk_urgency">Creates urgency</string>
+    <string name="risk_callback">Unrelated callback number</string>
+    <string name="risk_known">Sender reported before</string>
+    <string name="risk_prize">Prize offer</string>
+
     <!-- Categories management -->
     <string name="manage_categories">Manage categories</string>
     <string name="new_category">New category</string>

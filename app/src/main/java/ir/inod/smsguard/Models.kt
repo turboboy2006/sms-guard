@@ -80,16 +80,16 @@ data class Category(
 object Categories {
 
     fun system(): List<Category> = listOf(
-        Category(Cat.PERSONAL, R.string.cat_personal, "", "#2E7D32", true, false, true, true, 0),
-        Category(Cat.BANKING, R.string.cat_banking, "", "#1565C0", true, false, true, true, 1),
-        Category(Cat.OTP, R.string.cat_otp, "", "#00838F", true, false, true, true, 2),
-        Category(Cat.NOTIFICATION, R.string.cat_notification, "", "#6A1B9A", true, false, true, true, 3),
-        Category(Cat.PROMOTION, R.string.cat_promotion, "", "#EF6C00", true, false, false, false, 4),
-        Category(Cat.SUSPICIOUS, R.string.cat_suspicious, "", "#D32F2F", true, false, false, false, 5),
-        Category(Cat.SPAM, R.string.cat_spam, "", "#B71C1C", true, true, true, false, 6),
+        Category(Cat.PERSONAL, R.string.cat_personal, "", "#15803D", true, false, true, true, 0),
+        Category(Cat.BANKING, R.string.cat_banking, "", "#1D4ED8", true, false, true, true, 1),
+        Category(Cat.OTP, R.string.cat_otp, "", "#0F766E", true, false, true, true, 2),
+        Category(Cat.NOTIFICATION, R.string.cat_notification, "", "#7C3AED", true, false, true, true, 3),
+        Category(Cat.PROMOTION, R.string.cat_promotion, "", "#EA580C", true, false, false, false, 4),
+        Category(Cat.SUSPICIOUS, R.string.cat_suspicious, "", "#D97706", true, false, false, false, 5),
+        Category(Cat.SPAM, R.string.cat_spam, "", "#B91C1C", true, true, true, false, 6),
         // Trash is its own place: hidden from Every, but not counted as spam.
-        Category(Cat.TRASH, R.string.tab_trash, "", "#546E7A", true, false, true, false, 7),
-        Category(Cat.OTHER, R.string.cat_other, "", "#616161", true, false, false, false, 8)
+        Category(Cat.TRASH, R.string.tab_trash, "", "#475467", true, false, true, false, 7),
+        Category(Cat.OTHER, R.string.cat_other, "", "#667085", true, false, false, false, 8)
     )
 
     /** Palette offered by the long-press colour picker. */

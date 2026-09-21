@@ -99,6 +99,19 @@
     <string name="confirm_empty_trash">همه‌ی پیام‌های سطل زباله برای همیشه حذف شوند؟</string>
     <string name="confirm_delete_message">این پیام برای همیشه حذف شود؟</string>
 
+    <string name="risk_link">لینک ناشناس</string>
+    <string name="risk_promo">متن تبلیغاتی</string>
+    <string name="risk_money">وعده مالی</string>
+    <string name="risk_cta">درخواست اقدام</string>
+    <string name="risk_fraud">درخواست اطلاعات بانکی</string>
+    <string name="risk_bank_details">شماره کارت یا شبا</string>
+    <string name="risk_brand">جعل نام برند</string>
+    <string name="risk_campaign">کمپین انبوه</string>
+    <string name="risk_urgency">ایجاد عجله</string>
+    <string name="risk_callback">شماره بازگشتی نامرتبط</string>
+    <string name="risk_known">فرستنده گزارش‌شده</string>
+    <string name="risk_prize">وعده جایزه</string>
+
     <string name="manage_categories">مدیریت دسته‌بندی‌ها</string>
     <string name="new_category">دسته جدید</string>
     <string name="category_name_hint">نام دسته</string>

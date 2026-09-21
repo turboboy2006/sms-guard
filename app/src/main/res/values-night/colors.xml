@@ -1,29 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Dark palette. The same roles as values/colors.xml, re-toned for night. -->
+<!-- Dark equivalents of the reference palette, same roles. -->
 <resources>
-    <color name="blue_50">#12243A</color>
-    <color name="blue_100">#1B3A5C</color>
-    <color name="blue_300">#4C8DDB</color>
-    <color name="blue_500">#7FB2F0</color>
-    <color name="blue_600">#9AC4F5</color>
-    <color name="blue_700">#5A96DA</color>
-    <color name="blue_900">#DCE9FA</color>
+    <color name="blue_50">#131C2E</color>
+    <color name="blue_100">#1B2A45</color>
+    <color name="blue_300">#6D9BF0</color>
+    <color name="blue_500">#7BA3F0</color>
+    <color name="blue_600">#9DBBF5</color>
+    <color name="blue_700">#5B8BE0</color>
+    <color name="blue_900">#DCE6FA</color>
 
     <color name="colorPrimary">@color/blue_500</color>
-    <color name="colorPrimaryDark">#0B1826</color>
+    <color name="colorPrimaryDark">#0B1220</color>
     <color name="colorAccent">@color/blue_600</color>
 
-    <color name="screen_bg">#0B1622</color>
-    <color name="card_bg">#111F2E</color>
-    <color name="text_primary">#E6EDF6</color>
-    <color name="text_secondary">#9BAEC4</color>
-    <color name="divider">#1E2E40</color>
-    <color name="skeleton">#1B2A3B</color>
+    <color name="screen_bg">#0B1220</color>
+    <color name="card_bg">#131C2E</color>
+    <color name="surface_sunken">#0F172A</color>
+    <color name="text_primary">#E8EDF5</color>
+    <color name="text_secondary">#9BA9BE</color>
+    <color name="text_muted">#7B8AA0</color>
+    <color name="divider">#1E2A3E</color>
+    <color name="border_soft">#24314A</color>
+    <color name="skeleton">#1B2537</color>
 
-    <color name="bubble_incoming">#17293B</color>
-    <color name="bubble_outgoing">#1B3A5C</color>
-    <color name="bubble_in_text">#E6EDF6</color>
-    <color name="bubble_out_text">#DCE9FA</color>
+    <color name="danger">#F87171</color>
+    <color name="danger_deep">#EF4444</color>
+    <color name="danger_soft">#2A1518</color>
+    <color name="warning">#FB923C</color>
+    <color name="warning_soft">#2E1D0F</color>
+    <color name="success">#4ADE80</color>
 
-    <color name="ic_launcher_background">#1B3A5C</color>
+    <color name="bubble_incoming">#1B2537</color>
+    <color name="bubble_outgoing">#1B2A45</color>
+    <color name="bubble_in_text">@color/text_primary</color>
+    <color name="bubble_out_text">@color/blue_900</color>
+
+    <color name="ic_launcher_background">#1B2A45</color>
 </resources>

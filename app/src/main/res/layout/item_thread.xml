@@ -88,6 +88,23 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:textAppearance="@style/TextAppearance.SmsGuard.Body" />
+
+        <!--
+          Why this message was flagged. Colour alone must never carry the
+          meaning, so the reason is always spelled out here.
+        -->
+        <TextView
+            android:id="@+id/textRisk"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_4"
+            android:paddingStart="@dimen/space_8"
+            android:paddingTop="2dp"
+            android:paddingEnd="@dimen/space_8"
+            android:paddingBottom="2dp"
+            android:textColor="@color/danger"
+            android:textSize="11sp"
+            android:visibility="gone" />
     </LinearLayout>
 
     <LinearLayout

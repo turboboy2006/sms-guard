@@ -14,10 +14,10 @@
     <dimen name="space_24">24dp</dimen>
     <dimen name="space_32">32dp</dimen>
 
-    <!-- Unified corner radius: one scale, no ad-hoc values -->
-    <dimen name="radius_sm">8dp</dimen>
-    <dimen name="radius_md">14dp</dimen>
-    <dimen name="radius_lg">20dp</dimen>
+    <!-- Unified corner radius, matching the reference (12 dominant) -->
+    <dimen name="radius_sm">10dp</dimen>
+    <dimen name="radius_md">12dp</dimen>
+    <dimen name="radius_lg">16dp</dimen>
     <dimen name="radius_pill">999dp</dimen>
 
     <!-- Minimum accessible touch target -->

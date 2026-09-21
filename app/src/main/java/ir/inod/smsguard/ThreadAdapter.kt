@@ -84,8 +84,23 @@ class ThreadAdapter(
         }
 
         // The confirmation prompt: a red badge until the user decides.
-        b.iconWarning.visibility =
-            if (item.categoryId == Cat.SUSPICIOUS) View.VISIBLE else View.GONE
+        val suspicious = item.categoryId == Cat.SUSPICIOUS
+        b.iconWarning.visibility = if (suspicious) View.VISIBLE else View.GONE
+
+        // Explain the flag in words. "RiskBanner": never let red alone carry
+        // the meaning, because the user cannot act on a colour.
+        if (suspicious) {
+            val label = riskLabel(context, item.address, item.snippet)
+            if (label != null) {
+                b.textRisk.text = label
+                b.textRisk.background = riskChip(context)
+                b.textRisk.visibility = View.VISIBLE
+            } else {
+                b.textRisk.visibility = View.GONE
+            }
+        } else {
+            b.textRisk.visibility = View.GONE
+        }
 
         // Unread reads stronger, read recedes. This is the single clearest cue
         // for "what still needs my attention".
@@ -149,6 +164,44 @@ class ThreadAdapter(
         b.avatarImage.setPadding(pad, pad, pad, pad)
         b.avatarImage.scaleType = ImageView.ScaleType.CENTER_INSIDE
         b.avatarImage.setImageResource(R.drawable.ic_person)
+    }
+
+    /** Soft red pill behind the reason text. */
+    private fun riskChip(context: Context): GradientDrawable = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = 40f
+        setColor(ContextCompat.getColor(context, R.color.danger_soft))
+    }
+
+    /**
+     * Turns the classifier's internal tags into one short phrase the user can
+     * act on, in order of what matters most.
+     */
+    private fun riskLabel(context: Context, address: String, body: String): String? {
+        val tags = Classifier.classifyLocal(context, address, body).reasons
+        val priority = listOf(
+            "fraud-words", "card-number", "sheba", "brand-impersonation",
+            "brand-mismatch", "ip-link", "punycode", "domain-blocked",
+            "prefix-blocked", "sender-hostile", "callback-number",
+            "campaign", "shortener", "risky-tld", "money", "emoji-lure",
+            "link", "cta", "promo", "urgency", "late-night", "pattern"
+        )
+        val tag = priority.firstOrNull { it in tags } ?: tags.firstOrNull() ?: return null
+        val res = when (tag) {
+            "fraud-words" -> R.string.risk_fraud
+            "card-number", "sheba" -> R.string.risk_bank_details
+            "brand-impersonation", "brand-mismatch" -> R.string.risk_brand
+            "ip-link", "punycode", "shortener", "risky-tld", "link" -> R.string.risk_link
+            "domain-blocked", "prefix-blocked", "sender-hostile" -> R.string.risk_known
+            "callback-number" -> R.string.risk_callback
+            "campaign" -> R.string.risk_campaign
+            "money" -> R.string.risk_money
+            "emoji-lure" -> R.string.risk_prize
+            "cta" -> R.string.risk_cta
+            "urgency", "late-night" -> R.string.risk_urgency
+            else -> R.string.risk_promo
+        }
+        return context.getString(res)
     }
 
     private fun pill(color: Int): GradientDrawable = GradientDrawable().apply {
