@@ -141,21 +141,35 @@ class SmsRepository(private val context: Context) {
 
     /** Searches the provider directly, so results are not limited to the inbox
      * cache or to the latest message shown for each conversation. */
-    fun searchThreads(query: String, resultLimit: Int = 500): List<ThreadSummary> {
+    fun searchThreads(
+        query: String,
+        resultLimit: Int = 500,
+        categoryId: String? = null,
+        since: Long = 0L,
+        subscriptionId: Int = -1
+    ): List<ThreadSummary> {
         val needle = query.trim()
-        if (needle.isEmpty()) return emptyList()
         val out = LinkedHashMap<Long, ThreadSummary>()
         val projection = arrayOf(
             Telephony.Sms._ID, Telephony.Sms.THREAD_ID, Telephony.Sms.ADDRESS,
             Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.READ,
-            Telephony.Sms.TYPE
+            Telephony.Sms.TYPE,
+            "sub_id"
         )
         try {
+            val clauses = mutableListOf<String>()
+            val args = mutableListOf<String>()
+            if (needle.isNotEmpty()) {
+                clauses += "(${Telephony.Sms.BODY} LIKE ? OR ${Telephony.Sms.ADDRESS} LIKE ?)"
+                args += "%$needle%"; args += "%$needle%"
+            }
+            if (since > 0) { clauses += "${Telephony.Sms.DATE} >= ?"; args += since.toString() }
+            if (subscriptionId >= 0) { clauses += "sub_id = ?"; args += subscriptionId.toString() }
             resolver.query(
                 Telephony.Sms.CONTENT_URI,
                 projection,
-                "${Telephony.Sms.BODY} LIKE ? OR ${Telephony.Sms.ADDRESS} LIKE ?",
-                arrayOf("%$needle%", "%$needle%"),
+                clauses.takeIf { it.isNotEmpty() }?.joinToString(" AND "),
+                args.takeIf { it.isNotEmpty() }?.toTypedArray(),
                 "${Telephony.Sms.DATE} DESC"
             )?.use { c ->
                 val iId = c.getColumnIndexOrThrow(Telephony.Sms._ID)
@@ -172,6 +186,7 @@ class SmsRepository(private val context: Context) {
                     val address = c.getString(iAddr) ?: ""
                     val body = c.getString(iBody) ?: ""
                     val category = categoryFor(address, body, id)
+                    if (categoryId != null && category != categoryId) continue
                     out[threadId] = ThreadSummary(
                         threadId = threadId,
                         messageId = id,

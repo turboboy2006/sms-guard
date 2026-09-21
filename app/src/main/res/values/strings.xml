@@ -323,4 +323,10 @@
     <string name="recipient_count">%1$d recipients</string>
     <string name="group_sent_report">Sent to %1$d of %2$d recipients</string>
     <string name="sender_with_count">%1$s · %2$d messages</string>
+    <string name="filter_all_categories">All categories</string>
+    <string name="filter_any_date">Any date</string>
+    <string name="filter_7_days">Last 7 days</string>
+    <string name="filter_30_days">Last 30 days</string>
+    <string name="restore_from_trash">Restore</string>
+    <string name="risk_score">Risk score %1$d · confidence %2$d%%</string>
 </resources>

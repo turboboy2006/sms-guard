@@ -117,6 +117,7 @@ class ConversationActivity : BaseActivity() {
         binding.buttonRiskCall.setOnClickListener {
             startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:${android.net.Uri.encode(address)}")))
         }
+        binding.textRisk.setOnClickListener { showRiskDetails() }
         binding.toolbar.setOnClickListener { if (address.isNotBlank()) showSenderMenu() }
         binding.editMessage.doAfterTextChanged { editable ->
             if (address.isNotBlank()) drafts.edit().putString(address, editable?.toString().orEmpty()).apply()
@@ -301,6 +302,7 @@ class ConversationActivity : BaseActivity() {
             } else if (targets.size > 1) runOnUiThread {
                 Toast.makeText(this, getString(R.string.group_sent_report, sentCount, targets.size), Toast.LENGTH_SHORT).show()
             }
+            if (sentCount > 0) SenderProfileStore(this).recordFeedback(address, false)
             load()
         }
     }
@@ -455,6 +457,26 @@ class ConversationActivity : BaseActivity() {
             binding.textRisk.text = Classifier.riskLabel(this, address, risky.body)
                 ?: getString(R.string.risk_banner_default)
         }
+    }
+
+    private fun showRiskDetails() {
+        val message = lastMessages.lastOrNull { it.id == riskyMessageId } ?: return
+        val verdict = Classifier.classifyLocal(this, address, message.body)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.risk_score, verdict.score, verdict.confidence))
+            .setMessage(verdict.reasons.joinToString("\n") { "• ${riskReasonLabel(it)}" })
+            .setPositiveButton(android.R.string.ok, null).show()
+    }
+
+    private fun riskReasonLabel(reason: String): String = when (reason) {
+        "link", "ip-link", "shortener", "risky-tld", "punycode" -> getString(R.string.risk_link)
+        "callback-number" -> getString(R.string.risk_callback)
+        "campaign" -> getString(R.string.risk_campaign)
+        "money", "card-number", "sheba" -> getString(R.string.risk_bank_details)
+        "fraud-words" -> getString(R.string.risk_fraud)
+        "brand-impersonation", "brand-mismatch" -> getString(R.string.risk_brand)
+        "urgency", "late-night" -> getString(R.string.risk_urgency)
+        else -> reason
     }
 
     private fun markConversationSafe() {

@@ -32,6 +32,22 @@
             android:inputType="text" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/gutter"
+            android:paddingEnd="@dimen/gutter">
+            <Spinner android:id="@+id/spinnerCategory" style="@style/Widget.SmsGuard.Spinner" android:layout_width="150dp" android:layout_height="wrap_content" />
+            <Spinner android:id="@+id/spinnerDate" style="@style/Widget.SmsGuard.Spinner" android:layout_width="130dp" android:layout_height="wrap_content" />
+            <Spinner android:id="@+id/spinnerSim" style="@style/Widget.SmsGuard.Spinner" android:layout_width="150dp" android:layout_height="wrap_content" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"

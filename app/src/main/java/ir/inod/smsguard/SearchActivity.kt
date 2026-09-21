@@ -24,6 +24,8 @@ class SearchActivity : BaseActivity() {
     private val main = Handler(Looper.getMainLooper())
     private val repo by lazy { SmsRepository(this) }
     private var generation = 0
+    private var categories: List<Category?> = listOf(null)
+    private var simIds: List<Int> = listOf(-1)
     private val searchRunnable = Runnable { search(binding.editSearch.text?.toString().orEmpty()) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,13 +60,18 @@ class SearchActivity : BaseActivity() {
             main.removeCallbacks(searchRunnable)
             main.postDelayed(searchRunnable, 250)
         }
+        setUpFilters()
         binding.editSearch.requestFocus()
     }
 
     private fun search(text: String) {
         val query = text.trim()
         val token = ++generation
-        if (query.length < 2) {
+        val category = categories.getOrNull(binding.spinnerCategory.selectedItemPosition)?.id
+        val dateIndex = binding.spinnerDate.selectedItemPosition
+        val since = when (dateIndex) { 1 -> System.currentTimeMillis() - 24*60*60*1000L; 2 -> System.currentTimeMillis() - 7*24*60*60*1000L; 3 -> System.currentTimeMillis() - 30L*24*60*60*1000L; else -> 0L }
+        val sim = simIds.getOrElse(binding.spinnerSim.selectedItemPosition) { -1 }
+        if (query.length < 2 && category == null && since == 0L && sim < 0) {
             adapter.submit(emptyList())
             binding.progress.visibility = View.GONE
             binding.textEmpty.setText(R.string.search_start_hint)
@@ -73,7 +80,7 @@ class SearchActivity : BaseActivity() {
         }
         binding.progress.visibility = View.VISIBLE
         worker.execute {
-            val rows = repo.searchThreads(query)
+            val rows = repo.searchThreads(query, categoryId = category, since = since, subscriptionId = sim)
             main.post {
                 if (token != generation || isFinishing || isDestroyed) return@post
                 binding.progress.visibility = View.GONE
@@ -82,6 +89,24 @@ class SearchActivity : BaseActivity() {
                 binding.textEmpty.visibility = if (rows.isEmpty()) View.VISIBLE else View.GONE
             }
         }
+    }
+
+    private fun setUpFilters() {
+        categories = listOf(null) + CategoryStore(this).all()
+        binding.spinnerCategory.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
+            listOf(getString(R.string.filter_all_categories)) + categories.drop(1).map { it!!.label(this) })
+        binding.spinnerDate.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
+            listOf(getString(R.string.filter_any_date), getString(R.string.today), getString(R.string.filter_7_days), getString(R.string.filter_30_days)))
+        val simLabels = mutableListOf(getString(R.string.sim_system_default)); val ids = mutableListOf(-1)
+        try { getSystemService(android.telephony.SubscriptionManager::class.java)?.activeSubscriptionInfoList.orEmpty().forEach {
+            ids += it.subscriptionId; simLabels += getString(R.string.sim_label, it.simSlotIndex + 1, it.carrierName?.toString().orEmpty())
+        } } catch (_: SecurityException) { }
+        simIds = ids; binding.spinnerSim.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, simLabels)
+        val listener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) { main.removeCallbacks(searchRunnable); main.postDelayed(searchRunnable, 100) }
+            override fun onNothingSelected(p: android.widget.AdapterView<*>?) = Unit
+        }
+        binding.spinnerCategory.onItemSelectedListener = listener; binding.spinnerDate.onItemSelectedListener = listener; binding.spinnerSim.onItemSelectedListener = listener
     }
 
     override fun onDestroy() {

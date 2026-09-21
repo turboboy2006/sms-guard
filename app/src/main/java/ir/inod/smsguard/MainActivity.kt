@@ -41,6 +41,7 @@ class MainActivity : BaseActivity() {
         const val MENU_MARK_READ = 2101
         const val MENU_BULK_SPAM = 2102
         const val MENU_BULK_TRASH = 2103
+        const val MENU_BULK_RESTORE = 2104
         const val MENU_ARCHIVED = 2007
         const val MENU_CAMPAIGNS = 2008
 
@@ -505,6 +506,8 @@ class MainActivity : BaseActivity() {
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_BULK_TRASH, 2, R.string.move_to_trash)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        menu.add(0, MENU_BULK_RESTORE, 3, R.string.restore_from_trash)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         return true
     }
 
@@ -513,6 +516,8 @@ class MainActivity : BaseActivity() {
         listOf(MENU_MARK_READ, MENU_BULK_SPAM, MENU_BULK_TRASH).forEach {
             menu.findItem(it)?.isVisible = selecting
         }
+        menu.findItem(MENU_BULK_RESTORE)?.isVisible = selecting && selectedCategoryId == Cat.TRASH
+        if (selectedCategoryId == Cat.TRASH) menu.findItem(MENU_BULK_TRASH)?.isVisible = false
         listOf(MENU_SEARCH, MENU_REFRESH, MENU_RULES, MENU_BLOCKED, MENU_TRASH, MENU_MANAGE, MENU_ARCHIVED, MENU_CAMPAIGNS).forEach {
             menu.findItem(it)?.isVisible = !selecting
         }
@@ -535,7 +540,7 @@ class MainActivity : BaseActivity() {
                 binding.bottomNav.selectedItemId = R.id.nav_messages
                 for (i in 0 until binding.chipGroup.childCount) {
                     val chip = binding.chipGroup.getChildAt(i) as? com.google.android.material.chip.Chip
-                    if (chip?.text == CategoryStore(this).byId(Cat.TRASH)?.label(this)) chip.isChecked = true
+                    if (chip != null && chip.text == CategoryStore(this).byId(Cat.TRASH)?.label(this)) chip.isChecked = true
                 }
                 applyFilter()
             }
@@ -545,6 +550,7 @@ class MainActivity : BaseActivity() {
             MENU_MARK_READ -> bulkMarkRead()
             MENU_BULK_SPAM -> bulkCategory(Cat.SPAM)
             MENU_BULK_TRASH -> bulkCategory(Cat.TRASH)
+            MENU_BULK_RESTORE -> bulkCategory(Cat.OTHER)
             else -> return super.onOptionsItemSelected(item)
         }
         return true

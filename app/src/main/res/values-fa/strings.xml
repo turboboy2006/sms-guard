@@ -299,4 +299,10 @@
     <string name="recipient_count">%1$d گیرنده</string>
     <string name="group_sent_report">برای %1$d از %2$d گیرنده ارسال شد</string>
     <string name="sender_with_count">%1$s · %2$d پیام</string>
+    <string name="filter_all_categories">همه دسته‌ها</string>
+    <string name="filter_any_date">هر تاریخی</string>
+    <string name="filter_7_days">۷ روز اخیر</string>
+    <string name="filter_30_days">۳۰ روز اخیر</string>
+    <string name="restore_from_trash">بازیابی</string>
+    <string name="risk_score">امتیاز خطر %1$d · اطمینان %2$d٪</string>
 </resources>
