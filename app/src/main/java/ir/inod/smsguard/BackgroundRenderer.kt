@@ -6,9 +6,32 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.LayerDrawable
 import android.graphics.BitmapFactory
+import android.graphics.Bitmap
+import android.util.LruCache
+import android.view.Gravity
 import android.view.View
 
 object BackgroundRenderer {
+    private val photos = object : LruCache<String, Bitmap>(4) {
+        override fun sizeOf(key: String, value: Bitmap): Int = 1
+    }
+
+    private fun softPhoto(context: Context, uri: String): Bitmap? {
+        synchronized(photos) { photos.get(uri)?.let { return it } }
+        val source = runCatching {
+            context.contentResolver.openInputStream(android.net.Uri.parse(uri))?.use { stream ->
+                val options = BitmapFactory.Options().apply { inSampleSize = 8 }
+                BitmapFactory.decodeStream(stream, null, options)
+            }
+        }.getOrNull() ?: return null
+        // A very small bitmap stretched over the screen is deliberately soft.
+        // It also avoids loading a full camera photo into the UI's memory.
+        val blurred = Bitmap.createScaledBitmap(source, 48, 80, true)
+        if (blurred !== source) source.recycle()
+        synchronized(photos) { photos.put(uri, blurred) }
+        return blurred
+    }
+
     fun apply(view: View, context: Context, style: String?, imageUri: String? = null) {
         val colors = when (style ?: BackgroundStyle.CLEAN) {
             BackgroundStyle.MIST -> intArrayOf(Color.parseColor("#F4F8FF"), Color.parseColor("#EAF2FF"))
@@ -21,13 +44,13 @@ object BackgroundRenderer {
             )
         }
         val base = GradientDrawable(GradientDrawable.Orientation.TL_BR, colors)
-        val photo = imageUri?.let { uri -> runCatching {
-            context.contentResolver.openInputStream(android.net.Uri.parse(uri))?.use { stream ->
-                BitmapFactory.decodeStream(stream)?.let { bitmap ->
-                    BitmapDrawable(context.resources, bitmap).apply { alpha = 34 }
-                }
+        val photo = imageUri?.let { uri -> softPhoto(context, uri)?.let { bitmap ->
+            BitmapDrawable(context.resources, bitmap).apply {
+                alpha = 34
+                gravity = Gravity.FILL
+                isFilterBitmap = true
             }
-        }.getOrNull() }
+        } }
         view.background = if (photo == null) base else LayerDrawable(arrayOf(base, photo))
     }
 }

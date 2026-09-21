@@ -292,7 +292,10 @@ class SettingsActivity : BaseActivity() {
                     2 -> pickCategoryIcon(category)
                     3 -> CategoryStore(this).move(category.id, -1)
                     4 -> CategoryStore(this).move(category.id, 1)
-                    5 -> CategoryStore(this).updateAny(category.copy(enabled = !category.enabled))
+                    5 -> if (category.id != Cat.OTHER) {
+                        CategoryStore(this).updateAny(category.copy(enabled = !category.enabled))
+                        Classifier.invalidateCaches()
+                    }
                     6 -> CategoryStore(this).delete(category.id)
                 }
             }.show()

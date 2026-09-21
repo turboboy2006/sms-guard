@@ -146,6 +146,10 @@ class ThreadAdapter(
 
     fun currentLayout(): RowLayout = layout
 
+    fun refreshDrafts() {
+        if (items.isNotEmpty()) notifyItemRangeChanged(0, items.size)
+    }
+
     val selectionCount: Int get() = selectedIds.size
 
     fun itemAt(position: Int): ThreadSummary? = items.getOrNull(position)
@@ -214,10 +218,12 @@ class ThreadAdapter(
         } else item.snippet
         b.textDate.text = Dates.listLabel(context, item.date)
         val persianUi = Dates.isPersian(context)
-        b.textAddress.gravity = if (persianUi) Gravity.END else Gravity.START
-        b.textSnippet.gravity = if (persianUi) Gravity.END else Gravity.START
-        b.textAddress.textAlignment = if (persianUi) View.TEXT_ALIGNMENT_VIEW_END else View.TEXT_ALIGNMENT_VIEW_START
-        b.textSnippet.textAlignment = if (persianUi) View.TEXT_ALIGNMENT_VIEW_END else View.TEXT_ALIGNMENT_VIEW_START
+        // START is the physical right in an RTL row. END previously placed
+        // several Persian previews on the left, especially mixed-script SMS.
+        b.textAddress.gravity = Gravity.START
+        b.textSnippet.gravity = Gravity.START
+        b.textAddress.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+        b.textSnippet.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
 
         // Names and bodies follow the ambient (RTL) direction; a preview that is
         // really a code, a link or an amount is pinned to LTR so its digits are
@@ -245,6 +251,8 @@ class ThreadAdapter(
             android.util.TypedValue.COMPLEX_UNIT_SP,
             11f * layout.listFont.coerceAtMost(1.2f)
         )
+        b.textDate.textDirection = if (persianUi) View.TEXT_DIRECTION_RTL else View.TEXT_DIRECTION_LTR
+        b.textDate.textAlignment = View.TEXT_ALIGNMENT_VIEW_END
 
         // --- spacing --------------------------------------------------------
         val vertical = (layout.padding * density).toInt()
@@ -283,7 +291,7 @@ class ThreadAdapter(
         }
 
         // --- badge ----------------------------------------------------------
-        if (showBadge && item.categoryId != Cat.PERSONAL && bindBadge(context, b, item, risk)) {
+        if (showBadge && bindBadge(context, b, item, risk)) {
             b.textCategory.visibility = View.VISIBLE
             b.textCategory.setOnClickListener { onCategoryClick(item) }
         } else {
@@ -383,7 +391,6 @@ class ThreadAdapter(
             foreground = ContextCompat.getColor(context, R.color.badge_danger_text)
         } else {
             val category = categories(context)[item.categoryId] ?: return false
-            if (!category.showBadge) return false
             label = category.label(context)
             background = if (category.badgeBgColor != Category.NO_COLOR) {
                 category.badgeBgColor

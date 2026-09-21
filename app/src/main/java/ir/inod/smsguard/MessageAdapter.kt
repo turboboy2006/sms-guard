@@ -28,6 +28,7 @@ class MessageAdapter(
 
     private sealed interface Row {
         data class Day(val millis: Long, val yearHeader: Boolean = false) : Row
+        data class Sim(val subscriptionId: Int) : Row
         data class Msg(val message: SmsMessage) : Row
     }
 
@@ -79,9 +80,10 @@ class MessageAdapter(
     fun submit(list: List<SmsMessage>) {
         rows.clear()
         latestOutgoingIds.clear()
-        list.asReversed().filterNot { it.isIncoming }.take(2).forEach { latestOutgoingIds += it.id }
+        if (list.size > 2) list.asReversed().filterNot { it.isIncoming }.take(2).forEach { latestOutgoingIds += it.id }
         var lastDay = Int.MIN_VALUE
         var lastYear = Int.MIN_VALUE
+        var lastOutgoingSim: Int? = null
         for (message in list) {
             val year = Dates.year(context, message.date)
             if (lastYear != Int.MIN_VALUE && year != lastYear) {
@@ -92,6 +94,11 @@ class MessageAdapter(
             if (day != lastDay) {
                 rows.add(Row.Day(message.date))
                 lastDay = day
+            }
+            if (!message.isIncoming && message.subscriptionId >= 0 &&
+                message.subscriptionId != lastOutgoingSim) {
+                rows.add(Row.Sim(message.subscriptionId))
+                lastOutgoingSim = message.subscriptionId
             }
             rows.add(Row.Msg(message))
         }
@@ -123,17 +130,11 @@ class MessageAdapter(
 
     /** "Today" / "Yesterday" / a full date, in the active language. */
     private fun dayLabel(context: android.content.Context, millis: Long): String {
-        val today = dayKey(System.currentTimeMillis())
-        val day = dayKey(millis)
-        return when (day) {
-            today -> context.getString(R.string.today)
-            today - 1 -> context.getString(R.string.yesterday)
-            else -> Dates.conversationDay(context, millis)
-        }
+        return Dates.conversationDay(context, millis)
     }
 
     override fun getItemViewType(position: Int): Int =
-        if (rows[position] is Row.Day) TYPE_DAY else TYPE_MESSAGE
+        if (rows[position] is Row.Day || rows[position] is Row.Sim) TYPE_DAY else TYPE_MESSAGE
 
     override fun getItemCount(): Int = rows.size
 
@@ -157,6 +158,17 @@ class MessageAdapter(
                 h.binding.textDayHeader.text = if (row.yearHeader) {
                     "────  ${Dates.yearLabel(h.itemView.context, row.millis)}  ────"
                 } else dayLabel(h.itemView.context, row.millis)
+            }
+            is Row.Sim -> {
+                val h = holder as DayVH
+                val id = row.subscriptionId
+                val label = runCatching {
+                    val manager = context.getSystemService(android.telephony.SubscriptionManager::class.java)
+                    val info = manager?.activeSubscriptionInfoList?.firstOrNull { it.subscriptionId == id }
+                    if (info == null) context.getString(R.string.sim_unknown)
+                    else context.getString(R.string.sim_label, info.simSlotIndex + 1, info.carrierName?.toString().orEmpty())
+                }.getOrDefault(context.getString(R.string.sim_unknown))
+                h.binding.textDayHeader.text = label
             }
             is Row.Msg -> bindMessage(holder as MsgVH, row.message)
         }
@@ -191,16 +203,11 @@ class MessageAdapter(
                 DeliveryState.FAILED -> context.getString(R.string.delivery_failed)
                 DeliveryState.RECEIVED -> ""
             }
-            status.setTextColor(
-                androidx.core.content.ContextCompat.getColor(
-                    context,
-                    when (item.delivery) {
-                        DeliveryState.DELIVERED -> android.graphics.Color.parseColor("#16A34A")
-                        DeliveryState.FAILED -> androidx.core.content.ContextCompat.getColor(context, R.color.danger)
-                        else -> androidx.core.content.ContextCompat.getColor(context, R.color.text_muted)
-                    }
-                )
-            )
+            status.setTextColor(when (item.delivery) {
+                DeliveryState.DELIVERED -> android.graphics.Color.parseColor("#16A34A")
+                DeliveryState.FAILED -> androidx.core.content.ContextCompat.getColor(context, R.color.danger)
+                else -> androidx.core.content.ContextCompat.getColor(context, R.color.text_muted)
+            })
             status.setOnClickListener {
                 if (item.delivery == DeliveryState.FAILED) onRetry(item)
             }

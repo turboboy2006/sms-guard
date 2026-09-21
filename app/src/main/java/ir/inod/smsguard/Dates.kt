@@ -35,16 +35,21 @@ object Dates {
         context.resources.configuration.locales[0]
 
     fun listLabel(context: Context, millis: Long): String {
+        if (millis <= 0L) return ""
         val age = System.currentTimeMillis() - millis
+        val today = Calendar.getInstance()
+        val target = Calendar.getInstance().apply { timeInMillis = millis }
+        val sameDay = today.get(Calendar.YEAR) == target.get(Calendar.YEAR) &&
+            today.get(Calendar.DAY_OF_YEAR) == target.get(Calendar.DAY_OF_YEAR)
         if (isPersian(context)) {
             return when {
-                age < DAY_MS -> faTime(millis)
+                sameDay -> faTime(millis)
                 age < 7 * DAY_MS -> faDayName(millis)
                 else -> faShortDate(millis)
             }
         }
         val pattern = when {
-            age < DAY_MS -> "HH:mm"
+            sameDay -> "HH:mm"
             age < 7 * DAY_MS -> "EEE"
             else -> "yyyy/MM/dd"
         }
@@ -113,10 +118,18 @@ object Dates {
     }
 
     fun conversationDay(context: Context, millis: Long): String {
+        if (millis <= 0L) return ""
         val age = System.currentTimeMillis() - millis
+        val today = Calendar.getInstance()
+        val target = Calendar.getInstance().apply { timeInMillis = millis }
+        val sameDay = today.get(Calendar.YEAR) == target.get(Calendar.YEAR) &&
+            today.get(Calendar.DAY_OF_YEAR) == target.get(Calendar.DAY_OF_YEAR)
+        today.add(Calendar.DAY_OF_YEAR, -1)
+        val yesterday = today.get(Calendar.YEAR) == target.get(Calendar.YEAR) &&
+            today.get(Calendar.DAY_OF_YEAR) == target.get(Calendar.DAY_OF_YEAR)
         return when {
-            age < DAY_MS -> context.getString(R.string.today)
-            age < 2 * DAY_MS -> context.getString(R.string.yesterday)
+            sameDay -> context.getString(R.string.today)
+            yesterday -> context.getString(R.string.yesterday)
             isPersian(context) && age < 7 * DAY_MS -> faDayName(millis)
             isPersian(context) -> faShortDate(millis)
             else -> SimpleDateFormat("MMM d", localeOf(context)).format(Date(millis))

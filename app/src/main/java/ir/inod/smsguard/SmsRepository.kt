@@ -40,6 +40,7 @@ class SmsRepository(private val context: Context) {
         progressEvery: Int = 0,
         onProgress: ((List<ThreadSummary>) -> Unit)? = null
     ): List<ThreadSummary> {
+        val activeCategories = CategoryStore(context).active().mapTo(HashSet()) { it.id }
         val cached = ThreadCache.read(context)
         val cachedById = HashMap<Long, CachedThread>(cached.size * 2)
         for (row in cached) cachedById[row.threadId] = row
@@ -88,8 +89,8 @@ class SmsRepository(private val context: Context) {
                         val address = c.getString(iAddr) ?: ""
                         val body = c.getString(iBody) ?: ""
                         val previous = if (cacheCurrent) cachedById[threadId] else null
-                        val categoryId = previous?.categoryId
-                            ?: categoryFor(address, body, messageId)
+                        val rawCategory = previous?.categoryId ?: categoryFor(address, body, messageId)
+                        val categoryId = rawCategory.takeIf { it in activeCategories } ?: Cat.OTHER
                         byThread[threadId] = ThreadSummary(
                             threadId = threadId,
                             messageId = messageId,
@@ -127,7 +128,12 @@ class SmsRepository(private val context: Context) {
 
         val fresh = byThread.values.toList()
         if (fresh.isNotEmpty()) {
-            ThreadCache.writeUnlessChanged(context, stamp, fresh.map { it.toCached() })
+            ThreadCache.writeUnlessChanged(context, stamp, fresh.map { row ->
+                val cachedRaw = cachedById[row.threadId]
+                if (row.categoryId == Cat.OTHER && cachedRaw != null &&
+                    cachedRaw.messageId == row.messageId && cachedRaw.categoryId !in activeCategories
+                ) row.toCached().copy(categoryId = cachedRaw.categoryId) else row.toCached()
+            })
         }
         return fresh
     }
@@ -137,7 +143,13 @@ class SmsRepository(private val context: Context) {
      * Used to paint the inbox on the very first frame of a launch.
      */
     fun cachedThreads(): List<ThreadSummary> =
-        ThreadCache.read(context).map { it.toSummary() }
+        CategoryStore(context).active().mapTo(HashSet()) { it.id }.let { active ->
+            ThreadCache.read(context).map { cached ->
+                cached.toSummary().let { row ->
+                    if (row.categoryId in active) row else row.copy(categoryId = Cat.OTHER)
+                }
+            }
+        }
 
     /** Searches the provider directly, so results are not limited to the inbox
      * cache or to the latest message shown for each conversation. */

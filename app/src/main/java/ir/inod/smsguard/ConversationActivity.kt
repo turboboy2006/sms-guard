@@ -87,6 +87,7 @@ class ConversationActivity : BaseActivity() {
     private var drawnLayout: MessageLayout? = null
     private var pinchBaseScale = 1f
     private var pinching = false
+    private var pinchScale = 1f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -127,11 +128,14 @@ class ConversationActivity : BaseActivity() {
             object : android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
                 override fun onScaleBegin(detector: android.view.ScaleGestureDetector): Boolean {
                     pinchBaseScale = adapter.currentLayout().fontScale
+                    pinchScale = pinchBaseScale
                     pinching = true
                     return true
                 }
                 override fun onScale(detector: android.view.ScaleGestureDetector): Boolean {
-                    adapter.setFontZoom(pinchBaseScale * detector.scaleFactor)
+                    pinchScale = (pinchScale * detector.scaleFactor).coerceIn(0.85f, 1.5f)
+                    if (kotlin.math.abs(adapter.currentLayout().fontScale - pinchScale) >= 0.02f)
+                        adapter.setFontZoom(pinchScale)
                     return true
                 }
                 override fun onScaleEnd(detector: android.view.ScaleGestureDetector) {
@@ -150,6 +154,14 @@ class ConversationActivity : BaseActivity() {
         binding.recyclerMessages.addOnScrollListener(object : androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: androidx.recyclerview.widget.RecyclerView, dx: Int, dy: Int) {
                 val lm = recyclerView.layoutManager as? LinearLayoutManager ?: return
+                // A short conversation keeps its risk hint at the top. On a
+                // scrollable conversation it leaves the viewport with older SMS.
+                if (recyclerView.scrollState == androidx.recyclerview.widget.RecyclerView.SCROLL_STATE_DRAGGING &&
+                    !SenderStore(this@ConversationActivity).bannerDismissed(address) && riskyMessageId >= 0) {
+                    val scrollable = recyclerView.canScrollVertically(-1) || recyclerView.canScrollVertically(1)
+                    binding.cardRisk.visibility = if (!scrollable || lm.findFirstVisibleItemPosition() <= 1)
+                        View.VISIBLE else View.GONE
+                }
                 if (lm.findFirstVisibleItemPosition() <= 2 && !loadingMessages && lastMessages.size >= messageLimit) {
                     val oldCount = adapter.itemCount
                     messageLimit += 500
@@ -411,8 +423,10 @@ class ConversationActivity : BaseActivity() {
         menu.add(0, MENU_NEW_MESSAGE, 0, R.string.compose)
         menu.add(0, MENU_BLOCK_SENDER, 1, R.string.block_sender)
         menu.add(0, MENU_SPAM_SELECTED, 0, R.string.mark_spam)
+            .setIcon(R.drawable.ic_tab_spam)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_DELETE_SELECTED, 1, R.string.delete)
+            .setIcon(R.drawable.ic_tab_trash)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_COPY_SELECTED, 2, R.string.copy)
         menu.add(0, MENU_SHARE_SELECTED, 3, R.string.share)

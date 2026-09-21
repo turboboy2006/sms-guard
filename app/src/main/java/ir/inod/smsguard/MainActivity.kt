@@ -151,6 +151,8 @@ class MainActivity : BaseActivity() {
         )
         binding.recyclerThreads.layoutManager = LinearLayoutManager(this)
         binding.recyclerThreads.adapter = adapter
+        // Updating read state or a draft should not fade the entire inbox.
+        binding.recyclerThreads.itemAnimator = null
         attachSwipeActions()
 
         setUpFilterChips()
@@ -245,7 +247,7 @@ class MainActivity : BaseActivity() {
         (binding.chipGroup.getChildAt(0) as? com.google.android.material.chip.Chip)
             ?.isChecked = true
         categorySignature = CategoryStore(this).all().joinToString("|") {
-            "${it.id}:${it.label(this)}:${it.colorHex}:${it.iconId}:${it.order}"
+            "${it.id}:${it.label(this)}:${it.colorHex}:${it.iconId}:${it.order}:${it.enabled}"
         }
     }
 
@@ -276,10 +278,11 @@ class MainActivity : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (::adapter.isInitialized) adapter.refreshDrafts()
         refreshBanner()
         applyChipVisibility()
         val nextCategorySignature = CategoryStore(this).all().joinToString("|") {
-            "${it.id}:${it.label(this)}:${it.colorHex}:${it.iconId}:${it.order}"
+            "${it.id}:${it.label(this)}:${it.colorHex}:${it.iconId}:${it.order}:${it.enabled}"
         }
         if (nextCategorySignature != categorySignature) {
             selectedCategoryId = null
@@ -730,6 +733,7 @@ class MainActivity : BaseActivity() {
     }
 
     private fun applyFilter() {
+        val inboxFlags = senderStore.inboxFlags()
         val spamIds = CategoryStore(this).active().filter { it.spamFolder }.map { it.id }.toSet()
         val byTab = when {
             contactsOnly -> allThreads.filter { ContactsIndex.isKnownContact(it.address) }
@@ -739,8 +743,8 @@ class MainActivity : BaseActivity() {
                 it.categoryId in spamIds || it.categoryId == Cat.TRASH
             }
         }
-        val visibleRows = byTab.filterNot { senderStore.isArchived(it.address) }
-            .sortedWith(compareByDescending<ThreadSummary> { senderStore.isPinned(it.address) }.thenByDescending { it.date })
+        val visibleRows = byTab.filterNot { inboxFlags[it.address]?.second == true }
+            .sortedWith(compareByDescending<ThreadSummary> { inboxFlags[it.address]?.first == true }.thenByDescending { it.date })
         val filtered = if (query.isBlank()) {
             visibleRows
         } else {
@@ -949,27 +953,35 @@ class MainActivity : BaseActivity() {
             setPadding(p, p, p, p)
         }
         categories.forEachIndexed { index, category ->
+            val ink = runCatching { Color.parseColor(category.colorHex) }.getOrDefault(theme.accentColor())
             val row = android.widget.RadioButton(this).apply {
                 id = View.generateViewId()
                 text = category.label(this@MainActivity)
                 textSize = 15f
-                buttonTintList = ColorStateList.valueOf(
-                    runCatching { Color.parseColor(category.colorHex) }.getOrDefault(theme.accentColor())
-                )
-                setPadding(8, 4, 8, 4)
+                buttonTintList = ColorStateList.valueOf(ink)
+                setTextColor(ink)
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = 14f * resources.displayMetrics.density
+                    setColor(Color.argb(22, Color.red(ink), Color.green(ink), Color.blue(ink)))
+                }
+                val margin = (3 * resources.displayMetrics.density).toInt()
+                layoutParams = android.widget.RadioGroup.LayoutParams(-1, -2).apply { setMargins(margin, margin, margin, margin) }
+                setPadding(12, 9, 12, 9)
                 isChecked = index == chosen
                 setOnClickListener { chosen = index }
             }
             group.addView(row)
         }
-        MaterialAlertDialogBuilder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(R.string.change_category)
             .setView(group)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.confirm) { _, _ ->
+            .setNegativeButton("✕", null)
+            .setPositiveButton("✓") { _, _ ->
                 categories.getOrNull(chosen)?.let { changeCategory(thread, it.id) }
             }
             .show()
+        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEGATIVE)?.contentDescription = getString(R.string.cancel)
+        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)?.contentDescription = getString(R.string.confirm)
     }
 
     /**

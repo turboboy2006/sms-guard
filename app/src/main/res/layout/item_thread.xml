@@ -72,7 +72,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
+                android:layout_marginStart="10dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -122,7 +122,7 @@
                     android:id="@+id/textCategory"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
+                android:layout_marginTop="3dp"
                     android:ellipsize="end"
                     android:gravity="center"
                     android:maxLines="1"
@@ -140,7 +140,7 @@
             <LinearLayout
             android:layout_width="@dimen/time_column"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="4dp"
                 android:gravity="start"
                 android:orientation="vertical">
 

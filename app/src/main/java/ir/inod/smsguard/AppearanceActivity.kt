@@ -48,7 +48,7 @@ class AppearanceActivity : BaseActivity() {
         val dividers: Boolean,
         val chips: Boolean
     ) {
-        MODERN(RowStyle.CLASSIC, 12, 0, 0, 8, MessageStyle.FILLED, 2, 14, true, true),
+        MODERN(RowStyle.CLASSIC, 8, 0, 0, 8, MessageStyle.FILLED, 2, 14, true, true),
         COMPACT(RowStyle.COMPACT, 6, 0, 0, 4, MessageStyle.CLEAN, 2, 12, false, true),
         CARDS(RowStyle.CARD, 10, 8, 4, 12, MessageStyle.SOFT, 8, 18, false, true)
     }
@@ -304,7 +304,7 @@ class AppearanceActivity : BaseActivity() {
     private fun reset() {
         theme.listFontScale = 1f
         theme.messageFontScale = 1f
-        theme.rowPadding = 12
+        theme.rowPadding = 8
         theme.rowSpacing = 0
         theme.rowInset = 0
         theme.listPadding = 8

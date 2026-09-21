@@ -37,7 +37,7 @@
     <dimen name="chip_padding_h">18dp</dimen>
     <dimen name="badge_height">24dp</dimen>
     <dimen name="bottom_nav_height">72dp</dimen>
-    <dimen name="time_column">60dp</dimen>
+    <dimen name="time_column">84dp</dimen>
     <dimen name="color_stripe_width">4dp</dimen>
     <dimen name="swatch">40dp</dimen>
 

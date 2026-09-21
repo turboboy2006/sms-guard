@@ -204,7 +204,7 @@ class ThemePrefs(context: Context) {
 
     /** Vertical padding inside a conversation row. */
     var rowPadding: Int
-        get() = prefs.getInt("row_pad", 12)
+        get() = prefs.getInt("row_pad", 8)
         // Snapped to the slider's step: Slider.setValue throws when a restored
         // value does not sit on valueFrom + k*stepSize.
         set(v) = prefs.edit().putInt("row_pad", snap(v.coerceIn(4, 28), 2)).apply()
@@ -708,6 +708,10 @@ class SenderStore(context: Context) {
     fun setPinned(sender: String, value: Boolean) = put(sender, entry(sender).apply { put("pinned", value) })
 
     fun isArchived(sender: String): Boolean = entry(sender).optBoolean("archived", false)
+    /** One JSON parse per inbox render, not one parse for every sort comparison. */
+    fun inboxFlags(): Map<String, Pair<Boolean, Boolean>> = load().mapValues { (_, value) ->
+        value.optBoolean("pinned", false) to value.optBoolean("archived", false)
+    }
     fun setArchived(sender: String, value: Boolean) = put(sender, entry(sender).apply { put("archived", value) })
 
     fun colorFor(sender: String): String? =
