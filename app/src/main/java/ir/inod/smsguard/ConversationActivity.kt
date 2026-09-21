@@ -34,6 +34,8 @@ class ConversationActivity : BaseActivity() {
         private const val MENU_COPY_SELECTED = 1005
         private const val MENU_SHARE_SELECTED = 1006
         private const val MENU_SELECT_ALL = 1007
+        private const val MENU_FORWARD_SELECTED = 1008
+        private const val MENU_DETAILS = 1009
     }
 
     private lateinit var binding: ActivityConversationBinding
@@ -94,7 +96,12 @@ class ConversationActivity : BaseActivity() {
         binding.editMessage.doAfterTextChanged { editable ->
             if (address.isNotBlank()) drafts.edit().putString(address, editable?.toString().orEmpty()).apply()
             val count = editable?.length ?: 0
-            binding.textCharacterCount.text = if (count == 0) "" else "$count"
+            if (count == 0) {
+                binding.textCharacterCount.text = ""
+            } else {
+                val parts = android.telephony.SmsMessage.calculateLength(editable, false)[0]
+                binding.textCharacterCount.text = getString(R.string.sms_counter, count, parts)
+            }
         }
         updateEmptyState()
     }
@@ -305,6 +312,8 @@ class ConversationActivity : BaseActivity() {
         menu.add(0, MENU_COPY_SELECTED, 2, R.string.copy)
         menu.add(0, MENU_SHARE_SELECTED, 3, R.string.share)
         menu.add(0, MENU_SELECT_ALL, 4, R.string.select_all)
+        menu.add(0, MENU_FORWARD_SELECTED, 5, R.string.forward)
+        menu.add(0, MENU_DETAILS, 6, R.string.message_details)
         return true
     }
 
@@ -317,6 +326,8 @@ class ConversationActivity : BaseActivity() {
         menu.findItem(MENU_COPY_SELECTED)?.isVisible = selecting
         menu.findItem(MENU_SHARE_SELECTED)?.isVisible = selecting
         menu.findItem(MENU_SELECT_ALL)?.isVisible = selecting
+        menu.findItem(MENU_FORWARD_SELECTED)?.isVisible = selecting
+        menu.findItem(MENU_DETAILS)?.isVisible = selecting && adapter.selectionCount == 1
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -356,6 +367,8 @@ class ConversationActivity : BaseActivity() {
             MENU_COPY_SELECTED -> { copySelected(); return true }
             MENU_SHARE_SELECTED -> { shareSelected(); return true }
             MENU_SELECT_ALL -> { adapter.selectAll(); return true }
+            MENU_FORWARD_SELECTED -> { forwardSelected(); return true }
+            MENU_DETAILS -> { showSelectedDetails(); return true }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -454,6 +467,44 @@ class ConversationActivity : BaseActivity() {
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, selectedText())
         }, getString(R.string.share)))
+    }
+
+    private fun forwardSelected() {
+        val text = selectedText()
+        RecipientPicker(this).show(this) { recipient ->
+            worker.execute {
+                val ok = repo.send(recipient, text)
+                runOnUiThread {
+                    Toast.makeText(this, if (ok) R.string.forwarded else R.string.send_failed, Toast.LENGTH_SHORT).show()
+                    adapter.clearSelection()
+                }
+            }
+        }
+    }
+
+    private fun showSelectedDetails() {
+        val message = adapter.selectedMessages().singleOrNull() ?: return
+        val state = when (message.delivery) {
+            DeliveryState.RECEIVED -> getString(R.string.delivery_received)
+            DeliveryState.SENDING -> getString(R.string.delivery_sending)
+            DeliveryState.SENT -> getString(R.string.delivery_sent)
+            DeliveryState.DELIVERED -> getString(R.string.delivery_delivered)
+            DeliveryState.FAILED -> getString(R.string.delivery_failed)
+        }
+        val details = buildString {
+            append(getString(R.string.message_status_line, state))
+            append("\n")
+            append(getString(R.string.message_date_line, Dates.full(this@ConversationActivity, message.date)))
+            if (message.errorCode != 0) {
+                append("\n")
+                append(getString(R.string.message_error_line, message.errorCode))
+            }
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.message_details)
+            .setMessage(details)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     @Deprecated("Handled for selection mode")

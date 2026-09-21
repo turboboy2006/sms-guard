@@ -254,4 +254,12 @@
     <string name="copied">کپی شد</string>
     <string name="share">اشتراک‌گذاری</string>
     <string name="select_all">انتخاب همه</string>
+    <string name="forward">بازارسال</string>
+    <string name="forwarded">پیام بازارسال شد</string>
+    <string name="message_details">جزئیات پیام</string>
+    <string name="delivery_received">دریافت‌شده</string>
+    <string name="message_status_line">وضعیت: %1$s</string>
+    <string name="message_date_line">زمان: %1$s</string>
+    <string name="message_error_line">کد خطای شبکه: %1$d</string>
+    <string name="sms_counter">%1$d نویسه · %2$d پیامک</string>
 </resources>
