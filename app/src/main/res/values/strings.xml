@@ -296,6 +296,5 @@
     <string name="notifications_muted">Notifications muted for this sender</string>
     <string name="notifications_enabled">Notifications enabled</string>
     <string name="sender_reply_sim">Always reply using SIM</string>
-    <string name="moved_to_trash">Conversation moved to trash</string>
     <string name="confirm_delete_conversation">Permanently delete this entire conversation?</string>
 </resources>

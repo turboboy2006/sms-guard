@@ -272,6 +272,5 @@
     <string name="notifications_muted">اعلان‌های این فرستنده خاموش شد</string>
     <string name="notifications_enabled">اعلان‌های این فرستنده روشن شد</string>
     <string name="sender_reply_sim">سیم‌کارت همیشگی پاسخ</string>
-    <string name="moved_to_trash">گفتگو به سطل زباله منتقل شد</string>
     <string name="confirm_delete_conversation">این گفتگو برای همیشه حذف شود؟</string>
 </resources>
