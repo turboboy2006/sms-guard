@@ -86,6 +86,26 @@ object ContactsIndex {
         return match(idx, address)
     }
 
+    /**
+     * True only when the address book is already in memory.
+     *
+     * Used by the inbox filter, which runs on the main thread: reading the
+     * address book is a background job here, and if it has not finished yet the
+     * right answer is "not yet", not a frozen frame.
+     */
+    fun isReady(): Boolean {
+        val current = index ?: return false
+        return !current.isEmpty || System.currentTimeMillis() - builtAt < TTL_MS
+    }
+
+    /** The matching entry without ever building the index. */
+    fun readyEntryFor(address: String): ContactEntry? {
+        val idx = index ?: return null
+        return match(idx, address)
+    }
+
+    fun isKnownContact(address: String): Boolean = readyEntryFor(address) != null
+
     fun nameFor(context: Context, address: String): String? = entryFor(context, address)?.name
 
     /** True when the sender exists in the phone's address book. */

@@ -39,6 +39,9 @@ android {
 
     buildFeatures {
         viewBinding = true
+        // BuildConfig.DEBUG gates the timing log that measures how long a
+        // provider sync takes on a real device.
+        buildConfig = true
     }
 }
 

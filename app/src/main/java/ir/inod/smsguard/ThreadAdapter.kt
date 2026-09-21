@@ -56,6 +56,7 @@ class ThreadAdapter(
         listPadding = 8,
         listFont = 1f,
         messageFont = 1f,
+        bubbleRadius = 14,
         showDividers = true
     )
 
@@ -86,46 +87,42 @@ class ThreadAdapter(
             return
         }
         val old = items.toList()
-        val oldIndex = HashMap<Long, Int>(old.size * 2)
-        for (i in old.indices) oldIndex[old[i].threadId] = i
-
         val nextIds = HashSet<Long>(list.size * 2)
         for (row in list) nextIds.add(row.threadId)
 
-        // 1. Unchanged rows keep their view; changed rows are reported now,
-        //    while the old positions are still valid.
-        val survivors = ArrayList<ThreadSummary>(old.size)
-        val changedPositions = ArrayList<Int>()
-        for (row in old) {
-            if (row.threadId !in nextIds) continue
-            survivors.add(row)
-            val incoming = list.first { it.threadId == row.threadId }
-            if (incoming != row) changedPositions.add(survivors.size - 1)
-        }
-
-        // 2. Rows the provider no longer has, removed from the tail backwards.
+        // 1. Conversations the provider no longer has, removed from the tail
+        //    backwards so the reported positions stay valid.
         for (i in old.indices.reversed()) {
             if (old[i].threadId !in nextIds) {
                 items.removeAt(i)
                 notifyItemRemoved(i)
             }
         }
-        for (position in changedPositions) {
-            val row = survivors[position]
-            val incoming = list.first { it.threadId == row.threadId }
-            items[position] = incoming
-            notifyItemChanged(position)
-        }
 
-        // 3. New conversations, newest first, inserted from the top downwards.
+        // 2. Conversations that arrived since the last build, inserted from the
+        //    top down because the inbox is newest-first.
         for (i in list.indices) {
             val row = list[i]
-            if (oldIndex[row.threadId] != null) continue
-            if (items.size < list.size) {
+            if (items.none { it.threadId == row.threadId }) {
                 items.add(i, row)
                 notifyItemInserted(i)
             }
         }
+
+        // 3. Rows whose content moved on: a new message, a new unread count, a
+        //    different category. Only these are rebound.
+        for (i in items.indices) {
+            val incoming = list.getOrNull(i) ?: break
+            if (items[i].threadId != incoming.threadId) continue
+            if (items[i] != incoming) {
+                items[i] = incoming
+                notifyItemChanged(i)
+            }
+        }
+
+        // Anything the steps above could not express — a re-sorted list, for
+        // instance — is worth a full rebind rather than a wrong screen.
+        if (items.size != list.size || items != list) submit(list)
     }
 
     /**

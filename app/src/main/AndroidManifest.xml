@@ -18,6 +18,9 @@
     <!-- Required so the system offers this app as a default SMS app -->
     <uses-permission android:name="android.permission.SEND_RESPOND_VIA_MESSAGE" />
 
+    <!-- Restores the persisted inbox-sync job after a reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".SmsApp"
         android:allowBackup="true"
@@ -111,6 +114,15 @@
                 <data android:mimeType="application/vnd.wap.mms-message" />
             </intent-filter>
         </receiver>
+
+        <!--
+          Keeps the stored inbox warm while the app is closed. It is a plain
+          JobService: one bounded task does not justify a WorkManager chain.
+        -->
+        <service
+            android:name=".InboxSyncJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
 
         <!-- Handles "quick reply" from the system UI -->
         <service

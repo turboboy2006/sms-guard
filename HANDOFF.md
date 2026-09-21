@@ -8,82 +8,129 @@
 |---|---|
 | مسیر پروژه | `C:\xamp\htdocs\inod\sms-guard` |
 | مخزن | https://github.com/turboboy2006/sms-guard (**عمومی**) |
-| آخرین کامیت | `7dac47e` |
-| آخرین بیلد | **#35، سبز** (۳۵ بیلد پیاپی، همه سبز) |
-| APK | `dist\app-debug.apk` (~۶٬۱۸ MB) |
-| زبان‌ها | ۱۲۸ کلید در `values/` و `values-fa/`، تطابق کامل |
+| آخرین کامیت | `0aac8a0` — «instant load from a stored inbox, live appearance settings, contacts tab» |
+| بیلد | هر پوش → GitHub Actions → `app-debug.apk` |
+| زبان‌ها | کلیدهای `values/` و `values-fa/` باید همیشه یکسان باشند |
 
 **اپ بومی اندروید است: Kotlin + Views + Material 3.** Flutter نیست.
+دسترسی به مسیر پروژه: سیاست فایل این نشست `danger-full-access` است و پوشه پروژه بیرون از
+ورک‌اسپیس (`H:\deepseek\nodsrv`) قرار دارد؛ اگر policy روی `workspace-write` برگردد،
+نوشتن در `C:\xamp\...` رد می‌شود و باید یک‌بار با `sandbox_permissions` تأیید گرفته شود.
 
 ## معماری
 
 ```
 app/src/main/java/ir/inod/smsguard/
-├── SmsApp · BaseActivity          Application و اعمال fontScale
+├── SmsApp · BaseActivity          Application (کانال + observer مخاطبین) و fontScale
 ├── SmsReceiver · MmsReceiver      SMS_DELIVER، WAP_PUSH_DELIVER
 ├── HeadlessSmsSendService         RESPOND_VIA_MESSAGE
-├── SmsRepository                  provider خواندن/نوشتن/حذف
-├── Classifier                     موتور اصلی: سیگنالها، دستهبندی، کشها
-├── Normalizer                     نرمالسازی فارسی + obfuscation
+├── SmsRepository                  provider خواندن/نوشتن/حذف + کش صندوق
+├── ThreadCache                    کش ماندگار صندوق (TSV در filesDir)
+├── ContactsIndex                  کل دفترچه‌ی مخاطبین یک‌بار در حافظه
+├── Classifier                     موتور اصلی: سیگنال‌ها، دسته‌بندی، کش‌ها، riskLabel
+├── Normalizer                     نرمال‌سازی فارسی + obfuscation
 ├── LearningStore                  SenderProfile + LearnedWeights (log-odds)
-├── Campaign                       SimHash ۶۴ بیتی + خوشهبندی همینگ
+├── Campaign                       SimHash ۶۴ بیتی + خوشه‌بندی همینگ
 ├── UrlIntel · PhoneIntel · IconCatalog (+BrandCatalog/BrandResolver)
-├── Store                          Settings/Rule/Category/Sender/Message/Blocked/Campaign
+├── Store                          Settings/Rule/Category/Sender/Message/Blocked
+│                                  + ThemePrefs/RowStyle/MessageStyle/RowLayout
 ├── SecureKeyStore                 AES-GCM روی Android Keystore
-├── AnalysisPipeline · MessageBus  لایه AI پسزمینه
-├── AvatarHelper                   عکس / مونوگرام / آدمک
-├── MainActivity                   Inbox (چیپ + BottomNav + FAB)
-├── ConversationActivity · RulesActivity · SettingsActivity · ManagerActivity
+├── AnalysisPipeline · MessageBus  لایه AI پس‌زمینه
+├── AvatarHelper · RowStyler · MessageStyler   ظاهر ردیف و حباب (کد، نه XML)
+├── MainActivity                   Inbox (چیپ + BottomNav + FAB + Search + Observer)
+├── ConversationActivity · RulesActivity · SettingsActivity
+├── AppearanceActivity (+AppearancePreviewView)  تنظیمات ظاهری با پیش‌نمایش زنده
+├── ManagerActivity
 └── ThreadAdapter · MessageAdapter · RuleAdapter
 ```
 
-## کارهای انجام‌شده
+## چه چیزی در نشست قبل انجام شد (کامیت `0aac8a0`)
 
-**موتور هوش (۲۶ از ۴۱ مورد):**
-- نرمالسازی فارسی: `ي/ك`، کشیده، نیم‌فاصله، ارقام، صفرعرض، تکرار حرف، فاصله‌دار، **نقطه‌دار** (`ت.خ.ف.ی.ف`)
-- امتیازدهی وزندار: تبلیغاتی، عجله، CTA، قالب جمله‌ای، مالی زمینه‌محور، ایموجی، fraud
-- URL: طول، زیردامنه، **آنتروپی**، نسبت رقم، `xn--`، IP، کوتاه‌کننده، redirect
-- برند: فازی با Levenshtein + عدم تطابق برند/دامنه
-- فرستنده: پروفایل (volume/burst/reputation)، اعتبار، burst، **callback-number**
-- یادگیری: log-odds لاپلاس، n-gram کلمه/بی‌گرام/تری‌گرام حرف، بازخورد + بازگردانی
-- کمپین: SimHash + خوشه + تعمیم حکم کاربر
-- زمان: سیگنال شبانه + **ساعات سکوت** (۲۳ تا ۷)
-- لایه AI اختیاری (پیش‌فرض خاموش) با OpenAI-compatible
+**۱) سرعت لود صندوق**
+- `ThreadCache`: فهرست گفتگوها در `filesDir/inbox-cache.tsv` ذخیره می‌شود (یک خط برای هر
+  گفتگو، با U+001F به‌عنوان جداکننده). در `MainActivity.onCreate` **قبل از** هر کوئری
+  provider از دیسک خوانده و همان لحظه رسم می‌شود، بعد sync در پس‌زمینه انجام می‌شود.
+- `SmsRepository.loadThreads` تشخیص می‌دهد که «جدیدترین پیام provider همان است که در کش
+  داریم»؛ در آن حالت هیچ دسته‌بندی‌ای دوباره محاسبه نمی‌شود و فقط یک گذر cursor هزینه دارد.
+- `SmsReceiver` بعد از ذخیره‌ی پیام جدید، همان کش را patch می‌کند (`patchCacheForNewMessage`)
+  پس حتی اگر اپ باز نشود، اجرای بعدی درست است.
+- `ContentObserver` روی `Telephony.Sms.CONTENT_URI` با debounce ۴۰۰ms → پیام تازه بدون
+  رفرش دستی می‌آید.
+- `ThreadAdapter.merge` به‌جای `notifyDataSetChanged` فقط تغییرات را اعلام می‌کند
+  (اسکرول و فلش لیست حفظ می‌شود).
+- گلوگاه اصلی کندی، `PhoneLookup` بود: هر ردیف **دو** کوئری provider می‌زد (نام + عکس).
+  حالا `ContactsIndex` کل دفترچه را یک‌بار می‌خواند و تطبیق را در حافظه انجام می‌دهد.
+- گزینه‌ی «تازه‌سازی از گوشی» در منوی سرریز، کش را پاک و دوباره می‌سازد.
 
-**UI:**
-- Material 3، وزیرمتن، گرید ۸ نقطه‌ای، حالت شب، اسکلتون، انتقال ۲۲۰ms
-- **اندازه فونت** در تنظیمات (۰٫۸۵ / ۱٫۰ / ۱٫۱۵ / ۱٫۳)
-- Inbox: چیپ فیلتر پر آبی، BottomNav دو آیتمی، FAB، آواتار ۵۲dp، بج کمرنگ، ردیف خوانده‌نشده `#EFF6FF`، جداکننده مویی
-- گفتگو: جداکننده تاریخ («امروز/دیروز»)، حذف تک‌پیام
-- سطل زباله: تب مستقل، انتقال، حذف دائمی، خالی‌کردن (با تأیید)
-- تأیید اجباری + بازگردانی ۵ ثانیه‌ای (شامل `revert` آموزش)
-- صفحه برندها و مسدودشده‌ها (نام/دسته/رنگ/آیکون)
-- تاریخ شمسی + روزهای فارسی + ارقام فارسی
-- KeyStore برای کلید API
+**۲) اندازه فونت جدا برای هر بخش**
+- `ThemePrefs.listFontScale` (فهرست پیام‌ها) و `ThemePrefs.messageFontScale` (متن گفتگو)
+  مستقل‌اند و در `ThreadAdapter` / `MessageAdapter` روی `sp` ضرب می‌شوند.
+- تغییرات بی‌درنگ اعمال می‌شوند: `MainActivity.onResume` اسنپ‌شات ظاهر را مقایسه می‌کند و
+  اگر عوض شده باشد همان‌جا `applyLayout` می‌زند؛ `BaseActivity` هم برای تغییر مقیاس کلی
+  فونت از `SettingsStore.revision` استفاده می‌کند و `recreate()` می‌کند.
+
+**۳) بخش «ظاهر»**
+- `AppearanceActivity`: پیش‌نمایش زنده بالای صفحه (همان `RowStyler` که لیست واقعی استفاده
+  می‌کند، پس پیش‌نمایش از نتیجه جدا نمی‌افتد).
+- ۱۰ نوع پس‌زمینه‌ی ردیف: کلاسیک، کارتی، تخت، نوار رنگی، حبابی، فشرده، ملایم، قاب‌دار،
+  راه‌راه، قرصی. ۵ نوع پس‌زمینه‌ی حباب پیام.
+- اسلایدرها: فاصله‌ی عمودی ردیف، فاصله‌ی بین ردیف‌ها، حاشیه‌ی کنار، فضای خالی بالا/پایین
+  فهرست، فاصله‌ی بین پیام‌ها، گردی گوشه‌ی حباب. به‌علاوه دو کلید نمایش خط جداکننده و چیپ‌ها.
+- `SettingsActivity` به چهار گروه دسته‌بندی شد: تحلیل پیام‌ها / ظاهر / عمومی / مدیریت.
+
+**۴) دسته‌ی «مخاطبین»**
+- چیپ اول ردیف فیلترها؛ فقط گفتگوهایی که فرستنده‌شان در دفترچه‌ی گوشی هست.
+
+**۵) ظاهر Inbox طبق مرجع**
+- ردیف‌ها: آواتار ۴۸dp، نام ۱۵sp بولد، پیش‌نمایش ۱۴sp دو خط، زمان ۱۱٫۵sp، جداکننده‌ی مویی
+  با تورفتگی ۷۶dp (تراز با ستون متن)، ارتفاع طبیعی ردیف (قبلاً `row_min_height=112dp` بود
+  که ردیف‌ها را بی‌دلیل بلند می‌کرد).
+- گفتگو: نوار بالا سفید با تیتر تیره، دکمه‌ی ارسال دایره‌ای، حباب‌های ۱۴dp گرد.
+- حالت خالی: آیکون + متن به‌جای یک TextView خالی.
 
 ## کارهای باقی‌مانده
 
-1. **ظاهر — نزدیک‌تر به طرح مرجع.** کاربر گفت هنوز فاصله دارد.
-   - مرجع طراحی: `C:\xamp\htdocs\inod\new-ui-help\` (Flutter، **فقط به‌عنوان مشخصات طراحی**)
-   - ✱ **مهم:** از کاربر یک **اسکرین‌شات از گوشی خودش** بخواه، نه طرح مرجع. بعد کنار هم بگذار.
-2. **۱۵ مورد هوش:** Swipe actions · چندانتخابی · SearchBar · `ListAdapter + DiffUtil` · Bottom Navigation تکمیل · نمای کمپین · فراموشی زمانی · بازخورد ضمنی · صادرات مدل · کلمات توقف · بازه‌های اقدام · Transformer (اختیاری)
-3. **صفحه رضایت حریم خصوصی** — کاربر گفت فعلاً لازم نیست
+1. **ظاهر — ادامه‌ی نزدیک‌شدن به مرجع.** مرجع طراحی `C:\xamp\htdocs\inod\new-ui-help\`
+   (Flutter، فقط مشخصات طراحی) و اسکرین‌شات‌های خود کاربر.
+2. **۱۵ مورد هوش:** Swipe actions · چندانتخابی · `ListAdapter + DiffUtil` رسمی ·
+   نمای کمپین · فراموشی زمانی · بازخورد ضمنی · صادرات مدل · کلمات توقف · بازه‌های اقدام ·
+   Transformer (اختیاری).
+3. **کار پس‌زمینه‌ی واقعی:** الان فقط `SmsReceiver` کش را تازه می‌کند. اگر لازم شد که اپ
+   حین بسته‌بودن هم AI را روی پیام‌های معلق اجرا کند، `androidx.work:work-runtime-ktx`
+   اضافه شود (عمداً اضافه نشد تا وابستگی و ریسک بیلد بالا نرود).
+4. **صفحه رضایت حریم خصوصی** — کاربر گفت فعلاً لازم نیست.
+5. **تست روی دستگاه واقعی** — هیچ‌کدام از این تغییرات روی گوشی اجرا نشده؛ فقط کامپایل و
+   بررسی ایستا. اولین کاری که روی دستگاه باید کرد: اندازه‌گیری زمان sync صندوق با
+   `adb logcat | Select-String "inbox sync finished"` (فقط در build دیباگ لاگ می‌شود).
 
-## نکات فنی — اشتباهات من که نباید تکرار شوند
+## نکات فنی — اشتباهات تکراری که نباید دوباره رخ دهند
 
-1. **`TabLayout.Tab` را نمی‌توان با نام کاملاً-کیفیشده در Kotlin صدا زد.** باید `import com.google.android.material.tabs.TabLayout` و بدون پیشوند.
-2. **`Chip.ensureMinTouchTargetSize` پراپرتی خصوصی است.** از `setEnsureMinTouchTargetSize(true)` استفاده کن.
+1. **`TabLayout.Tab` را نمی‌توان با نام کاملاً-کیفیشده در Kotlin صدا زد.** باید
+   `import com.google.android.material.tabs.TabLayout` و بدون پیشوند.
+2. **`Chip.ensureMinTouchTargetSize` پراپرتی خصوصی است.** از `setEnsureMinTouchTargetSize(true)`.
 3. **`?:` از `>=` ضعیف‌تر است.** `a ?: 0 >= 4` کامپایل نمی‌شود؛ پرانتز لازم است.
-4. **`inner class` داخل `inner class`** در امضای `RecyclerView.Adapter<RowAdapter.VH>` مشکل می‌سازد. `class` ساده بگذار.
-5. **`values-night/themes.xml` را بازتعریف نکن** — کل استایل را جایگزین می‌کند و رنگ‌ها به بنفش پیش‌فرض M3 برمی‌گردند.
-6. **ANR دو بار:** هر کار سنگین (اسکن provider، طبقه‌بندی) باید روی ترد پس‌زمینه باشد.
-7. **طبقه‌بندی را per-sender کش کن، نه per-message.** همه‌ی پیام‌های یک گفتگو یک فرستنده دارند. `O(rows × classify)` → `O(1 × classify)`.
+4. **`inner class` داخل `inner class`** در امضای `RecyclerView.Adapter<RowAdapter.VH>`
+   مشکل می‌سازد. `class` ساده بگذار.
+5. **`values-night/themes.xml` را بازتعریف نکن** — کل استایل جایگزین می‌شود و رنگ‌ها به
+   بنفش پیش‌فرض M3 برمی‌گردند. فقط رنگ‌ها در `values-night/colors.xml`.
+6. **ANR:** هر کار سنگین (اسکن provider، طبقه‌بندی، خواندن دفترچه‌ی مخاطبین) روی ترد
+   پس‌زمینه. `ContactsIndex.ensure` عمداً داخل worker صدا زده می‌شود، نه در `onResume`.
+7. **طبقه‌بندی را per-sender کش کن، نه per-message.** `O(rows × classify)` → `O(1 × classify)`.
 8. **`JSONObject(map as Map<*, *>)` شکننده است.** دستی بساز: `for ((k,v) in map) o.put(k, v)`.
-9. **اندازه فونت را با `Configuration.fontScale` بده، نه ضرب دستی.** همه‌ی `sp`ها خودکار مقیاس می‌گیرند.
+9. **ViewBinding به `android:id` در layout وابسته است.** در نشست قبل `textEmpty` از
+   `TextView` به `LinearLayout` تغییر کرد و `setText` روی آن کامپایل نمی‌شد؛ متن به
+   `textEmptyLabel` منتقل شد. هر تغییر نوع ویو، همه‌ی `binding.X`ها را چک کن.
+10. **پارامتر `textDirection` روی `TextView` را با `View.TEXT_DIRECTION_RTL` ست کن**، نه با
+    `android:textDirection` در XML، تا برای متن لاتین هم درست کار کند (`TextDir.apply`).
+11. **`Slider` در Material، `LinearLayout` نیست.** اگر روی آن `layout_weight` بگذاری
+    بی‌اثر است؛ در `activity_settings.xml` اسلایدر و مقدارش در یک `LinearLayout` افقی‌اند.
+12. **پیش‌نمایش ظاهر باید از همان کد لیست بیاید** (`RowStyler`)، وگرنه بعد از هر تغییر
+    ظاهر، پیش‌نمایش دروغ می‌گوید و کاربر فکر می‌کند تنظیمات کار نمی‌کند.
 
 ## ابزار بیلد و دیباگ
 
-**بیلد:** GitHub Actions (نه لوکال — JDK 17 و Android SDK روی سیستم نیست).
+**بیلد:** GitHub Actions (نه لوکال — JDK 17 و Android SDK روی این سیستم نیست؛ فقط
+Java 10 نصبت است و `gradle` وجود ندارد).
 ```powershell
 git -C C:\xamp\htdocs\inod\sms-guard push
 ```
@@ -93,7 +140,15 @@ git -C C:\xamp\htdocs\inod\sms-guard push
 curl.exe -s -H "Accept: application/vnd.github+json" "https://api.github.com/repos/turboboy2006/sms-guard/actions/runs?per_page=1"
 ```
 
-**لاگ کامل خطای کامپایل** — اندپوینت `/logs` قدیمی ۴۰۴ می‌دهد و API بدون توکن ۴۰۳. راهی که کار می‌کند، توکن ذخیره‌شده‌ی GCM با redirect فایل است:
+**گرفتن job id و لاگ:**
+```powershell
+$run = (curl.exe -s -H "Accept: application/vnd.github+json" "https://api.github.com/repos/turboboy2006/sms-guard/actions/runs?per_page=1" | ConvertFrom-Json).workflow_runs[0]
+$jobs = (curl.exe -s -H "Accept: application/vnd.github+json" "https://api.github.com/repos/turboboy2006/sms-guard/actions/runs/$($run.id)/jobs") | ConvertFrom-Json
+$jobs.jobs | Select-Object name,status,conclusion
+```
+
+**لاگ کامل خطای کامپایل** — اندپوینت `/logs` بدون توکن ۴۰۳ می‌دهد؛ راهی که کار می‌کند،
+توکن ذخیره‌شده‌ی GCM با redirect فایل است:
 ```powershell
 $in = "$env:TEMP\cred-in.txt"
 [System.IO.File]::WriteAllText($in, "protocol=https`nhost=github.com`n`n", (New-Object System.Text.ASCIIEncoding))
@@ -106,15 +161,17 @@ Select-String -Path log.txt -Pattern 'e: file:///'
 **دیباگ روی گوشی** (فقط خواندنی):
 ```powershell
 adb devices
-adb logcat -d -v brief | Where-Object { $_ -match 'smsguard' -and $_ -match '^\s*[EFW]/' }
+adb logcat -d -v brief | Where-Object { $_ -match 'smsguard|SmsGuard' -and $_ -match '^\s*[EFWD]/' }
 ```
-کرش واقعی را در `FATAL EXCEPTION` و ANR را در `ANR in ir.inod.smsguard` بگیر.
+کرش واقعی را در `FATAL EXCEPTION`، ANR را در `ANR in ir.inod.smsguard` و زمان sync را در
+`inbox sync finished in ...ms` بگیر.
 
-**مرورگر** (لاگین‌شده، برای گیت‌هاب): `dsh-open https://github.com` سپس `dsh-browse <url> --cdp --script <file.js>`
+**مرورگر** (لاگین‌شده، برای گیت‌هاب): `dsh-open https://github.com` سپس
+`dsh-browse <url> --cdp --script <file.js>`
 
 ## محدودیت‌های محصول
 
 - **RCS خاموش می‌شود** وقتی اپ پیش‌فرض شود
 - **MMS پشتیبانی نمی‌شود** (Receiver هست چون اندروید الزام می‌کند)
 - **ساعات سکوت ثابت ۲۳-۷ است**، نه قابل تنظیم در UI
-- اپ **روی دستگاه اجرا نشده** — فقط کامپایل و بررسی ایستا
+- **اپ روی دستگاه اجرا نشده** — فقط کامپایل و بررسی ایستا

@@ -191,6 +191,7 @@ class ThemePrefs(context: Context) {
         listPadding = listPadding,
         listFont = listFontScale,
         messageFont = messageFontScale,
+        bubbleRadius = bubbleRadius,
         showDividers = showDividers
     )
 
@@ -242,6 +243,7 @@ data class RowLayout(
     val listPadding: Int,
     val listFont: Float,
     val messageFont: Float,
+    val bubbleRadius: Int,
     val showDividers: Boolean
 )
 

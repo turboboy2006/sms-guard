@@ -435,7 +435,7 @@ class MainActivity : BaseActivity() {
     private fun applyFilter() {
         val spamIds = CategoryStore(this).all().filter { it.spamFolder }.map { it.id }.toSet()
         val byTab = when (selectedTab) {
-            TAB_CONTACTS -> allThreads.filter { ContactsIndex.isContact(this, it.address) }
+            TAB_CONTACTS -> allThreads.filter { ContactsIndex.isKnownContact(it.address) }
             TAB_SUSPICIOUS -> allThreads.filter { it.categoryId == Cat.SUSPICIOUS }
             TAB_SPAM -> allThreads.filter { it.categoryId in spamIds }
             TAB_BANKING -> allThreads.filter {
