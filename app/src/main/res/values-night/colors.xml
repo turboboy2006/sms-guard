@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Dark equivalents of the reference palette, same roles. -->
 <resources>
-    <color name="blue_50">#131C2E</color>
+    <color name="blue_50">#16233A</color>
     <color name="blue_100">#1B2A45</color>
     <color name="blue_300">#6D9BF0</color>
     <color name="blue_500">#7BA3F0</color>
@@ -23,9 +22,19 @@
     <color name="border_soft">#24314A</color>
     <color name="skeleton">#1B2537</color>
 
+    <color name="unread_bg">#16233A</color>
+    <color name="unread_dot">@color/blue_500</color>
+
+    <color name="chip_inactive_bg">#1B2537</color>
+
+    <color name="badge_bg">#1B2537</color>
+    <color name="badge_text">#9BA9BE</color>
+    <color name="badge_danger_bg">#3A1A1E</color>
+    <color name="badge_danger_text">#F87171</color>
+
     <color name="danger">#F87171</color>
     <color name="danger_deep">#EF4444</color>
-    <color name="danger_soft">#2A1518</color>
+    <color name="danger_soft">#3A1A1E</color>
     <color name="warning">#FB923C</color>
     <color name="warning_soft">#2E1D0F</color>
     <color name="success">#4ADE80</color>

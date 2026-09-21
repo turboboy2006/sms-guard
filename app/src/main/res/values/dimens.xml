@@ -25,13 +25,19 @@
 
     <!-- Content -->
     <dimen name="gutter">16dp</dimen>
-    <dimen name="avatar">46dp</dimen>
+    <dimen name="avatar">52dp</dimen>
+    <dimen name="row_min_height">112dp</dimen>
+    <dimen name="appbar_height">64dp</dimen>
+    <dimen name="chip_height">48dp</dimen>
+    <dimen name="badge_height">30dp</dimen>
+    <dimen name="bottom_nav_height">76dp</dimen>
     <dimen name="color_stripe_width">4dp</dimen>
     <dimen name="swatch">40dp</dimen>
 
-    <!-- Typography scale: 4 sizes, 2 weights (skill guidance) -->
+    <!-- Typography scale -->
     <dimen name="text_display">22sp</dimen>
-    <dimen name="text_title">16sp</dimen>
-    <dimen name="text_body">14sp</dimen>
-    <dimen name="text_label">12sp</dimen>
+    <dimen name="text_title">17sp</dimen>
+    <dimen name="text_body">16sp</dimen>
+    <dimen name="text_label">13sp</dimen>
+    <dimen name="text_meta">13sp</dimen>
 </resources>

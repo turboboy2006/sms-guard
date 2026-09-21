@@ -100,12 +100,28 @@ class MainActivity : AppCompatActivity() {
             R.string.tab_trash
         )
         val idToIndex = HashMap<Int, Int>()
+        val density = resources.displayMetrics.density
         labels.forEachIndexed { index, res ->
             val chip = com.google.android.material.chip.Chip(this).apply {
                 text = getString(res)
                 isCheckable = true
                 isClickable = true
                 id = View.generateViewId()
+                // Filled rectangle when selected, pale grey otherwise: the
+                // reference's filter strip, not the outlined default chip.
+                chipBackgroundColor =
+                    androidx.core.content.ContextCompat.getColorStateList(
+                        this@MainActivity, R.color.chip_bg
+                    )
+                setTextColor(
+                    androidx.core.content.ContextCompat.getColorStateList(
+                        this@MainActivity, R.color.chip_text
+                    )
+                )
+                chipStrokeWidth = 0f
+                chipCornerRadius = 16f * density
+                chipMinHeight = 48f * density
+                ensureMinTouchTargetSize = true
             }
             idToIndex[chip.id] = index
             binding.chipGroup.addView(chip)

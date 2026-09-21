@@ -13,9 +13,10 @@
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="@color/screen_bg"
+        android:layout_height="@dimen/appbar_height"
+        android:background="@color/card_bg"
         app:title="@string/tab_messages"
+        app:titleTextAppearance="@style/TextAppearance.SmsGuard.Display"
         app:titleTextColor="@color/text_primary" />
 
     <com.google.android.material.card.MaterialCardView
@@ -122,11 +123,17 @@
             app:tint="@android:color/white" />
     </FrameLayout>
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider" />
+
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/card_bg"
+        android:minHeight="@dimen/bottom_nav_height"
         app:labelVisibilityMode="labeled"
         app:menu="@menu/bottom_nav" />
 

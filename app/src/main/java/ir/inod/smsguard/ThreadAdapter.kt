@@ -74,53 +74,22 @@ class ThreadAdapter(
 
         TextDir.apply(b.textAddress, display)
         TextDir.apply(b.textSnippet, item.snippet)
-        TextDir.apply(b.textDate, b.textDate.text.toString())
 
         bindAvatar(context, b, item, display)
-
-        val category = categories(context)[item.categoryId]
-        val showBadge = category != null && item.categoryId != Cat.OTHER
-        if (showBadge && category != null) {
-            val color = parseColor(category.colorHex)
-            b.textCategory.text = category.label(context)
-            // Pale tint with dark text: the reference's badge style, and far
-            // calmer than a solid block of colour.
-            b.textCategory.background = paleChip(color)
-            b.textCategory.setTextColor(color)
-            b.textCategory.visibility = View.VISIBLE
-        } else {
-            b.textCategory.visibility = View.GONE
-        }
+        bindBadge(context, b, item)
 
         val suspicious = item.categoryId == Cat.SUSPICIOUS
         b.iconWarning.visibility = if (suspicious) View.VISIBLE else View.GONE
 
-        // A suspicious row states its reason; colour alone is never the message.
-        if (suspicious) {
-            val label = riskLabel(context, item.address, item.snippet)
-            if (label != null) {
-                val color = ContextCompat.getColor(context, R.color.danger)
-                b.textRisk.text = label
-                b.textRisk.background = paleChip(color)
-                b.textRisk.setTextColor(color)
-                b.textRisk.visibility = View.VISIBLE
-            } else {
-                b.textRisk.visibility = View.GONE
-            }
-        } else {
-            b.textRisk.visibility = View.GONE
-        }
-
-        // Unread rows get a tinted background as well as a marker, which is
-        // what makes an inbox scannable at a glance.
+        // Unread: tinted row plus a dot, and a bolder name. The tint goes on the
+        // inner row so the hairline divider below stays neutral.
         val unread = item.unreadCount > 0
-        holder.itemView.setBackgroundColor(
-            if (unread) ContextCompat.getColor(context, R.color.blue_50) else Color.TRANSPARENT
+        b.rowContent.setBackgroundColor(
+            if (unread) ContextCompat.getColor(context, R.color.unread_bg) else Color.TRANSPARENT
         )
         b.textUnread.visibility = if (unread) View.VISIBLE else View.GONE
-        b.textUnread.text =
-            if (item.unreadCount > 1) Dates.faDigits(item.unreadCount.toString()) else ""
-        b.textAddress.setTypeface(null, if (unread) Typeface.BOLD else Typeface.NORMAL)
+        b.textAddress.setTypeface(null, Typeface.BOLD)
+        b.textAddress.setAlpha(if (unread) 1f else 0.85f)
         b.textSnippet.setTextColor(
             ContextCompat.getColor(
                 context,
@@ -135,11 +104,41 @@ class ThreadAdapter(
         }
     }
 
-    /** 12% of the category colour behind dark text of the same hue. */
-    private fun paleChip(color: Int): GradientDrawable = GradientDrawable().apply {
+    /**
+     * Neutral grey badge for an ordinary category; a red badge carrying the
+     * reason for a suspicious one, so the row states *why* rather than only
+     * turning red.
+     */
+    private fun bindBadge(context: Context, b: ItemThreadBinding, item: ThreadSummary) {
+        if (item.categoryId == Cat.SUSPICIOUS) {
+            val reason = riskLabel(context, item.address, item.snippet)
+                ?: context.getString(R.string.cat_suspicious)
+            b.textCategory.text = reason
+            b.textCategory.background =
+                badge(ContextCompat.getColor(context, R.color.badge_danger_bg))
+            b.textCategory.setTextColor(
+                ContextCompat.getColor(context, R.color.badge_danger_text)
+            )
+            b.textCategory.visibility = View.VISIBLE
+            return
+        }
+
+        val category = categories(context)[item.categoryId]
+        if (category != null && item.categoryId != Cat.OTHER) {
+            b.textCategory.text = category.label(context)
+            b.textCategory.background = badge(ContextCompat.getColor(context, R.color.badge_bg))
+            b.textCategory.setTextColor(ContextCompat.getColor(context, R.color.badge_text))
+            b.textCategory.visibility = View.VISIBLE
+        } else {
+            b.textCategory.visibility = View.GONE
+        }
+    }
+
+    /** Fully rounded, no stroke, no elevation. */
+    private fun badge(color: Int): GradientDrawable = GradientDrawable().apply {
         shape = GradientDrawable.RECTANGLE
-        cornerRadius = 22f
-        setColor(Color.argb(31, Color.red(color), Color.green(color), Color.blue(color)))
+        cornerRadius = 40f
+        setColor(color)
     }
 
     private fun bindAvatar(
@@ -165,7 +164,7 @@ class ThreadAdapter(
         b.avatar.background = AvatarHelper.circle(parseColor(spec.colorHex))
 
         if (spec.iconRes != null) {
-            val pad = (11 * context.resources.displayMetrics.density).toInt()
+            val pad = (13 * context.resources.displayMetrics.density).toInt()
             b.avatarLetter.text = null
             b.avatarImage.setPadding(pad, pad, pad, pad)
             b.avatarImage.scaleType = ImageView.ScaleType.CENTER_INSIDE

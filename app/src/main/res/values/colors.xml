@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Palette taken verbatim from new-ui-help/lib/main.dart so the Kotlin app and
-  the Flutter reference render the same colours.
+  Palette. #2563EB is the ONLY primary; green / red / purple / teal appear only
+  as category or status identity. No gradients anywhere.
 -->
 <resources>
-    <!-- Primary: reference #2563EB -->
-    <color name="blue_50">#EFF4FF</color>
-    <color name="blue_100">#DCE6FA</color>
-    <color name="blue_300">#7BA3F0</color>
+    <!-- Primary -->
+    <color name="blue_50">#EFF6FF</color>
+    <color name="blue_100">#DBEAFE</color>
+    <color name="blue_300">#93B4F5</color>
     <color name="blue_500">#2563EB</color>
     <color name="blue_600">#1D4ED8</color>
     <color name="blue_700">#1E40AF</color>
@@ -18,20 +18,33 @@
     <color name="colorAccent">@color/blue_600</color>
 
     <!-- Surfaces and text -->
-    <color name="screen_bg">#F7F9FC</color>
+    <color name="screen_bg">#F8FAFC</color>
     <color name="card_bg">#FFFFFF</color>
     <color name="surface_sunken">#F1F5F9</color>
     <color name="text_primary">#172033</color>
     <color name="text_secondary">#475467</color>
     <color name="text_muted">#667085</color>
-    <color name="divider">#E4EAF2</color>
+    <color name="divider">#E7ECF3</color>
     <color name="border_soft">#D7DDE8</color>
     <color name="skeleton">#E7ECF3</color>
+
+    <!-- Unread row and its marker -->
+    <color name="unread_bg">#EFF6FF</color>
+    <color name="unread_dot">@color/blue_500</color>
+
+    <!-- Filter chips -->
+    <color name="chip_inactive_bg">#F1F5F9</color>
+
+    <!-- Category badges: neutral by default, red only for suspicious -->
+    <color name="badge_bg">#F1F5F9</color>
+    <color name="badge_text">#475467</color>
+    <color name="badge_danger_bg">#FEE2E2</color>
+    <color name="badge_danger_text">#B91C1C</color>
 
     <!-- Semantic -->
     <color name="danger">#B91C1C</color>
     <color name="danger_deep">#991B1B</color>
-    <color name="danger_soft">#FEF2F2</color>
+    <color name="danger_soft">#FEE2E2</color>
     <color name="warning">#EA580C</color>
     <color name="warning_soft">#FFEDD5</color>
     <color name="success">#15803D</color>
@@ -44,13 +57,13 @@
 
     <color name="ic_launcher_background">@color/blue_600</color>
 
-    <!-- Category palette, drawn from the reference hues -->
+    <!-- Category identity colours, as specified -->
     <color name="cat_personal_c">#15803D</color>
     <color name="cat_banking_c">#1D4ED8</color>
     <color name="cat_otp_c">#0F766E</color>
     <color name="cat_notification_c">#7C3AED</color>
     <color name="cat_promotion_c">#EA580C</color>
-    <color name="cat_suspicious_c">#D97706</color>
+    <color name="cat_suspicious_c">#E11D48</color>
     <color name="cat_spam_c">#B91C1C</color>
     <color name="cat_other_c">#667085</color>
     <color name="cat_trash_c">#475467</color>

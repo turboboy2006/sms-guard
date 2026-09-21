@@ -1,146 +1,137 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Message row, matching the reference screenshot: avatar on the start side, then
-  a text block (name, preview, pale category badge), then time and the unread
-  dot on the end side. Unread emphasis is applied in code as a tinted row.
+  One inbox row: 52dp avatar on the start side, name and a two-line preview in
+  the middle, time and category badge on the end side. A hairline divider closes
+  the row instead of a card. Unread background is applied to rowContent so the
+  divider stays neutral.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:paddingStart="@dimen/gutter"
-    android:paddingTop="@dimen/space_12"
-    android:paddingEnd="@dimen/gutter"
-    android:paddingBottom="@dimen/space_12">
-
-    <FrameLayout
-        android:id="@+id/avatar"
-        android:layout_width="@dimen/avatar"
-        android:layout_height="@dimen/avatar">
-
-        <ImageView
-            android:id="@+id/avatarImage"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:contentDescription="@null"
-            android:scaleType="centerCrop" />
-
-        <TextView
-            android:id="@+id/avatarLetter"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:textColor="@android:color/white"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-    </FrameLayout>
+    android:orientation="vertical">
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:id="@+id/rowContent"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/space_12"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:minHeight="@dimen/row_min_height"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="@dimen/gutter"
+        android:paddingTop="@dimen/gutter"
+        android:paddingEnd="@dimen/gutter"
+        android:paddingBottom="@dimen/gutter">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+        <FrameLayout
+            android:id="@+id/avatar"
+            android:layout_width="@dimen/avatar"
+            android:layout_height="@dimen/avatar">
+
+            <ImageView
+                android:id="@+id/avatarImage"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@null"
+                android:scaleType="centerCrop" />
 
             <TextView
-                android:id="@+id/textAddress"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
+                android:id="@+id/avatarLetter"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:textColor="@android:color/white"
+                android:textSize="20sp"
                 android:textStyle="bold" />
-
-            <!-- Sits just after the name, so in RTL it reads on its left. -->
-            <ImageView
-                android:id="@+id/iconWarning"
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_marginStart="@dimen/space_4"
-                android:contentDescription="@string/cat_suspicious"
-                android:src="@drawable/ic_tab_suspicious"
-                android:visibility="gone" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/textSnippet"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:ellipsize="end"
-            android:maxLines="2"
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
+        </FrameLayout>
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_8"
-            android:orientation="horizontal">
+            android:layout_marginStart="@dimen/space_12"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/textAddress"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/text_primary"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:id="@+id/iconWarning"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="@dimen/space_4"
+                    android:contentDescription="@string/cat_suspicious"
+                    android:src="@drawable/ic_tab_suspicious"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/textSnippet"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_4"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:textColor="@color/text_secondary"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_8"
+            android:gravity="end"
+            android:minWidth="64dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/textDate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_muted"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/textUnread"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:layout_marginTop="@dimen/space_8"
+                android:background="@drawable/badge"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/textCategory"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="@dimen/badge_height"
+                android:layout_marginTop="@dimen/space_8"
+                android:gravity="center"
+                android:maxWidth="132dp"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:paddingStart="@dimen/space_8"
-                android:paddingTop="3dp"
                 android:paddingEnd="@dimen/space_8"
-                android:paddingBottom="3dp"
-                android:textSize="11sp"
-                android:visibility="gone" />
-
-            <TextView
-                android:id="@+id/textRisk"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/space_8"
-                android:paddingStart="@dimen/space_8"
-                android:paddingTop="3dp"
-                android:paddingEnd="@dimen/space_8"
-                android:paddingBottom="3dp"
-                android:textSize="11sp"
+                android:textSize="13sp"
                 android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
 
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/space_8"
-        android:gravity="end"
-        android:minWidth="44dp"
-        android:orientation="vertical">
-
-        <TextView
-            android:id="@+id/textDate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@color/text_muted"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/textUnread"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/space_8"
-            android:background="@drawable/badge"
-            android:gravity="center"
-            android:minWidth="10dp"
-            android:minHeight="10dp"
-            android:paddingStart="6dp"
-            android:paddingEnd="6dp"
-            android:textColor="@android:color/white"
-            android:textSize="11sp"
-            android:visibility="gone" />
-    </LinearLayout>
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="@dimen/gutter"
+        android:background="@color/divider" />
 
 </LinearLayout>
