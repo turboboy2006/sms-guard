@@ -39,6 +39,7 @@ class SettingsActivity : BaseActivity() {
 
     private val langs = listOf("", "fa", "en")
     private var simIds: List<Int> = listOf(-1)
+    private val retentionValues = listOf(0, 7, 30, 90)
 
     private val exportBackup = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -106,7 +107,6 @@ class SettingsActivity : BaseActivity() {
             this, android.R.layout.simple_spinner_dropdown_item, labels
         )
         binding.spinnerLanguage.setSelection(langs.indexOf(settings.language).coerceAtLeast(0))
-        val retentionValues = listOf(0, 7, 30, 90)
         binding.spinnerTrashRetention.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
             listOf(getString(R.string.trash_keep_forever), getString(R.string.trash_days, 7), getString(R.string.trash_days, 30), getString(R.string.trash_days, 90)))
         binding.spinnerTrashRetention.setSelection(retentionValues.indexOf(settings.trashRetentionDays).coerceAtLeast(0))
