@@ -260,7 +260,10 @@ class ThreadAdapter(
         val rowParams = b.rowContent.layoutParams as? LinearLayout.LayoutParams
         if (rowParams != null) {
             val ceiling = dp(density, 108)
-            val measured = if (b.rowContent.height > 0) b.rowContent.height else 0
+            val measured = b.rowContent.height
+            // Only ever written on a re-bind, when the previous layout is known:
+            // the first pass must be allowed to measure itself, or a tall row
+            // would be clamped to whatever the recycled view happened to be.
             val target = if (measured > ceiling) ceiling else ViewGroup.LayoutParams.WRAP_CONTENT
             if (rowParams.height != target) {
                 rowParams.height = target
