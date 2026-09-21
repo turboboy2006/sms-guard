@@ -1,12 +1,17 @@
 package ir.inod.smsguard
 
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.content.ContextCompat
+import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
 import ir.inod.smsguard.databinding.ActivityConversationBinding
 
@@ -26,6 +31,9 @@ class ConversationActivity : BaseActivity() {
         private const val MENU_NEW_MESSAGE = 1002
         private const val MENU_DELETE_SELECTED = 1003
         private const val MENU_SPAM_SELECTED = 1004
+        private const val MENU_COPY_SELECTED = 1005
+        private const val MENU_SHARE_SELECTED = 1006
+        private const val MENU_SELECT_ALL = 1007
     }
 
     private lateinit var binding: ActivityConversationBinding
@@ -36,6 +44,10 @@ class ConversationActivity : BaseActivity() {
     private var threadId: Long = -1L
     private var address: String = ""
     private var riskyMessageId: Long = -1L
+    private val drafts by lazy { getSharedPreferences("conversation_drafts", MODE_PRIVATE) }
+    private val deliveryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) { load() }
+    }
 
     /** What the current list was drawn with, so a change can be detected. */
     private var drawnLayout: MessageLayout? = null
@@ -68,6 +80,7 @@ class ConversationActivity : BaseActivity() {
             onClick = { message ->
                 if (adapter.selectionCount > 0) adapter.toggleSelection(message)
             },
+            onRetry = { message -> retry(message) },
             onSelectionChanged = { count -> updateSelectionUi(count) }
         )
         binding.recyclerMessages.layoutManager =
@@ -78,7 +91,25 @@ class ConversationActivity : BaseActivity() {
         binding.buttonPickRecipient.setOnClickListener { pickRecipient() }
         binding.buttonNotSpam.setOnClickListener { markConversationSafe() }
         binding.buttonRiskBlock.setOnClickListener { blockRiskySender() }
+        binding.editMessage.doAfterTextChanged { editable ->
+            if (address.isNotBlank()) drafts.edit().putString(address, editable?.toString().orEmpty()).apply()
+            val count = editable?.length ?: 0
+            binding.textCharacterCount.text = if (count == 0) "" else "$count"
+        }
         updateEmptyState()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(
+            this, deliveryReceiver, IntentFilter(DeliveryStatusReceiver.ACTION_UPDATED),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    override fun onStop() {
+        try { unregisterReceiver(deliveryReceiver) } catch (_: Exception) { }
+        super.onStop()
     }
 
     /**
@@ -179,6 +210,10 @@ class ConversationActivity : BaseActivity() {
                     ContactNames.displayNameUi(address)
                 }
                 updateEmptyState()
+                if (binding.editMessage.text.isNullOrEmpty() && address.isNotBlank()) {
+                    binding.editMessage.setText(drafts.getString(address, "").orEmpty())
+                    binding.editMessage.setSelection(binding.editMessage.length())
+                }
                 adapter.submit(messages)
                 bindRiskBanner(messages)
                 // The adapter also emits day dividers, so scroll to its own
@@ -207,6 +242,7 @@ class ConversationActivity : BaseActivity() {
             return
         }
         binding.editMessage.setText("")
+        drafts.edit().remove(address).apply()
         // Sending writes to the provider (and to the stored inbox) before
         // returning, so it belongs on the same worker as everything else.
         worker.execute {
@@ -266,6 +302,9 @@ class ConversationActivity : BaseActivity() {
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_DELETE_SELECTED, 1, R.string.delete)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        menu.add(0, MENU_COPY_SELECTED, 2, R.string.copy)
+        menu.add(0, MENU_SHARE_SELECTED, 3, R.string.share)
+        menu.add(0, MENU_SELECT_ALL, 4, R.string.select_all)
         return true
     }
 
@@ -275,6 +314,9 @@ class ConversationActivity : BaseActivity() {
         menu.findItem(MENU_BLOCK_SENDER)?.isVisible = !selecting
         menu.findItem(MENU_SPAM_SELECTED)?.isVisible = selecting
         menu.findItem(MENU_DELETE_SELECTED)?.isVisible = selecting
+        menu.findItem(MENU_COPY_SELECTED)?.isVisible = selecting
+        menu.findItem(MENU_SHARE_SELECTED)?.isVisible = selecting
+        menu.findItem(MENU_SELECT_ALL)?.isVisible = selecting
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -311,6 +353,9 @@ class ConversationActivity : BaseActivity() {
                 confirmDeleteSelected()
                 return true
             }
+            MENU_COPY_SELECTED -> { copySelected(); return true }
+            MENU_SHARE_SELECTED -> { shareSelected(); return true }
+            MENU_SELECT_ALL -> { adapter.selectAll(); return true }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -381,6 +426,34 @@ class ConversationActivity : BaseActivity() {
                 }
             }
             .show()
+    }
+
+    private fun retry(message: SmsMessage) {
+        worker.execute {
+            val ok = repo.send(address.ifBlank { message.address }, message.body)
+            runOnUiThread {
+                Toast.makeText(this, if (ok) R.string.retry_started else R.string.send_failed, Toast.LENGTH_SHORT).show()
+            }
+            load()
+        }
+    }
+
+    private fun selectedText(): String = adapter.selectedMessages()
+        .sortedBy { it.date }
+        .joinToString("\n\n") { it.body }
+
+    private fun copySelected() {
+        val clipboard = getSystemService(android.content.ClipboardManager::class.java)
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText(getString(R.string.app_name), selectedText()))
+        Toast.makeText(this, R.string.copied, Toast.LENGTH_SHORT).show()
+        adapter.clearSelection()
+    }
+
+    private fun shareSelected() {
+        startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, selectedText())
+        }, getString(R.string.share)))
     }
 
     @Deprecated("Handled for selection mode")

@@ -157,6 +157,14 @@
             android:textColorHint="@color/text_muted"
             android:textSize="15sp" />
 
+        <TextView
+            android:id="@+id/textCharacterCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:textColor="@color/text_muted"
+            android:textSize="10sp" />
+
         <ImageButton
             android:id="@+id/buttonSend"
             android:layout_width="48dp"

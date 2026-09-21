@@ -3,6 +3,7 @@ package ir.inod.smsguard
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.view.View
 import android.widget.LinearLayout
 import androidx.recyclerview.widget.RecyclerView
 import ir.inod.smsguard.databinding.ItemDayHeaderBinding
@@ -20,6 +21,7 @@ import java.util.Calendar
 class MessageAdapter(
     private val onLongClick: (SmsMessage) -> Unit,
     private val onClick: (SmsMessage) -> Unit = {},
+    private val onRetry: (SmsMessage) -> Unit = {},
     private val onSelectionChanged: (Int) -> Unit = {}
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -49,6 +51,12 @@ class MessageAdapter(
         selectedIds.clear()
         notifyDataSetChanged()
         onSelectionChanged(0)
+    }
+
+    fun selectAll() {
+        rows.forEach { row -> if (row is Row.Msg) selectedIds.add(row.message.id) }
+        notifyDataSetChanged()
+        onSelectionChanged(selectedIds.size)
     }
 
     private var layout = MessageLayout(
@@ -142,10 +150,30 @@ class MessageAdapter(
         val row = holder.binding.root
         val bubble = holder.binding.textBubble
         val time = holder.binding.textTime
+        val status = holder.binding.textStatus
         val density = context.resources.displayMetrics.density
 
         bubble.text = item.body
         time.text = Dates.full(context, item.date)
+        status.visibility = if (item.isIncoming) View.GONE else View.VISIBLE
+        if (!item.isIncoming) {
+            status.text = when (item.delivery) {
+                DeliveryState.SENDING -> context.getString(R.string.delivery_sending)
+                DeliveryState.SENT -> context.getString(R.string.delivery_sent)
+                DeliveryState.DELIVERED -> context.getString(R.string.delivery_delivered)
+                DeliveryState.FAILED -> context.getString(R.string.delivery_failed)
+                DeliveryState.RECEIVED -> ""
+            }
+            status.setTextColor(
+                androidx.core.content.ContextCompat.getColor(
+                    context,
+                    if (item.delivery == DeliveryState.FAILED) R.color.danger else R.color.text_muted
+                )
+            )
+            status.setOnClickListener {
+                if (item.delivery == DeliveryState.FAILED) onRetry(item)
+            }
+        } else status.setOnClickListener(null)
         TextDir.apply(bubble, item.body)
 
         // Type and colour: two independent knobs, so a large font does not
@@ -157,6 +185,10 @@ class MessageAdapter(
         time.setTextSize(
             android.util.TypedValue.COMPLEX_UNIT_SP,
             10.5f * layout.fontScale.coerceAtMost(1.3f)
+        )
+        status.setTextSize(
+            android.util.TypedValue.COMPLEX_UNIT_SP,
+            11f * layout.fontScale.coerceAtMost(1.3f)
         )
         time.setTextColor(
             androidx.core.content.ContextCompat.getColor(context, R.color.text_muted)

@@ -108,6 +108,10 @@
             android:name=".NotificationReplyReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".DeliveryStatusReceiver"
+            android:exported="false" />
+
         <!--
           Declared so the app is eligible to be the default SMS app.
           MMS payloads are acknowledged but not downloaded (see README).

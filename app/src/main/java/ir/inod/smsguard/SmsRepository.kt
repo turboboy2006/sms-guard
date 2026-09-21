@@ -2,6 +2,8 @@ package ir.inod.smsguard
 
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
+import android.app.PendingIntent
 import android.os.Build
 import android.provider.Telephony
 import android.telephony.SmsManager
@@ -201,7 +203,9 @@ class SmsRepository(private val context: Context) {
             Telephony.Sms.ADDRESS,
             Telephony.Sms.BODY,
             Telephony.Sms.DATE,
-            Telephony.Sms.TYPE
+            Telephony.Sms.TYPE,
+            Telephony.Sms.STATUS,
+            Telephony.Sms.ERROR_CODE
         )
         try {
             resolver.query(
@@ -214,19 +218,25 @@ class SmsRepository(private val context: Context) {
                 val iBody = c.getColumnIndexOrThrow(Telephony.Sms.BODY)
                 val iDate = c.getColumnIndexOrThrow(Telephony.Sms.DATE)
                 val iType = c.getColumnIndexOrThrow(Telephony.Sms.TYPE)
+                val iStatus = c.getColumnIndex(Telephony.Sms.STATUS)
+                val iError = c.getColumnIndex(Telephony.Sms.ERROR_CODE)
 
                 while (c.moveToNext()) {
                     val id = c.getLong(iId)
                     val address = c.getString(iAddr) ?: ""
                     val body = c.getString(iBody) ?: ""
+                    val type = c.getInt(iType)
+                    val providerStatus = if (iStatus >= 0) c.getInt(iStatus) else Telephony.Sms.STATUS_NONE
                     out.add(
                         SmsMessage(
                             id = id,
                             address = address,
                             body = body,
                             date = c.getLong(iDate),
-                            isIncoming = c.getInt(iType) == Telephony.Sms.MESSAGE_TYPE_INBOX,
-                            categoryId = categoryFor(address, body, id)
+                            isIncoming = type == Telephony.Sms.MESSAGE_TYPE_INBOX,
+                            categoryId = categoryFor(address, body, id),
+                            delivery = deliveryState(type, providerStatus),
+                            errorCode = if (iError >= 0) c.getInt(iError) else 0
                         )
                     )
                 }
@@ -441,40 +451,71 @@ class SmsRepository(private val context: Context) {
         }
     }
 
-    private fun storeSent(address: String, body: String, timestamp: Long) {
-        try {
+    private fun storePending(address: String, body: String, timestamp: Long): Long {
+        return try {
             val values = ContentValues().apply {
                 put(Telephony.Sms.ADDRESS, address)
                 put(Telephony.Sms.BODY, body)
                 put(Telephony.Sms.DATE, timestamp)
                 put(Telephony.Sms.READ, 1)
                 put(Telephony.Sms.SEEN, 1)
-                put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_SENT)
+                put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_OUTBOX)
+                put(Telephony.Sms.STATUS, Telephony.Sms.STATUS_PENDING)
                 put(Telephony.Sms.THREAD_ID, threadIdFor(address))
             }
-            resolver.insert(Telephony.Sms.CONTENT_URI, values)
+            resolver.insert(Telephony.Sms.CONTENT_URI, values)?.lastPathSegment?.toLongOrNull() ?: -1L
         } catch (e: Exception) {
-            // ignore
+            -1L
         }
     }
 
     fun send(address: String, body: String): Boolean {
         if (address.isBlank() || body.isBlank()) return false
         return try {
+            val now = System.currentTimeMillis()
+            val messageId = storePending(address, body, now)
+            if (messageId < 0) return false
             val sm = smsManager()
             val parts = sm.divideMessage(body)
-            if (parts.size > 1) {
-                sm.sendMultipartTextMessage(address, null, parts, null, null)
-            } else {
-                sm.sendTextMessage(address, null, body, null, null)
+            val sent = ArrayList<PendingIntent>(parts.size)
+            val delivered = ArrayList<PendingIntent>(parts.size)
+            parts.indices.forEach { part ->
+                sent += statusIntent(DeliveryStatusReceiver.ACTION_SENT, messageId, part, parts.size)
+                delivered += statusIntent(DeliveryStatusReceiver.ACTION_DELIVERED, messageId, part, parts.size)
             }
-            val now = System.currentTimeMillis()
-            storeSent(address, body, now)
+            if (parts.size > 1) {
+                sm.sendMultipartTextMessage(address, null, parts, sent, delivered)
+            } else {
+                sm.sendTextMessage(address, null, body, sent[0], delivered[0])
+            }
             patchCacheForSentMessage(address, body, now)
             true
         } catch (e: Exception) {
             false
         }
+    }
+
+    private fun statusIntent(action: String, messageId: Long, part: Int, total: Int): PendingIntent {
+        val intent = Intent(context, DeliveryStatusReceiver::class.java).apply {
+            this.action = action
+            putExtra(DeliveryStatusReceiver.EXTRA_MESSAGE_ID, messageId)
+            putExtra(DeliveryStatusReceiver.EXTRA_PART, part)
+            putExtra(DeliveryStatusReceiver.EXTRA_TOTAL, total)
+        }
+        val request = ((messageId xor (messageId ushr 32)).toInt() * 31 + part * 2 + if (action == DeliveryStatusReceiver.ACTION_DELIVERED) 1 else 0)
+        return PendingIntent.getBroadcast(
+            context, request, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    private fun deliveryState(type: Int, status: Int): DeliveryState = when {
+        type == Telephony.Sms.MESSAGE_TYPE_INBOX -> DeliveryState.RECEIVED
+        type == Telephony.Sms.MESSAGE_TYPE_FAILED -> DeliveryState.FAILED
+        type == Telephony.Sms.MESSAGE_TYPE_OUTBOX || type == Telephony.Sms.MESSAGE_TYPE_QUEUED -> DeliveryState.SENDING
+        status == Telephony.Sms.STATUS_COMPLETE -> DeliveryState.DELIVERED
+        status == Telephony.Sms.STATUS_FAILED -> DeliveryState.FAILED
+        else -> DeliveryState.SENT
     }
 
     private fun smsManager(): SmsManager =

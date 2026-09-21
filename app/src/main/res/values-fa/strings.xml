@@ -245,4 +245,13 @@
     <string name="inbox_cache">صندوق ذخیره‌شده</string>
     <string name="cache_summary">%1$d گفتگو برای بارگذاری فوری نگه داشته شده</string>
     <string name="confirm_clear_cache">نسخه‌ی ذخیره‌شده‌ی صندوق پاک شود؟ در اجرای بعدی از روی گوشی ساخته می‌شود و هیچ پیامی حذف نمی‌شود.</string>
+    <string name="delivery_sending">◷ در حال ارسال</string>
+    <string name="delivery_sent">✓ ارسال شد</string>
+    <string name="delivery_delivered">✓✓ تحویل شد</string>
+    <string name="delivery_failed">! ناموفق · ارسال مجدد</string>
+    <string name="retry_started">ارسال مجدد آغاز شد…</string>
+    <string name="copy">کپی</string>
+    <string name="copied">کپی شد</string>
+    <string name="share">اشتراک‌گذاری</string>
+    <string name="select_all">انتخاب همه</string>
 </resources>

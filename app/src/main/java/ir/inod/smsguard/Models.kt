@@ -216,8 +216,15 @@ data class SmsMessage(
     val body: String,
     val date: Long,
     val isIncoming: Boolean,
-    val categoryId: String
+    val categoryId: String,
+    val delivery: DeliveryState = DeliveryState.RECEIVED,
+    val errorCode: Int = 0
 )
+
+/** Delivery lifecycle for outgoing SMS rows. */
+enum class DeliveryState {
+    RECEIVED, SENDING, SENT, DELIVERED, FAILED
+}
 
 /** A message a rule blocked outright. */
 data class BlockedMessage(
