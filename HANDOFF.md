@@ -8,8 +8,8 @@
 |---|---|
 | مسیر پروژه | `C:\xamp\htdocs\inod\sms-guard` |
 | مخزن | https://github.com/turboboy2006/sms-guard (**عمومی**) |
-| آخرین کامیت | `d6d62e1` — «fix(cache): never let a provider scan overwrite a message that arrived during it» |
-| آخرین بیلد | **سبز** (`run 35579507158`) |
+| آخرین کامیت | `8e27590` — «feat(settings): quiet hours are off by default and configurable» |
+| آخرین بیلد | **سبز** (`run 35580076764`) |
 | APK | `dist\app-debug.apk` (~۵٫۹۷ MB، از همان بیلد سبز) |
 | زبان‌ها | ۱۸۰ کلید در `values/` و `values-fa/`، تطابق کامل |
 
