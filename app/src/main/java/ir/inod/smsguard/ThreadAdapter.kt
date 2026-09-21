@@ -1,32 +1,64 @@
 package ir.inod.smsguard
 
 import android.content.Context
-import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
 import androidx.recyclerview.widget.RecyclerView
 import ir.inod.smsguard.databinding.ItemThreadBinding
 
 /**
- * Chooses direction per View so a row can mix scripts: a Latin sender ID stays
- * left-to-right while a Persian snippet reads right-to-left.
+ * Chooses direction per View, because one list mixes scripts.
+ *
+ * The default is the ambient direction (right-to-left in Persian), so names and
+ * message bodies read correctly. Values that are Latin by nature — a phone
+ * number, an OTP code, a URL, an amount — are marked as LTR explicitly, because
+ * the bidi algorithm otherwise rearranges their punctuation and the digits look
+ * broken in the middle of a Persian sentence.
  */
 object TextDir {
 
     private val RTL = Regex("[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]")
 
+    /** Numbers, punctuation and whitespace: no letters, so direction is arbitrary. */
+    private val NOT_LETTERS = Regex("^[\\d\\s\\p{Punct}]+$")
+
+    private val URL = Regex("(?i)\\b(https?://|www\\.)\\S+")
+
+    /** Amounts and codes: currency words plus a run of digits. */
+    private val AMOUNT = Regex(
+        "(?i)(تومان|ریال|درهم|دلار|یورو|toman|rial|usd|irr|\\$|€)" +
+            "|[\\d۰-۹]{3,}[\\s,،]*(تومان|ریال|ریال)"
+    )
+
     fun isRtl(text: String): Boolean = RTL.containsMatchIn(text)
 
+    /**
+     * True when the whole string is a "technical" value that should not be
+     * reordered: a bare number, a code, a link, or text carrying an amount.
+     */
+    fun isDirectionNeutral(text: String): Boolean {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return false
+        if (NOT_LETTERS.matches(trimmed)) return true
+        if (URL.containsMatchIn(trimmed)) return true
+        return AMOUNT.containsMatchIn(trimmed)
+    }
+
     fun apply(view: TextView, text: String) {
-        view.textDirection =
-            if (isRtl(text)) View.TEXT_DIRECTION_RTL else View.TEXT_DIRECTION_LTR
+        view.textDirection = when {
+            isDirectionNeutral(text) -> View.TEXT_DIRECTION_LTR
+            isRtl(text) -> View.TEXT_DIRECTION_RTL
+            else -> View.TEXT_DIRECTION_LTR
+        }
     }
 }
 
@@ -174,32 +206,42 @@ class ThreadAdapter(
         val unread = item.unreadCount > 0
         val compact = layout.style == RowStyle.COMPACT
         val showAvatar = layout.style != RowStyle.FLAT && layout.style != RowStyle.COMPACT
+        val showBadge = !compact
+        val risk = if (item.categoryId == Cat.SUSPICIOUS) item.riskLabel else null
 
         b.textAddress.text = display
         b.textSnippet.text = item.snippet
         b.textDate.text = Dates.listLabel(context, item.date)
 
+        // Names and bodies follow the ambient (RTL) direction; a preview that is
+        // really a code, a link or an amount is pinned to LTR so its digits are
+        // not reordered.
         TextDir.apply(b.textAddress, display)
-        TextDir.apply(b.textSnippet, item.snippet)
+        if (TextDir.isDirectionNeutral(item.snippet)) {
+            b.textSnippet.textDirection = View.TEXT_DIRECTION_LTR
+        } else {
+            TextDir.apply(b.textSnippet, item.snippet)
+        }
 
         // --- typography -----------------------------------------------------
         val titleSize = if (compact) 14.5f else 16f
-        val snippetSize = if (compact) 12.5f else 14f
+        val snippetSize = if (compact) 12.5f else 13.5f
         b.textAddress.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, titleSize * layout.listFont)
         b.textSnippet.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, snippetSize * layout.listFont)
         b.textCategory.setTextSize(
             android.util.TypedValue.COMPLEX_UNIT_SP,
-            11f * layout.listFont.coerceAtMost(1.3f)
+            11.5f * layout.listFont.coerceAtMost(1.25f)
         )
         b.textDate.setTextSize(
             android.util.TypedValue.COMPLEX_UNIT_SP,
-            11.5f * layout.listFont.coerceAtMost(1.3f)
+            11f * layout.listFont.coerceAtMost(1.2f)
         )
 
         // --- spacing --------------------------------------------------------
         val vertical = (layout.padding * density).toInt()
-        val horizontal = (16 * density).toInt()
-        b.rowContent.setPadding(horizontal, vertical, horizontal, vertical)
+        b.rowContent.setPadding(
+            (8 * density).toInt(), vertical, (16 * density).toInt(), vertical
+        )
 
         val params = b.root.layoutParams as? ViewGroup.MarginLayoutParams
         if (params != null) {
@@ -213,6 +255,9 @@ class ThreadAdapter(
                 b.root.layoutParams = params
             }
         }
+        // A name, two lines of preview and a badge have a natural ceiling; the
+        // promise is a row between 88dp and 108dp whatever the text does.
+        b.rowContent.maxHeight = (108 * density).toInt()
 
         // --- avatar ---------------------------------------------------------
         b.avatar.visibility = if (showAvatar) View.VISIBLE else View.GONE
@@ -227,20 +272,19 @@ class ThreadAdapter(
             bindAvatar(context, b, item, display)
         }
 
-        bindBadge(context, b, item)
-        b.textCategory.visibility =
-            if (!compact && b.textCategory.text.isNotEmpty()) View.VISIBLE else View.GONE
+        // --- badge ----------------------------------------------------------
+        b.textCategory.visibility = if (showBadge) bindBadge(context, b, item, risk) else View.GONE
 
-        val suspicious = item.categoryId == Cat.SUSPICIOUS
-        b.iconWarning.visibility = if (suspicious) View.VISIBLE else View.GONE
+        // The warning icon marks a real risk, not merely an unknown sender: a
+        // row already red-badged does not need a second alarm next to its name.
+        b.iconWarning.visibility = if (risk != null) View.VISIBLE else View.GONE
 
-        // Unread: a tinted row, a dot, a bolder name and a darker preview. The
-        // tint goes on the inner row so the divider below stays neutral.
+        // --- background -----------------------------------------------------
         val background = RowStyler.background(context, layout, position, unread)
         val fallback = if (unread) {
             ContextCompat.getColor(context, R.color.unread_bg)
         } else {
-            Color.TRANSPARENT
+            android.graphics.Color.TRANSPARENT
         }
         RowStyler.apply(b.rowContent, background, fallback)
         b.textUnread.visibility = if (unread) View.VISIBLE else View.GONE
@@ -278,33 +322,50 @@ class ThreadAdapter(
     private fun dp(density: Float, value: Int): Int = (value * density).toInt()
 
     /**
-     * Neutral badge for an ordinary category; a red badge carrying the
-     * reason for a suspicious one, so the row states *why* rather than only
-     * turning red.
+     * The category pill.
+     *
+     * An ordinary row states what it is in grey, because "بانکی" or
+     * "اطلاع‌رسانی" is genuinely useful at a glance. A suspicious row is the
+     * exception: its red pill carries the *reason* instead of the word, since
+     * "why" is the only useful thing left to say about a message the app has
+     * already flagged — the row's warning icon and its red tint already say
+     * "suspicious".
+     *
+     * The label is never truncated to an ellipsis — "عبارت تبلیغا…" tells the
+     * reader nothing — so it wraps inside the row instead, and the row's 108dp
+     * ceiling leaves room for two lines.
+     *
+     * @return true when a badge was drawn
      */
-    private fun bindBadge(context: Context, b: ItemThreadBinding, item: ThreadSummary) {
+    private fun bindBadge(
+        context: Context,
+        b: ItemThreadBinding,
+        item: ThreadSummary,
+        risk: String?
+    ): Boolean {
+        val label: String
+        val background: Int
+        val foreground: Int
+
         if (item.categoryId == Cat.SUSPICIOUS) {
-            b.textCategory.text = item.riskLabel
-                ?: context.getString(R.string.cat_suspicious)
-            b.textCategory.background =
-                badge(ContextCompat.getColor(context, R.color.badge_danger_bg))
-            b.textCategory.setTextColor(
-                ContextCompat.getColor(context, R.color.badge_danger_text)
-            )
-            b.textCategory.visibility = View.VISIBLE
-            return
+            label = risk ?: context.getString(R.string.cat_suspicious)
+            background = R.color.badge_danger_bg
+            foreground = R.color.badge_danger_text
+        } else {
+            val category = categories(context)[item.categoryId]
+            if (category == null || item.categoryId == Cat.OTHER) return false
+            label = category.label(context)
+            background = R.color.badge_bg
+            foreground = R.color.badge_text
         }
 
-        val category = categories(context)[item.categoryId]
-        if (category != null && item.categoryId != Cat.OTHER) {
-            b.textCategory.text = category.label(context)
-            b.textCategory.background = badge(ContextCompat.getColor(context, R.color.badge_bg))
-            b.textCategory.setTextColor(ContextCompat.getColor(context, R.color.badge_text))
-            b.textCategory.visibility = View.VISIBLE
-        } else {
-            b.textCategory.text = ""
-            b.textCategory.visibility = View.GONE
-        }
+        b.textCategory.text = label
+        b.textCategory.background = badge(ContextCompat.getColor(context, background))
+        b.textCategory.setTextColor(ContextCompat.getColor(context, foreground))
+        b.textCategory.maxLines = 2
+        b.textCategory.ellipsize = null
+        b.textCategory.maxWidth = (200 * context.resources.displayMetrics.density).toInt()
+        return true
     }
 
     /** Fully rounded, no stroke, no elevation. */
@@ -314,21 +375,32 @@ class ThreadAdapter(
         setColor(color)
     }
 
+    /**
+     * The avatar states, in priority order: a real photo, a known business (its
+     * own colour with a white glyph), a person (a soft tinted circle with a
+     * deep-toned initial), an unnamed sender (a grey circle with a person
+     * glyph).
+     *
+     * Nothing here is red or orange. An avatar says *who*, the badge says *how
+     * risky*; mixing the two is what made a list of unknown senders look like a
+     * wall of alarms.
+     */
     private fun bindAvatar(
         context: Context,
         b: ItemThreadBinding,
         item: ThreadSummary,
         display: String
     ) {
-        // Views are recycled, so every branch below has to state its own
-        // padding, scale type and text colour; leaving one out is how a brand
-        // icon ends up tinted like a monogram.
+        val density = context.resources.displayMetrics.density
+        val pad = (12 * density).toInt()
         b.avatarImage.setPadding(0, 0, 0, 0)
-        b.avatarLetter.setTextColor(Color.WHITE)
+        // A recycled view keeps its colour filter, so every branch states it.
+        b.avatarImage.clearColorFilter()
+        b.avatarLetter.setTextColor(android.graphics.Color.WHITE)
 
         val photo = AvatarHelper.photo(context, item.address)
         if (photo != null) {
-            val rounded = RoundedBitmapDrawableFactory
+            val rounded = androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
                 .create(context.resources, photo)
                 .apply { isCircular = true }
             b.avatar.background = null
@@ -338,11 +410,19 @@ class ThreadAdapter(
             return
         }
 
+        // A business that the catalogue or the user knows: its own colour.
         val spec = BrandResolver.resolve(context, item.address, display, item.categoryId)
+        if (spec.iconRes != null && spec.displayName != null) {
+            b.avatar.background = AvatarHelper.circle(parseColor(spec.colorHex))
+            b.avatarLetter.text = null
+            b.avatarImage.setPadding(pad, pad, pad, pad)
+            b.avatarImage.scaleType = ImageView.ScaleType.CENTER_INSIDE
+            b.avatarImage.setImageResource(spec.iconRes)
+            return
+        }
+
         val letter = AvatarHelper.monogram(display)
-        if (spec.iconRes == null && letter != null) {
-            // A person, not a brand: a soft tinted circle with a deep-coloured
-            // initial, so a list of private senders stays calm.
+        if (letter != null) {
             val (container, ink) = AvatarHelper.softPair(display)
             b.avatar.background = AvatarHelper.circle(container)
             b.avatarImage.setImageDrawable(null)
@@ -351,24 +431,20 @@ class ThreadAdapter(
             return
         }
 
-        b.avatar.background = AvatarHelper.circle(parseColor(spec.colorHex))
-
-        if (spec.iconRes != null) {
-            val pad = (12 * context.resources.displayMetrics.density).toInt()
-            b.avatarLetter.text = null
-            b.avatarImage.setPadding(pad, pad, pad, pad)
-            b.avatarImage.scaleType = ImageView.ScaleType.CENTER_INSIDE
-            b.avatarImage.setImageResource(spec.iconRes)
-            return
-        }
-
-        b.avatarImage.setImageDrawable(null)
+        // A sender ID with no name: a calm grey person, never a warning.
+        b.avatar.background = AvatarHelper.circle(
+            ContextCompat.getColor(context, R.color.surface_sunken)
+        )
         b.avatarLetter.text = null
+        b.avatarImage.setPadding(pad, pad, pad, pad)
+        b.avatarImage.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        b.avatarImage.setImageResource(R.drawable.ic_person)
+        b.avatarImage.setColorFilter(ContextCompat.getColor(context, R.color.text_muted))
     }
 
     private fun parseColor(hex: String): Int = try {
-        Color.parseColor(hex)
+        android.graphics.Color.parseColor(hex)
     } catch (e: Exception) {
-        Color.GRAY
+        android.graphics.Color.GRAY
     }
 }

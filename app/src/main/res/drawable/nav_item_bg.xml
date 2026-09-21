@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The active bottom-navigation item sits on a very light blue pill, so the
+     active state is a surface rather than a colour swap. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/nav_active_pill" />
+    <corners android:radius="18dp" />
+</shape>

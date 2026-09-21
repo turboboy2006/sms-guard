@@ -25,12 +25,17 @@
 
     <!-- Content -->
     <dimen name="gutter">16dp</dimen>
-    <dimen name="avatar">52dp</dimen>
-    <dimen name="row_min_height">112dp</dimen>
+    <dimen name="avatar">48dp</dimen>
+    <!-- A conversation row reads as a summary, not as a message: 88dp fits a
+         name, two lines of preview and the time, and 108dp is the ceiling. -->
+    <dimen name="row_min_height">88dp</dimen>
+    <dimen name="row_max_height">108dp</dimen>
     <dimen name="appbar_height">64dp</dimen>
-    <dimen name="chip_height">48dp</dimen>
-    <dimen name="badge_height">30dp</dimen>
-    <dimen name="bottom_nav_height">76dp</dimen>
+    <dimen name="chip_height">46dp</dimen>
+    <dimen name="chip_padding_h">18dp</dimen>
+    <dimen name="badge_height">24dp</dimen>
+    <dimen name="bottom_nav_height">72dp</dimen>
+    <dimen name="time_column">52dp</dimen>
     <dimen name="color_stripe_width">4dp</dimen>
     <dimen name="swatch">40dp</dimen>
 

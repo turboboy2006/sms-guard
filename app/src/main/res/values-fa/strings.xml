@@ -149,9 +149,6 @@
     <string name="refreshing">در حال خواندن دوباره‌ی پیام‌ها…</string>
     <string name="compose">پیام جدید</string>
 
-    <string name="tab_contacts">مخاطبین</string>
-    <string name="no_contacts_threads">هنوز گفتگویی با مخاطبین گوشی نداری.</string>
-
     <string name="font_size">اندازه فونت</string>
     <string name="font_small">کوچک</string>
     <string name="font_normal">عادی</string>

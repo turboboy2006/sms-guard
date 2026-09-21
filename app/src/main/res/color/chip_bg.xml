@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Selected filter chip fills with the primary colour. -->
+<!-- Unselected filter chip: a quiet grey pill with dark-grey text, so the one
+     blue chip on screen is the selected tab and nothing else competes. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:color="@color/colorPrimary" android:state_checked="true" />
     <item android:color="@color/chip_inactive_bg" />

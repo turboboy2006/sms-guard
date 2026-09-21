@@ -27,6 +27,7 @@
     <color name="unread_dot">@color/blue_500</color>
 
     <color name="chip_inactive_bg">#1B2537</color>
+    <color name="chip_inactive_text">#C3CDDE</color>
 
     <color name="badge_bg">#1B2537</color>
     <color name="badge_text">#9BA9BE</color>
@@ -36,14 +37,21 @@
     <color name="danger">#F87171</color>
     <color name="danger_deep">#EF4444</color>
     <color name="danger_soft">#3A1A1E</color>
-    <color name="warning">#FB923C</color>
-    <color name="warning_soft">#2E1D0F</color>
+    <color name="warning">#F87171</color>
+    <color name="warning_soft">#3A1A1E</color>
     <color name="success">#4ADE80</color>
 
     <color name="bubble_incoming">#1B2537</color>
     <color name="bubble_outgoing">#1B2A45</color>
     <color name="bubble_in_text">@color/text_primary</color>
     <color name="bubble_out_text">@color/blue_900</color>
+
+    <color name="nav_active_pill">#1B2A45</color>
+    <color name="nav_icon_active">#7BA3F0</color>
+    <color name="nav_icon_inactive">#7B8AA0</color>
+
+    <color name="cat_suspicious_c">#FB7185</color>
+    <color name="cat_spam_c">#F87171</color>
 
     <color name="ic_launcher_background">#1B2A45</color>
 </resources>

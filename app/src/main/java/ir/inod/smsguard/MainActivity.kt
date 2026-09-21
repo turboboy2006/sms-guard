@@ -35,12 +35,10 @@ class MainActivity : BaseActivity() {
 
         /** Tab order, matching the chips built in [setUpFilterChips]. */
         const val TAB_ALL = 0
-        const val TAB_CONTACTS = 1
-        const val TAB_SUSPICIOUS = 2
-        const val TAB_SPAM = 3
-        const val TAB_BANKING = 4
-        const val TAB_SERVICE = 5
-        const val TAB_TRASH = 6
+        const val TAB_SUSPICIOUS = 1
+        const val TAB_SPAM = 2
+        const val TAB_BANKING = 3
+        const val TAB_SERVICE = 4
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -134,31 +132,22 @@ class MainActivity : BaseActivity() {
     }
 
     /**
-     * Filter chips rather than a tab strip: they scroll horizontally, read as
-     * pills, and the selected one fills with the primary colour.
+     * The filter strip.
+     *
+     * One row of pills, 46dp tall, 8dp apart, with 18dp of horizontal padding
+     * inside each. Only the categories whose shape carries meaning get an icon —
+     * a warning for suspicious, a bank for banking, a bell for service — because
+     * an icon on every chip turns the strip into noise.
      */
     private fun setUpFilterChips() {
         val labels = listOf(
             R.string.tab_all,
-            R.string.tab_contacts,
             R.string.tab_suspicious,
             R.string.tab_spam,
             R.string.tab_banking,
-            R.string.tab_notifications,
-            R.string.tab_trash
+            R.string.tab_notifications
         )
-        // One icon per category, the way the reference strip reads: the shape
-        // carries as much meaning as the word and survives a narrow screen
-        // where the label has to be cut.
-        val icons = listOf(
-            R.drawable.ic_tab_all,
-            R.drawable.ic_person,
-            R.drawable.ic_tab_suspicious,
-            R.drawable.ic_tab_spam,
-            R.drawable.ic_tab_banking,
-            R.drawable.ic_tab_service,
-            R.drawable.ic_tab_trash
-        )
+        val icons = listOf(0, R.drawable.ic_tab_suspicious, 0, R.drawable.ic_tab_banking, R.drawable.ic_tab_service)
         val idToIndex = HashMap<Int, Int>()
         val density = resources.displayMetrics.density
         labels.forEachIndexed { index, res ->
@@ -167,24 +156,24 @@ class MainActivity : BaseActivity() {
                 isCheckable = true
                 isClickable = true
                 id = View.generateViewId()
-                // Filled rectangle when selected, pale grey otherwise: the
-                // reference's filter strip, not the outlined default chip.
                 chipBackgroundColor =
                     ContextCompat.getColorStateList(this@MainActivity, R.color.chip_bg)
                 setTextColor(
                     ContextCompat.getColorStateList(this@MainActivity, R.color.chip_text)
                 )
-                chipIcon = ContextCompat.getDrawable(this@MainActivity, icons[index])
-                chipIconTint =
-                    ContextCompat.getColorStateList(this@MainActivity, R.color.chip_text)
-                chipIconSize = 16f * density
+                if (icons[index] != 0) {
+                    chipIcon = ContextCompat.getDrawable(this@MainActivity, icons[index])
+                    chipIconTint =
+                        ContextCompat.getColorStateList(this@MainActivity, R.color.chip_text)
+                    chipIconSize = 16f * density
+                }
                 chipStrokeWidth = 0f
-                chipStartPadding = 10f * density
-                chipEndPadding = 12f * density
-                chipCornerRadius = 16f * density
-                chipMinHeight = 44f * density
+                chipStartPadding = 18f * density
+                chipEndPadding = 18f * density
+                chipCornerRadius = 23f * density
+                chipMinHeight = 46f * density
                 // The Kotlin property is private; the public setter is not.
-                setEnsureMinTouchTargetSize(true)
+                setEnsureMinTouchTargetSize(false)
             }
             idToIndex[chip.id] = index
             binding.chipGroup.addView(chip)
@@ -465,14 +454,12 @@ class MainActivity : BaseActivity() {
     private fun applyFilter() {
         val spamIds = CategoryStore(this).all().filter { it.spamFolder }.map { it.id }.toSet()
         val byTab = when (selectedTab) {
-            TAB_CONTACTS -> allThreads.filter { ContactsIndex.isKnownContact(it.address) }
             TAB_SUSPICIOUS -> allThreads.filter { it.categoryId == Cat.SUSPICIOUS }
             TAB_SPAM -> allThreads.filter { it.categoryId in spamIds }
             TAB_BANKING -> allThreads.filter {
                 it.categoryId == Cat.BANKING || it.categoryId == Cat.OTP
             }
             TAB_SERVICE -> allThreads.filter { it.categoryId == Cat.NOTIFICATION }
-            TAB_TRASH -> allThreads.filter { it.categoryId == Cat.TRASH }
             // "All" hides the spam folder and the trash alike.
             else -> allThreads.filterNot {
                 it.categoryId in spamIds || it.categoryId == Cat.TRASH
@@ -492,13 +479,7 @@ class MainActivity : BaseActivity() {
         if (rendered.isEmpty()) adapter.submit(filtered) else adapter.merge(filtered)
         rendered = filtered
 
-        binding.textEmptyLabel.setText(
-            when (selectedTab) {
-                TAB_TRASH -> R.string.trash_empty
-                TAB_CONTACTS -> R.string.no_contacts_threads
-                else -> R.string.no_threads
-            }
-        )
+        binding.textEmptyLabel.setText(R.string.no_threads)
         binding.textEmpty.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
     }
 
@@ -531,21 +512,41 @@ class MainActivity : BaseActivity() {
     // ------------------------------------------------- long-press: categorise
 
     private fun showOptions(thread: ThreadSummary) {
-        if (selectedTab == TAB_TRASH) {
-            showTrashOptions(thread)
-            return
+        val inTrash = thread.categoryId == Cat.TRASH
+        val options = if (inTrash) {
+            arrayOf(
+                getString(R.string.delete_forever),
+                getString(R.string.delete_all)
+            )
+        } else {
+            arrayOf(
+                getString(R.string.change_category),
+                getString(R.string.pick_color),
+                getString(R.string.mark_spam),
+                getString(R.string.mark_not_spam),
+                getString(R.string.move_to_trash),
+                getString(R.string.block_sender)
+            )
         }
-        val options = arrayOf(
-            getString(R.string.change_category),
-            getString(R.string.pick_color),
-            getString(R.string.mark_spam),
-            getString(R.string.mark_not_spam),
-            getString(R.string.move_to_trash),
-            getString(R.string.block_sender)
-        )
         MaterialAlertDialogBuilder(this)
             .setTitle(ContactNames.displayNameUi(thread.address))
             .setItems(options) { _, which ->
+                if (inTrash) {
+                    when (which) {
+                        0 -> confirm(
+                            R.string.delete_forever,
+                            getString(
+                                R.string.confirm_delete_thread,
+                                ContactNames.displayNameUi(thread.address)
+                            )
+                        ) { deleteThreadForever(thread) }
+                        1 -> confirm(
+                            R.string.delete_all,
+                            getString(R.string.confirm_empty_trash)
+                        ) { emptyTrash() }
+                    }
+                    return@setItems
+                }
                 when (which) {
                     0 -> pickCategory(thread)
                     1 -> pickColor(thread)
@@ -565,33 +566,6 @@ class MainActivity : BaseActivity() {
                         RuleStore(this).add(thread.address, RuleTarget.SENDER, false)
                         toast(R.string.sender_blocked)
                     }
-                }
-            }
-            .show()
-    }
-
-    /**
-     * Trash actions. A permanent delete is the only irreversible thing in the
-     * app and has no undo, so the sender is named back in the confirmation.
-     */
-    private fun showTrashOptions(thread: ThreadSummary) {
-        val label = ContactNames.displayNameUi(thread.address)
-        val options = arrayOf(
-            getString(R.string.delete_forever),
-            getString(R.string.delete_all)
-        )
-        MaterialAlertDialogBuilder(this)
-            .setTitle(label)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> confirm(
-                        R.string.delete_forever,
-                        getString(R.string.confirm_delete_thread, label)
-                    ) { deleteThreadForever(thread) }
-                    1 -> confirm(
-                        R.string.delete_all,
-                        getString(R.string.confirm_empty_trash)
-                    ) { emptyTrash() }
                 }
             }
             .show()

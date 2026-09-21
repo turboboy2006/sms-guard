@@ -166,8 +166,6 @@
 
     <!-- Header categories. "Contacts" only shows conversations whose sender is
          a real entry in the phone's address book. -->
-    <string name="tab_contacts">Contacts</string>
-    <string name="no_contacts_threads">No conversations with your contacts yet.</string>
 
     <!-- Font sizes -->
     <string name="font_size">Font size</string>

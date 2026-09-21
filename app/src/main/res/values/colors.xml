@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Palette. #2563EB is the ONLY primary; green / red / purple / teal appear only
-  as category or status identity. No gradients anywhere.
+  Palette.
+
+  #2563EB is the ONLY primary; green / red / purple / teal appear only as
+  category or status identity. No gradients anywhere.
+
+  Two rules keep the screen from looking like several designs at once:
+    - a colour that means "identity" (a bank, a category) is always a soft tint
+      with a deep tone of the same hue, never a saturated fill competing with
+      the primary blue;
+    - a colour that means "danger" is reserved for danger, and is never used
+      just to make a row more interesting.
 -->
 <resources>
     <!-- Primary -->
-    <color name="blue_50">#EFF6FF</color>
+    <color name="blue_50">#EAF2FF</color>
     <color name="blue_100">#DBEAFE</color>
     <color name="blue_300">#93B4F5</color>
     <color name="blue_500">#2563EB</color>
@@ -14,19 +23,19 @@
     <color name="blue_900">#172554</color>
 
     <color name="colorPrimary">@color/blue_500</color>
-    <color name="colorPrimaryDark">@color/blue_700</color>
+    <color name="colorPrimaryDark">@color/blue_600</color>
     <color name="colorAccent">@color/blue_600</color>
 
     <!-- Surfaces and text -->
-    <color name="screen_bg">#F8FAFC</color>
+    <color name="screen_bg">#F7F9FC</color>
     <color name="card_bg">#FFFFFF</color>
     <color name="surface_sunken">#F1F5F9</color>
     <!-- Raised surface for a list row that sits on screen_bg: identical to the
          card colour in light mode, slightly lifted in the night palette. -->
     <color name="surface_elevated">#FFFFFF</color>
     <color name="text_primary">#172033</color>
-    <color name="text_secondary">#475467</color>
-    <color name="text_muted">#667085</color>
+    <color name="text_secondary">#667085</color>
+    <color name="text_muted">#98A2B3</color>
     <color name="divider">#E7ECF3</color>
     <color name="border_soft">#D7DDE8</color>
     <color name="skeleton">#E7ECF3</color>
@@ -35,8 +44,9 @@
     <color name="unread_bg">#EFF6FF</color>
     <color name="unread_dot">@color/blue_500</color>
 
-    <!-- Filter chips -->
+    <!-- Filter chips: unselected is a quiet grey pill with dark-grey text -->
     <color name="chip_inactive_bg">#F1F5F9</color>
+    <color name="chip_inactive_text">#344054</color>
 
     <!-- Category badges: neutral by default, red only for suspicious -->
     <color name="badge_bg">#F1F5F9</color>
@@ -44,12 +54,14 @@
     <color name="badge_danger_bg">#FEE2E2</color>
     <color name="badge_danger_text">#B91C1C</color>
 
-    <!-- Semantic -->
+    <!-- Semantic. `warning` is the muted red the design asks for on anything
+         flagged: orange reads as decoration and was being drawn on every
+         unlabelled sender. -->
     <color name="danger">#B91C1C</color>
     <color name="danger_deep">#991B1B</color>
     <color name="danger_soft">#FEE2E2</color>
-    <color name="warning">#EA580C</color>
-    <color name="warning_soft">#FFEDD5</color>
+    <color name="warning">#DC2626</color>
+    <color name="warning_soft">#FEE2E2</color>
     <color name="success">#15803D</color>
 
     <!-- Chat bubbles -->
@@ -60,7 +72,13 @@
 
     <color name="ic_launcher_background">@color/blue_600</color>
 
-    <!-- Category identity colours, as specified -->
+    <!-- Navigation bar: white surface, blue active item on a very light pill -->
+    <color name="nav_active_pill">#EAF2FF</color>
+    <color name="nav_icon_active">#2563EB</color>
+    <color name="nav_icon_inactive">#98A2B3</color>
+
+    <!-- Category identity colours. The dangerous ones are the same rose family
+         so "suspicious" and "spam" read as one idea at two strengths. -->
     <color name="cat_personal_c">#15803D</color>
     <color name="cat_banking_c">#1D4ED8</color>
     <color name="cat_otp_c">#0F766E</color>

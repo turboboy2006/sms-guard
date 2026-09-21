@@ -134,6 +134,7 @@
             android:layout_margin="@dimen/gutter"
             android:contentDescription="@string/compose"
             app:backgroundTint="@color/colorPrimary"
+            app:elevation="3dp"
             app:srcCompat="@drawable/ic_compose"
             app:tint="@android:color/white" />
     </FrameLayout>
@@ -146,9 +147,11 @@
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="@dimen/bottom_nav_height"
         android:background="@color/card_bg"
-        android:minHeight="@dimen/bottom_nav_height"
+        app:itemBackground="@drawable/nav_item_bg"
+        app:itemIconTint="@color/nav_icon_tint"
+        app:itemTextColor="@color/nav_label_tint"
         app:labelVisibilityMode="labeled"
         app:menu="@menu/bottom_nav" />
 
