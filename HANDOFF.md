@@ -8,8 +8,8 @@
 |---|---|
 | مسیر پروژه | `C:\xamp\htdocs\inod\sms-guard` |
 | مخزن | https://github.com/turboboy2006/sms-guard (**عمومی**) |
-| آخرین کامیت | `ff6810c` — «fix(picker): declare the recent-conversation list before the function that reads it» |
-| آخرین بیلد | **سبز** (`run 35581767836`) |
+| آخرین کامیت | `2ba22fd` — «fix(ui): View has no maxHeight, and bindBadge returns whether it drew» |
+| آخرین بیلد | **سبز** (`run 35583420093`) |
 | APK | `dist\app-debug.apk` (~۵٫۹۷ MB، از همان بیلد سبز) |
 | زبان‌ها | ۱۸۰ کلید در `values/` و `values-fa/`، تطابق کامل |
 
@@ -119,6 +119,14 @@ app/src/main/java/ir/inod/smsguard/
 
 ## کارهای باقی‌مانده
 
+0. **ادامه‌ی یکپارچگی بصری (بازخورد کاربر، کامیت `2ba22fd` نیمی از آن را برد).**
+   انجام‌شده: پالت واحد (`#F7F9FC` / `#667085` / Status bar دقیقاً `#1D4ED8`)،
+   چیپ‌های ۴۶dp با ۱۸dp پدینگ و فاصله‌ی ۸dp (بدون چیپ مخاطبین و زباله)،
+   BottomNav سفید ۷۲dp با Pill آبی روشن، ردیف ۸۸..۱۰۸dp، ستون زمان سمت چپ فیزیکی،
+   رندر LTR برای شماره/کد/لینک/مبلغ، آواتار بدون قرمز/نارنجی، Badge بدون بریدگی.
+   باقی‌مانده: هم‌سان‌سازی صفحه‌ی گفتگو و تنظیمات/ظاهر با همین توکن‌ها.
+   **پرسش باز:** «زمان در ستون چپ» فیزیکی پیاده شد؛ اگر منظور RTL (راست) بوده،
+   فقط `layoutDirection` ریشه‌ی `item_thread.xml` باید عوض شود.
 1. **ظاهر — ادامه‌ی نزدیک‌شدن به مرجع.** مرجع طراحی `C:\xamp\htdocs\inod\new-ui-help\`
    (Flutter، فقط مشخصات طراحی) و اسکرین‌شات‌های خود کاربر.
 2. **۱۵ مورد هوش:** Swipe actions · چندانتخابی · `ListAdapter + DiffUtil` رسمی ·
@@ -167,6 +175,13 @@ app/src/main/java/ir/inod/smsguard/
     برای فایل‌های این پروژه از `[System.IO.File]::WriteAllText($p, $t, (New-Object System.Text.UTF8Encoding($false)))`
     استفاده کن و بعدش با اسکن کاراکترهای بالای U+007E مطمئن شو چیزی خراب نشده. یک بار
     `—` به `â€"` تبدیل شد و اگر در رشته‌ی کد بود، بیلد می‌شکست.
+18. **`View` پراپرتی `maxHeight` ندارد** (فقط `TextView` و `ImageView`). برای سقف ارتفاع
+    یک ردیف، `layoutParams.height` را ست کن یا `ViewGroup.LayoutParams.WRAP_CONTENT`.
+19. **`visibility` از نوع `Int` است، نه `Boolean`.** `view.visibility = someBooleanReturningFn()`
+    کامپایل نمی‌شود؛ شرط را جدا بنویس.
+20. **آیکون‌های برداری پروژه `fillColor="#FFFFFF"` دارند** و با `app:tint` /
+    `chipIconTint` رنگ می‌گیرند؛ رنگ داخل خود فایل مهم نیست، اما اگر tint نگذاری سفید
+    روی سفید دیده نمی‌شوند.
 
 ## ابزار بیلد و دیباگ
 
