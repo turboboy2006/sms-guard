@@ -106,6 +106,10 @@ class SettingsActivity : BaseActivity() {
             this, android.R.layout.simple_spinner_dropdown_item, labels
         )
         binding.spinnerLanguage.setSelection(langs.indexOf(settings.language).coerceAtLeast(0))
+        val retentionValues = listOf(0, 7, 30, 90)
+        binding.spinnerTrashRetention.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
+            listOf(getString(R.string.trash_keep_forever), getString(R.string.trash_days, 7), getString(R.string.trash_days, 30), getString(R.string.trash_days, 90)))
+        binding.spinnerTrashRetention.setSelection(retentionValues.indexOf(settings.trashRetentionDays).coerceAtLeast(0))
         setUpSimPicker()
 
         // --- appearance and cache ---
@@ -360,6 +364,7 @@ class SettingsActivity : BaseActivity() {
             ?.coerceIn(10, 95) ?: 40
         settings.language = langs[binding.spinnerLanguage.selectedItemPosition.coerceIn(0, 2)]
         settings.defaultSimId = simIds.getOrElse(binding.spinnerDefaultSim.selectedItemPosition) { -1 }
+        settings.trashRetentionDays = retentionValues.getOrElse(binding.spinnerTrashRetention.selectedItemPosition) { 0 }
 
         // Applies immediately and survives restart.
         val tag = settings.language

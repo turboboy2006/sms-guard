@@ -74,6 +74,11 @@ class SettingsStore(context: Context) {
         get() = prefs.getInt("default_sim_id", -1)
         set(v) = prefs.edit().putInt("default_sim_id", v).apply()
 
+    /** 0 keeps trash forever; otherwise conversations older than this are purged. */
+    var trashRetentionDays: Int
+        get() = prefs.getInt("trash_retention_days", 0)
+        set(v) = prefs.edit().putInt("trash_retention_days", v.coerceAtLeast(0)).apply()
+
     /**
      * Quiet hours. Off by default: silently withholding a notification is a
      * surprising thing for a messaging app to do on its own, so the user has to

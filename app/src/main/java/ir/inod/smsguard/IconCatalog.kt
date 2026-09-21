@@ -20,6 +20,11 @@ object IconCatalog {
 
     val ALL: List<IconSpec> = listOf(
         IconSpec("bank", R.drawable.ic_cat_bank, "#1D4ED8", "financial"),
+        IconSpec("bank_melli", R.drawable.ic_bank_melli, "#2563EB", "financial"),
+        IconSpec("bank_mellat", R.drawable.ic_bank_mellat, "#E11D48", "financial"),
+        IconSpec("bank_saderat", R.drawable.ic_bank_saderat, "#2563EB", "financial"),
+        IconSpec("bank_tejarat", R.drawable.ic_bank_tejarat, "#0F766E", "financial"),
+        IconSpec("bank_pasargad", R.drawable.ic_bank_pasargad, "#D97706", "financial"),
         IconSpec("card", R.drawable.ic_cat_card, "#1D4ED8", "financial"),
         IconSpec("receipt", R.drawable.ic_cat_receipt, "#0F766E", "financial"),
         IconSpec("insurance", R.drawable.ic_cat_insurance, "#0F766E", "financial"),
@@ -69,11 +74,11 @@ data class BrandEntry(
 object BrandCatalog {
 
     val ALL: List<BrandEntry> = listOf(
-        BrandEntry("بانک ملت", Cat.BANKING, "bank", "#1D4ED8", listOf("BANKMELLAT", "MELLAT", "بانک ملت")),
-        BrandEntry("بانک ملی", Cat.BANKING, "bank", "#1D4ED8", listOf("BANKMELLI", "MELLI", "BMI", "بانک ملی")),
-        BrandEntry("بانک صادرات", Cat.BANKING, "bank", "#1D4ED8", listOf("SADERAT", "BSI", "بانک صادرات")),
-        BrandEntry("بانک تجارت", Cat.BANKING, "bank", "#1D4ED8", listOf("TEJARAT", "بانک تجارت")),
-        BrandEntry("بانک پاسارگاد", Cat.BANKING, "bank", "#1D4ED8", listOf("PASARGAD", "BPI", "بانک پاسارگاد")),
+        BrandEntry("بانک ملت", Cat.BANKING, "bank_mellat", "#E11D48", listOf("BANKMELLAT", "MELLAT", "بانک ملت")),
+        BrandEntry("بانک ملی", Cat.BANKING, "bank_melli", "#2563EB", listOf("BANKMELLI", "MELLI", "BMI", "بانک ملی")),
+        BrandEntry("بانک صادرات", Cat.BANKING, "bank_saderat", "#2563EB", listOf("SADERAT", "BSI", "بانک صادرات")),
+        BrandEntry("بانک تجارت", Cat.BANKING, "bank_tejarat", "#0F766E", listOf("TEJARAT", "بانک تجارت")),
+        BrandEntry("بانک پاسارگاد", Cat.BANKING, "bank_pasargad", "#D97706", listOf("PASARGAD", "BPI", "بانک پاسارگاد")),
         BrandEntry("بانک سامان", Cat.BANKING, "bank", "#1D4ED8", listOf("SAMAN", "SB24", "بانک سامان")),
         BrandEntry("بانک پارسیان", Cat.BANKING, "bank", "#1D4ED8", listOf("PARSIAN", "بانک پارسیان")),
         BrandEntry("بانک کشاورزی", Cat.BANKING, "bank", "#1D4ED8", listOf("KESHAVARZI", "بانک کشاورزی")),

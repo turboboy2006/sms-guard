@@ -540,6 +540,11 @@ class ConversationActivity : BaseActivity() {
             .setPositiveButton(R.string.confirm) { _, _ ->
                 adapter.clearSelection()
                 worker.execute {
+                    selected.filter { it.isIncoming && (it.categoryId == Cat.SUSPICIOUS || it.categoryId == Cat.SPAM || it.categoryId == Cat.PROMOTION) }
+                        .forEach { LearnedWeights(this).record(it.body, true) }
+                    if (selected.any { it.isIncoming && (it.categoryId == Cat.SUSPICIOUS || it.categoryId == Cat.SPAM) }) {
+                        SenderProfileStore(this).recordFeedback(address, true)
+                    }
                     selected.forEach { repo.deleteMessage(it.id) }
                     ThreadCache.clear(this)
                     load()

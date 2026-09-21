@@ -307,4 +307,7 @@
     <string name="risk_score">امتیاز خطر %1$d · اطمینان %2$d٪</string>
     <string name="notification_sound">صدای اعلان</string>
     <string name="sender_channel">پیام‌های %1$s</string>
+    <string name="trash_retention">پاک‌سازی خودکار سطل زباله</string>
+    <string name="trash_keep_forever">برای همیشه نگه‌دار</string>
+    <string name="trash_days">حذف پس از %1$d روز</string>
 </resources>

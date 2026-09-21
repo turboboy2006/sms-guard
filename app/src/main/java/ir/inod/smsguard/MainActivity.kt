@@ -73,6 +73,7 @@ class MainActivity : BaseActivity() {
     private var drawnLayout: RowLayout? = null
     private var loadedFromCache = false
     private var categorySignature = ""
+    private var trashCleanupDone = false
 
     /**
      * The bottom navigation's Contacts destination.
@@ -444,12 +445,28 @@ class MainActivity : BaseActivity() {
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 if (threads.isNotEmpty()) allThreads = threads
+                cleanExpiredTrash(allThreads)
                 showSkeleton(false)
                 applyFilter()
                 if (BuildConfig.DEBUG) {
                     android.util.Log.d("SmsGuard", "inbox sync finished in ${elapsed}ms")
                 }
             }
+        }
+    }
+
+    private fun cleanExpiredTrash(rows: List<ThreadSummary>) {
+        if (trashCleanupDone) return
+        trashCleanupDone = true
+        val days = SettingsStore(this).trashRetentionDays
+        if (days <= 0) return
+        val cutoff = System.currentTimeMillis() - days * 24L * 60L * 60L * 1000L
+        val victims = rows.filter { it.categoryId == Cat.TRASH && it.date < cutoff }
+        if (victims.isEmpty()) return
+        worker.execute {
+            victims.forEach { repo.deleteThread(it.threadId) }
+            ThreadCache.clear(this)
+            main.post { loadThreads() }
         }
     }
 
