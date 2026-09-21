@@ -66,14 +66,34 @@ class ConversationActivity : AppCompatActivity() {
         load()
     }
 
+    private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
+
+    /**
+     * Reading and classifying a thread is real work (provider query plus one
+     * classification per sender). Running it on the main thread produced
+     * "ANR in ir.inod.smsguard" on a real device, so it is dispatched.
+     */
     private fun load() {
-        val messages = if (threadId >= 0) repo.loadMessages(threadId) else emptyList()
-        adapter.submit(messages)
-        // The adapter also emits day dividers, so scroll to its own last row
-        // rather than to messages.size.
-        if (adapter.itemCount > 0) {
-            binding.recyclerMessages.scrollToPosition(adapter.itemCount - 1)
+        worker.execute {
+            val messages = try {
+                if (threadId >= 0) repo.loadMessages(threadId) else emptyList()
+            } catch (t: Throwable) {
+                emptyList()
+            }
+            runOnUiThread {
+                adapter.submit(messages)
+                // The adapter also emits day dividers, so scroll to its own
+                // last row rather than to messages.size.
+                if (adapter.itemCount > 0) {
+                    binding.recyclerMessages.scrollToPosition(adapter.itemCount - 1)
+                }
+            }
         }
+    }
+
+    override fun onDestroy() {
+        worker.shutdownNow()
+        super.onDestroy()
     }
 
     private fun sendCurrent() {

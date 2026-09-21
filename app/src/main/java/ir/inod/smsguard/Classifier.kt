@@ -457,10 +457,27 @@ object Classifier {
 
     /** Read-only resolution used while listing messages. Performs no writes. */
     fun resolveRead(context: Context, address: String, body: String, messageId: Long): String {
-        overrides(context)[messageId]?.let { return it }
-        senderCategories(context)[address]?.let { return it }
-        return classifyLocal(context, address, body).categoryId
+        overrideFor(context, messageId)?.let { return it }
+        return senderOrLocalCategory(context, address, body)
     }
+
+    /**
+     * Per-message override only. This is a map lookup, not a classification,
+     * and is what lets a whole conversation share one expensive pass.
+     */
+    fun overrideFor(context: Context, messageId: Long): String? = overrides(context)[messageId]
+
+    /**
+     * Sender category if one is remembered, otherwise a single local
+     * classification.
+     *
+     * Every message in a conversation shares a sender, so calling this once per
+     * thread instead of once per row turns an O(rows x classify) load into
+     * O(1 x classify). Running it per row on the UI thread was producing
+     * "ANR in ir.inod.smsguard" with CPU pinned above 100%.
+     */
+    fun senderOrLocalCategory(context: Context, address: String, body: String): String =
+        senderCategories(context)[address] ?: classifyLocal(context, address, body).categoryId
 
     /**
      * Called once per incoming message. Remembers the sender, which is what

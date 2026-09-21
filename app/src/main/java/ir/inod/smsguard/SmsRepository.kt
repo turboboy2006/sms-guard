@@ -122,10 +122,19 @@ class SmsRepository(private val context: Context) {
         return if (out.size > limit) out.takeLast(limit) else out
     }
 
-    private fun categoryFor(address: String, body: String, messageId: Long): String =
-        categoryCache.getOrPut(address + "#" + messageId) {
-            Classifier.resolveRead(context, address, body, messageId)
+    /**
+     * Cheap per-row resolution.
+     *
+     * The expensive classification is memoised per *address*, because a
+     * conversation has one sender. Doing a full pass per row (normalisation
+     * plus roughly twenty regexes) pinned the CPU and caused an ANR.
+     */
+    private fun categoryFor(address: String, body: String, messageId: Long): String {
+        Classifier.overrideFor(context, messageId)?.let { return it }
+        return categoryCache.getOrPut(address) {
+            Classifier.senderOrLocalCategory(context, address, body)
         }
+    }
 
     private fun colorFor(address: String, categoryId: String): String =
         colorCache.getOrPut(address + "#" + categoryId) {
