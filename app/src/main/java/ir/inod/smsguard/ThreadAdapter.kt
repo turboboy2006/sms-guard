@@ -63,7 +63,15 @@ class ThreadAdapter(
         val context = holder.itemView.context
         val b = holder.binding
 
-        val display = ContactNames.displayName(context, item.address)
+        // Contact name first; when the number is unknown, a catalog brand name
+        // reads far better than a raw sender ID.
+        val contactName = ContactNames.displayName(context, item.address)
+        val brandMatch = BrandCatalog.find(item.address, contactName)
+        val display = if (contactName == item.address && brandMatch != null) {
+            brandMatch.displayName
+        } else {
+            contactName
+        }
         b.textAddress.text = display
         b.textSnippet.text = item.snippet
         b.textDate.text = Dates.listLabel(context, item.date)
@@ -149,21 +157,23 @@ class ThreadAdapter(
             return
         }
 
-        val letter = AvatarHelper.monogram(display)
-        if (letter != null) {
-            b.avatar.background = AvatarHelper.circle(AvatarHelper.colorFor(display))
-            b.avatarImage.setImageDrawable(null)
-            b.avatarLetter.text = letter
+        // Resolution order: brand catalog, then category, then monogram, then a
+        // grey person. Everything below a real photo goes through one resolver.
+        val spec = BrandResolver.resolve(context, item.address, display, item.categoryId)
+        b.avatar.background = AvatarHelper.circle(parseColor(spec.colorHex))
+
+        if (spec.iconRes != null) {
+            val pad = (11 * context.resources.displayMetrics.density).toInt()
+            b.avatarLetter.text = null
+            b.avatarImage.setPadding(pad, pad, pad, pad)
+            b.avatarImage.scaleType = ImageView.ScaleType.CENTER_INSIDE
+            b.avatarImage.setImageResource(spec.iconRes)
             return
         }
 
-        // Unknown sender: a blank person, never a meaningless digit.
-        val pad = (10 * context.resources.displayMetrics.density).toInt()
-        b.avatar.background = AvatarHelper.circle(AvatarHelper.placeholderColor())
-        b.avatarLetter.text = null
-        b.avatarImage.setPadding(pad, pad, pad, pad)
-        b.avatarImage.scaleType = ImageView.ScaleType.CENTER_INSIDE
-        b.avatarImage.setImageResource(R.drawable.ic_person)
+        // Deterministic monogram: the same name always gets the same colour.
+        b.avatarImage.setImageDrawable(null)
+        b.avatarLetter.text = AvatarHelper.monogram(display)
     }
 
     /** Soft red pill behind the reason text. */
