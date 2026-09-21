@@ -28,6 +28,9 @@ class MainActivity : AppCompatActivity() {
 
     private companion object {
         const val MENU_MANAGE = 2001
+        const val MENU_SEARCH = 2002
+        const val MENU_RULES = 2003
+        const val MENU_BLOCKED = 2004
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -64,21 +67,30 @@ class MainActivity : AppCompatActivity() {
         binding.recyclerThreads.layoutManager = LinearLayoutManager(this)
         binding.recyclerThreads.adapter = adapter
 
-        setUpTabs()
+        setUpFilterChips()
 
         binding.buttonMakeDefault.setOnClickListener { requestDefaultRole() }
-        binding.buttonRules.setOnClickListener {
-            startActivity(Intent(this, RulesActivity::class.java))
+        binding.fabCompose.setOnClickListener {
+            startActivity(Intent(this, ConversationActivity::class.java))
         }
-        binding.buttonSettings.setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
+        binding.bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_settings -> {
+                    startActivity(Intent(this, SettingsActivity::class.java))
+                    false
+                }
+                else -> true
+            }
         }
-        binding.buttonBlocked.setOnClickListener { showBlockedLog() }
 
         ensurePermissions()
     }
 
-    private fun setUpTabs() {
+    /**
+     * Filter chips rather than a tab strip: they scroll horizontally, read as
+     * pills, and the selected one fills with the primary colour.
+     */
+    private fun setUpFilterChips() {
         val labels = listOf(
             R.string.tab_all,
             R.string.tab_suspicious,
@@ -87,30 +99,24 @@ class MainActivity : AppCompatActivity() {
             R.string.tab_notifications,
             R.string.tab_trash
         )
-        val icons = listOf(
-            R.drawable.ic_tab_all,
-            R.drawable.ic_tab_suspicious,
-            R.drawable.ic_tab_spam,
-            R.drawable.ic_tab_banking,
-            R.drawable.ic_tab_service,
-            R.drawable.ic_tab_trash
-        )
-        labels.forEachIndexed { index, label ->
-            binding.tabs.addTab(
-                binding.tabs.newTab().setText(label).setIcon(icons[index])
-            )
-        }
-        // A nested class cannot be referenced through its fully-qualified outer
-        // name in Kotlin, so TabLayout is imported and used unqualified.
-        binding.tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab) {
-                selectedTab = tab.position
-                applyFilter()
+        val idToIndex = HashMap<Int, Int>()
+        labels.forEachIndexed { index, res ->
+            val chip = com.google.android.material.chip.Chip(this).apply {
+                text = getString(res)
+                isCheckable = true
+                isClickable = true
+                id = View.generateViewId()
             }
-
-            override fun onTabUnselected(tab: TabLayout.Tab) = Unit
-            override fun onTabReselected(tab: TabLayout.Tab) = Unit
-        })
+            idToIndex[chip.id] = index
+            binding.chipGroup.addView(chip)
+        }
+        binding.chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            val first = checkedIds.firstOrNull() ?: return@setOnCheckedStateChangeListener
+            selectedTab = idToIndex[first] ?: 0
+            applyFilter()
+        }
+        (binding.chipGroup.getChildAt(0) as? com.google.android.material.chip.Chip)
+            ?.isChecked = true
     }
 
     // ------------------------------------------------------------- lifecycle
@@ -246,18 +252,26 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    /** Entry point to the brand and blocklist manager. */
+    /** Search, plus the actions that used to live in a row of buttons. */
     override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
-        menu.add(0, MENU_MANAGE, 0, R.string.manage_brands)
+        menu.add(0, MENU_SEARCH, 0, R.string.search)
+            .setIcon(R.drawable.ic_search)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        menu.add(0, MENU_RULES, 1, R.string.rules)
+        menu.add(0, MENU_BLOCKED, 2, R.string.blocked_log)
+        menu.add(0, MENU_MANAGE, 3, R.string.manage_brands)
         return true
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
-        if (item.itemId == MENU_MANAGE) {
-            startActivity(Intent(this, ManagerActivity::class.java))
-            return true
+        when (item.itemId) {
+            MENU_SEARCH -> toast(R.string.search)
+            MENU_RULES -> startActivity(Intent(this, RulesActivity::class.java))
+            MENU_BLOCKED -> showBlockedLog()
+            MENU_MANAGE -> startActivity(Intent(this, ManagerActivity::class.java))
+            else -> return super.onOptionsItemSelected(item)
         }
-        return super.onOptionsItemSelected(item)
+        return true
     }
 
     private fun applyFilter() {

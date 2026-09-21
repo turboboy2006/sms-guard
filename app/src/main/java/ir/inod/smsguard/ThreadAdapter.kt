@@ -36,8 +36,6 @@ class ThreadAdapter(
 ) : RecyclerView.Adapter<ThreadAdapter.VH>() {
 
     private val items = mutableListOf<ThreadSummary>()
-
-    /** Category lookup is cached; SharedPreferences must not be read per bind. */
     private var categoryCache: Map<String, Category>? = null
 
     fun submit(list: List<ThreadSummary>) {
@@ -63,8 +61,6 @@ class ThreadAdapter(
         val context = holder.itemView.context
         val b = holder.binding
 
-        // Contact name first; when the number is unknown, a catalog brand name
-        // reads far better than a raw sender ID.
         val contactName = ContactNames.displayName(context, item.address)
         val brandMatch = BrandCatalog.find(item.address, contactName)
         val display = if (contactName == item.address && brandMatch != null) {
@@ -78,30 +74,35 @@ class ThreadAdapter(
 
         TextDir.apply(b.textAddress, display)
         TextDir.apply(b.textSnippet, item.snippet)
+        TextDir.apply(b.textDate, b.textDate.text.toString())
 
         bindAvatar(context, b, item, display)
 
         val category = categories(context)[item.categoryId]
-        if (category != null && item.categoryId != Cat.OTHER) {
+        val showBadge = category != null && item.categoryId != Cat.OTHER
+        if (showBadge && category != null) {
+            val color = parseColor(category.colorHex)
             b.textCategory.text = category.label(context)
-            // A rounded pill instead of a hard rectangle.
-            b.textCategory.background = pill(parseColor(category.colorHex))
+            // Pale tint with dark text: the reference's badge style, and far
+            // calmer than a solid block of colour.
+            b.textCategory.background = paleChip(color)
+            b.textCategory.setTextColor(color)
             b.textCategory.visibility = View.VISIBLE
         } else {
             b.textCategory.visibility = View.GONE
         }
 
-        // The confirmation prompt: a red badge until the user decides.
         val suspicious = item.categoryId == Cat.SUSPICIOUS
         b.iconWarning.visibility = if (suspicious) View.VISIBLE else View.GONE
 
-        // Explain the flag in words. "RiskBanner": never let red alone carry
-        // the meaning, because the user cannot act on a colour.
+        // A suspicious row states its reason; colour alone is never the message.
         if (suspicious) {
             val label = riskLabel(context, item.address, item.snippet)
             if (label != null) {
+                val color = ContextCompat.getColor(context, R.color.danger)
                 b.textRisk.text = label
-                b.textRisk.background = riskChip(context)
+                b.textRisk.background = paleChip(color)
+                b.textRisk.setTextColor(color)
                 b.textRisk.visibility = View.VISIBLE
             } else {
                 b.textRisk.visibility = View.GONE
@@ -110,22 +111,22 @@ class ThreadAdapter(
             b.textRisk.visibility = View.GONE
         }
 
-        // Unread reads stronger, read recedes. This is the single clearest cue
-        // for "what still needs my attention".
+        // Unread rows get a tinted background as well as a marker, which is
+        // what makes an inbox scannable at a glance.
         val unread = item.unreadCount > 0
-        val primary = ContextCompat.getColor(context, R.color.text_primary)
-        val secondary = ContextCompat.getColor(context, R.color.text_secondary)
-        b.textAddress.setTextColor(if (unread) primary else secondary)
+        holder.itemView.setBackgroundColor(
+            if (unread) ContextCompat.getColor(context, R.color.blue_50) else Color.TRANSPARENT
+        )
+        b.textUnread.visibility = if (unread) View.VISIBLE else View.GONE
+        b.textUnread.text =
+            if (item.unreadCount > 1) Dates.faDigits(item.unreadCount.toString()) else ""
         b.textAddress.setTypeface(null, if (unread) Typeface.BOLD else Typeface.NORMAL)
-        b.textSnippet.setTextColor(if (unread) primary else secondary)
-        b.textDate.alpha = if (unread) 1f else 0.7f
-
-        if (unread) {
-            b.textUnread.visibility = View.VISIBLE
-            b.textUnread.text = Dates.faDigits(item.unreadCount.toString())
-        } else {
-            b.textUnread.visibility = View.GONE
-        }
+        b.textSnippet.setTextColor(
+            ContextCompat.getColor(
+                context,
+                if (unread) R.color.text_primary else R.color.text_secondary
+            )
+        )
 
         holder.itemView.setOnClickListener { onClick(item) }
         holder.itemView.setOnLongClickListener {
@@ -134,10 +135,13 @@ class ThreadAdapter(
         }
     }
 
-    /**
-     * Photo, else a coloured monogram, else a blank silhouette. Every branch
-     * resets the ImageView, because rows are recycled.
-     */
+    /** 12% of the category colour behind dark text of the same hue. */
+    private fun paleChip(color: Int): GradientDrawable = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = 22f
+        setColor(Color.argb(31, Color.red(color), Color.green(color), Color.blue(color)))
+    }
+
     private fun bindAvatar(
         context: Context,
         b: ItemThreadBinding,
@@ -157,8 +161,6 @@ class ThreadAdapter(
             return
         }
 
-        // Resolution order: brand catalog, then category, then monogram, then a
-        // grey person. Everything below a real photo goes through one resolver.
         val spec = BrandResolver.resolve(context, item.address, display, item.categoryId)
         b.avatar.background = AvatarHelper.circle(parseColor(spec.colorHex))
 
@@ -171,22 +173,10 @@ class ThreadAdapter(
             return
         }
 
-        // Deterministic monogram: the same name always gets the same colour.
         b.avatarImage.setImageDrawable(null)
         b.avatarLetter.text = AvatarHelper.monogram(display)
     }
 
-    /** Soft red pill behind the reason text. */
-    private fun riskChip(context: Context): GradientDrawable = GradientDrawable().apply {
-        shape = GradientDrawable.RECTANGLE
-        cornerRadius = 40f
-        setColor(ContextCompat.getColor(context, R.color.danger_soft))
-    }
-
-    /**
-     * Turns the classifier's internal tags into one short phrase the user can
-     * act on, in order of what matters most.
-     */
     private fun riskLabel(context: Context, address: String, body: String): String? {
         val tags = Classifier.classifyLocal(context, address, body).reasons
         val priority = listOf(
@@ -212,12 +202,6 @@ class ThreadAdapter(
             else -> R.string.risk_promo
         }
         return context.getString(res)
-    }
-
-    private fun pill(color: Int): GradientDrawable = GradientDrawable().apply {
-        shape = GradientDrawable.RECTANGLE
-        cornerRadius = 40f
-        setColor(color)
     }
 
     private fun parseColor(hex: String): Int = try {

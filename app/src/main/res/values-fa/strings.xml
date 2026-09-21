@@ -133,4 +133,6 @@
     <string name="new_category">دسته جدید</string>
     <string name="category_name_hint">نام دسته</string>
     <string name="add">افزودن</string>
-</resources>
+    <string name="tab_messages">پیام‌ها</string>
+    <string name="search">جستجو</string>
+    <string name="compose">پیام جدید</string></resources>

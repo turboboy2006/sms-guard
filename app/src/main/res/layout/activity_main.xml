@@ -1,93 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Inbox. Filter chips on top, list in the middle, bottom navigation and a
+  compose FAB — the structure from the reference screenshot.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/screen_bg"
     android:orientation="vertical">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary"
-        app:title="@string/app_name"
-        app:titleTextColor="@android:color/white" />
+        android:background="@color/screen_bg"
+        app:title="@string/tab_messages"
+        app:titleTextColor="@color/text_primary" />
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardDefaultBanner"
+        style="@style/Widget.SmsGuard.Card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="8dp"
-        android:visibility="gone"
-        app:cardCornerRadius="8dp">
+        android:layout_marginStart="@dimen/gutter"
+        android:layout_marginEnd="@dimen/gutter"
+        android:layout_marginBottom="@dimen/space_8"
+        android:visibility="gone">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="12dp">
+            android:padding="@dimen/space_12">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/not_default_banner"
-                android:textSize="14sp" />
+                android:textAppearance="@style/TextAppearance.SmsGuard.Body" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonMakeDefault"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="@dimen/space_8"
+                android:minHeight="@dimen/touch_target"
                 android:text="@string/make_default" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <com.google.android.material.tabs.TabLayout
-        android:id="@+id/tabs"
+    <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/card_bg"
-        app:tabIconTint="@color/tab_icon_tint"
-        app:tabIndicatorColor="@color/colorPrimary"
-        app:tabIndicatorFullWidth="false"
-        app:tabMode="scrollable"
-        app:tabRippleColor="@color/blue_50"
-        app:tabSelectedTextColor="@color/colorPrimary"
-        app:tabTextColor="@color/text_secondary" />
+        android:scrollbars="none">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonRules"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroup"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/rules" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonBlocked"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:text="@string/blocked_log" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonSettings"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:text="@string/settings" />
-    </LinearLayout>
+            android:paddingStart="@dimen/space_12"
+            android:paddingEnd="@dimen/space_12"
+            android:paddingBottom="@dimen/space_8"
+            app:chipSpacingHorizontal="@dimen/space_8"
+            app:selectionRequired="true"
+            app:singleLine="true"
+            app:singleSelection="true" />
+    </HorizontalScrollView>
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -99,8 +78,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp" />
+            android:paddingBottom="88dp" />
 
         <LinearLayout
             android:id="@+id/skeleton"
@@ -118,10 +96,6 @@
             <include layout="@layout/skeleton_row" />
         </LinearLayout>
 
-        <!--
-          Empty state. The icon is a compound drawable rather than a sibling, so
-          hiding this one view hides the whole state.
-        -->
         <TextView
             android:id="@+id/textEmpty"
             android:layout_width="wrap_content"
@@ -135,6 +109,25 @@
             android:text="@string/no_threads"
             android:textAppearance="@style/TextAppearance.SmsGuard.Body"
             android:visibility="gone" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabCompose"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="@dimen/gutter"
+            android:contentDescription="@string/compose"
+            app:backgroundTint="@color/colorPrimary"
+            app:srcCompat="@drawable/ic_compose"
+            app:tint="@android:color/white" />
     </FrameLayout>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/card_bg"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/bottom_nav" />
 
 </LinearLayout>
