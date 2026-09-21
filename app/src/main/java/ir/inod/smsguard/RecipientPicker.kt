@@ -96,6 +96,9 @@ class RecipientPicker(context: Context) {
         )
 
         val rows = ArrayList<Target>()
+        // Declared before the reload function so it can be captured; the worker
+        // below fills it and the sheet repaints when it arrives.
+        val recent = ArrayList<RecentTarget>()
         val adapter = RowAdapter(activity, rows) { target ->
             sheet.dismiss()
             onPicked(target.address)
@@ -128,7 +131,6 @@ class RecipientPicker(context: Context) {
         // read; it is filled in on a worker and the sheet simply repaints when
         // it arrives. The address book is already in memory by this point.
         val loader = java.util.concurrent.Executors.newSingleThreadExecutor()
-        val recent = ArrayList<RecentTarget>()
         loader.execute {
             val loaded = try {
                 recentThreads()
