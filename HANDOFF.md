@@ -8,8 +8,8 @@
 |---|---|
 | مسیر پروژه | `C:\xamp\htdocs\inod\sms-guard` |
 | مخزن | https://github.com/turboboy2006/sms-guard (**عمومی**) |
-| آخرین کامیت | `7a3f6f0` — «fix(inbox): remove the icon-padding call that broke the build…» |
-| آخرین بیلد | **سبز** (`run 35579111927`) |
+| آخرین کامیت | `d6d62e1` — «fix(cache): never let a provider scan overwrite a message that arrived during it» |
+| آخرین بیلد | **سبز** (`run 35579507158`) |
 | APK | `dist\app-debug.apk` (~۵٫۹۷ MB، از همان بیلد سبز) |
 | زبان‌ها | ۱۸۰ کلید در `values/` و `values-fa/`، تطابق کامل |
 
