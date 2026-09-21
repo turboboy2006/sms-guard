@@ -185,9 +185,28 @@ class LearnedWeights(context: Context) {
         ).apply()
     }
 
+    /** Halves old evidence once per month so changed campaigns and corrected
+     * habits eventually replace stale feedback instead of accumulating forever. */
+    private fun decayIfDue(map: MutableMap<String, Counts>, totals: IntArray) {
+        val now = System.currentTimeMillis()
+        val last = prefs.getLong(LAST_DECAY, now)
+        if (!prefs.contains(LAST_DECAY)) {
+            prefs.edit().putLong(LAST_DECAY, now).apply()
+            return
+        }
+        if (now - last < DECAY_INTERVAL_MS) return
+        map.replaceAll { _, c -> Counts(c.spam / 2, c.ham / 2) }
+        map.entries.removeAll { it.value.spam == 0 && it.value.ham == 0 }
+        totals[0] /= 2
+        totals[1] /= 2
+        prefs.edit().putLong(LAST_DECAY, now).apply()
+        save(map, totals)
+    }
+
     /** Learns from one labelled message. */
     fun record(body: String, isSpam: Boolean) {
         val (map, totals) = load()
+        decayIfDue(map, totals)
         for (t in Learning.tokens(body)) {
             val old = map[t] ?: Counts(0, 0)
             map[t] = if (isSpam) old.copy(spam = old.spam + 1) else old.copy(ham = old.ham + 1)
@@ -205,6 +224,7 @@ class LearnedWeights(context: Context) {
     /** Undo path: removes the effect of one [record] call. */
     fun revert(body: String, isSpam: Boolean) {
         val (map, totals) = load()
+        decayIfDue(map, totals)
         for (t in Learning.tokens(body)) {
             val old = map[t] ?: continue
             map[t] = if (isSpam) {
@@ -225,6 +245,7 @@ class LearnedWeights(context: Context) {
      */
     fun weights(): Map<String, Double> {
         val (map, totals) = load()
+        decayIfDue(map, totals)
         if (totals[0] == 0 && totals[1] == 0) return emptyMap()
         val out = HashMap<String, Double>(map.size)
         for ((t, c) in map) {
@@ -239,6 +260,8 @@ class LearnedWeights(context: Context) {
 
     private companion object {
         const val KEY = "weights"
+        const val LAST_DECAY = "last_decay"
+        const val DECAY_INTERVAL_MS = 30L * 24 * 60 * 60 * 1000
 
         /** n-gram features triple the table, so the ceiling moved with it. */
         const val MAX_TOKENS = 1500
