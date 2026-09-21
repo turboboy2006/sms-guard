@@ -4,6 +4,33 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
+data class SavedMessage(val id: Long, val address: String, val body: String, val date: Long, val note: String)
+
+/** A local vault for messages the user wants to retain without forwarding them. */
+class SavedMessageStore(context: Context) {
+    private val prefs = context.applicationContext.getSharedPreferences("saved_messages", Context.MODE_PRIVATE)
+    fun all(): List<SavedMessage> = runCatching {
+        val arr = JSONArray(prefs.getString("items", "[]"))
+        (0 until arr.length()).map { i -> arr.getJSONObject(i).let { o ->
+            SavedMessage(o.getLong("id"), o.getString("address"), o.getString("body"), o.getLong("date"), o.optString("note"))
+        } }.sortedByDescending { it.date }
+    }.getOrDefault(emptyList())
+    fun save(message: SmsMessage, note: String) {
+        val list = all().filterNot { it.id == message.id }.toMutableList()
+        list += SavedMessage(message.id, message.address, message.body, message.date, note)
+        val arr = JSONArray(); list.take(1000).forEach { m -> arr.put(JSONObject().apply {
+            put("id", m.id); put("address", m.address); put("body", m.body); put("date", m.date); put("note", m.note)
+        }) }
+        prefs.edit().putString("items", arr.toString()).apply()
+    }
+    fun remove(id: Long) = saveRaw(all().filterNot { it.id == id })
+    private fun saveRaw(list: List<SavedMessage>) {
+        val arr = JSONArray(); list.forEach { m -> arr.put(JSONObject().apply {
+            put("id", m.id); put("address", m.address); put("body", m.body); put("date", m.date); put("note", m.note)
+        }) }; prefs.edit().putString("items", arr.toString()).apply()
+    }
+}
+
 /**
  * All persistence. Everything is small keyed data, so SharedPreferences + JSON
  * is used throughout and the build stays free of database dependencies.
@@ -79,6 +106,18 @@ class SettingsStore(context: Context) {
         get() = prefs.getInt("trash_retention_days", 0)
         set(v) = prefs.edit().putInt("trash_retention_days", v.coerceAtLeast(0)).apply()
 
+    var swipeEnabled: Boolean
+        get() = prefs.getBoolean("swipe_enabled", true)
+        set(v) = prefs.edit().putBoolean("swipe_enabled", v).apply()
+
+    var swipeRightAction: String
+        get() = prefs.getString("swipe_right", SwipeAction.READ) ?: SwipeAction.READ
+        set(v) = prefs.edit().putString("swipe_right", SwipeAction.valid(v)).apply()
+
+    var swipeLeftAction: String
+        get() = prefs.getString("swipe_left", SwipeAction.SPAM) ?: SwipeAction.SPAM
+        set(v) = prefs.edit().putString("swipe_left", SwipeAction.valid(v)).apply()
+
     /**
      * Quiet hours. Off by default: silently withholding a notification is a
      * surprising thing for a messaging app to do on its own, so the user has to
@@ -123,6 +162,15 @@ class SettingsStore(context: Context) {
         const val DEFAULT_BASE = "https://api.deepseek.com/v1"
         const val DEFAULT_MODEL = "deepseek-chat"
     }
+}
+
+object SwipeAction {
+    const val READ = "read"
+    const val SPAM = "spam"
+    const val TRASH = "trash"
+    const val ARCHIVE = "archive"
+    val IDS = listOf(READ, SPAM, TRASH, ARCHIVE)
+    fun valid(value: String) = value.takeIf { it in IDS } ?: READ
 }
 
 /** Rounds a length down to the nearest multiple of [step], never below it. */
@@ -441,7 +489,8 @@ class CategoryStore(context: Context) {
                 nameRes = if (o.optString("name").isNotBlank()) 0 else base.nameRes,
                 colorHex = o.optString("color", base.colorHex),
                 order = o.optInt("order", base.order),
-                iconId = o.optString("icon").ifBlank { base.iconId }
+                iconId = o.optString("icon").ifBlank { base.iconId },
+                enabled = o.optBoolean("enabled", true)
             )
         }
     }
@@ -463,7 +512,8 @@ class CategoryStore(context: Context) {
                         skipAi = o.optBoolean("skipAi", false),
                         protectedCat = o.optBoolean("protected", false),
                         order = o.optInt("order", 100 + i),
-                        iconId = o.optString("icon").ifBlank { null }
+                        iconId = o.optString("icon").ifBlank { null },
+                        enabled = o.optBoolean("enabled", true)
                     )
                 )
             }
@@ -480,7 +530,7 @@ class CategoryStore(context: Context) {
                 JSONObject().apply {
                     put("id", c.id); put("name", c.customName); put("color", c.colorHex)
                     put("spam", c.spamFolder); put("skipAi", c.skipAi); put("protected", c.protectedCat)
-                    put("order", c.order); put("icon", c.iconId ?: "")
+                    put("order", c.order); put("icon", c.iconId ?: ""); put("enabled", c.enabled)
                 }
             )
         }
@@ -508,6 +558,8 @@ class CategoryStore(context: Context) {
 
     fun all(): List<Category> = (systemCategories() + custom()).sortedBy { it.order }
 
+    fun active(): List<Category> = all().filter { it.enabled }
+
     fun byId(id: String): Category? = all().firstOrNull { it.id == id }
 
     fun updateAny(category: Category) {
@@ -519,6 +571,7 @@ class CategoryStore(context: Context) {
             put("color", category.colorHex)
             put("order", category.order)
             put("icon", category.iconId ?: "")
+            put("enabled", category.enabled)
         })
         prefs.edit().putString(SYSTEM_KEY, root.toString()).apply()
     }

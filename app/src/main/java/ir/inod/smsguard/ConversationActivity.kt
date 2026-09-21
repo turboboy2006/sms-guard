@@ -42,6 +42,7 @@ class ConversationActivity : BaseActivity() {
         private const val MENU_SEARCH_THREAD = 1012
         private const val MENU_ADD_RECIPIENT = 1013
         private const val MENU_SEND_WITH_SIM = 1014
+        private const val MENU_SAVED = 1015
     }
 
     private lateinit var binding: ActivityConversationBinding
@@ -78,6 +79,8 @@ class ConversationActivity : BaseActivity() {
 
     /** What the current list was drawn with, so a change can be detected. */
     private var drawnLayout: MessageLayout? = null
+    private var pinchBaseScale = 1f
+    private var pinching = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -114,6 +117,30 @@ class ConversationActivity : BaseActivity() {
         binding.recyclerMessages.layoutManager =
             LinearLayoutManager(this).apply { stackFromEnd = true }
         binding.recyclerMessages.adapter = adapter
+        val scaleDetector = android.view.ScaleGestureDetector(this,
+            object : android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScaleBegin(detector: android.view.ScaleGestureDetector): Boolean {
+                    pinchBaseScale = adapter.currentLayout().fontScale
+                    pinching = true
+                    return true
+                }
+                override fun onScale(detector: android.view.ScaleGestureDetector): Boolean {
+                    adapter.setFontZoom(pinchBaseScale * detector.scaleFactor)
+                    return true
+                }
+                override fun onScaleEnd(detector: android.view.ScaleGestureDetector) {
+                    pinching = false
+                    val scale = adapter.currentLayout().fontScale
+                    theme.messageFontScale = scale
+                    theme.listFontScale = scale
+                    theme.touch()
+                    Toast.makeText(this@ConversationActivity, getString(R.string.text_size_saved), Toast.LENGTH_SHORT).show()
+                }
+            })
+        binding.recyclerMessages.setOnTouchListener { _, event ->
+            scaleDetector.onTouchEvent(event)
+            pinching
+        }
         binding.recyclerMessages.addOnScrollListener(object : androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: androidx.recyclerview.widget.RecyclerView, dx: Int, dy: Int) {
                 val lm = recyclerView.layoutManager as? LinearLayoutManager ?: return
@@ -390,6 +417,7 @@ class ConversationActivity : BaseActivity() {
         menu.add(0, MENU_SEARCH_THREAD, 9, R.string.search_conversation)
         menu.add(0, MENU_ADD_RECIPIENT, 10, R.string.add_recipient)
         menu.add(0, MENU_SEND_WITH_SIM, 11, R.string.send_with_sim)
+        menu.add(0, MENU_SAVED, 12, R.string.saved_messages)
         return true
     }
 
@@ -409,6 +437,7 @@ class ConversationActivity : BaseActivity() {
         menu.findItem(MENU_SEARCH_THREAD)?.isVisible = !selecting && threadId >= 0
         menu.findItem(MENU_ADD_RECIPIENT)?.isVisible = !selecting && address.isNotBlank()
         menu.findItem(MENU_SEND_WITH_SIM)?.isVisible = !selecting && address.isNotBlank()
+        menu.findItem(MENU_SAVED)?.isVisible = !selecting
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -455,6 +484,7 @@ class ConversationActivity : BaseActivity() {
             MENU_SEARCH_THREAD -> { searchConversation(); return true }
             MENU_ADD_RECIPIENT -> { addGroupRecipient(); return true }
             MENU_SEND_WITH_SIM -> { chooseSimForCurrentSend(); return true }
+            MENU_SAVED -> { startActivity(Intent(this, SavedMessagesActivity::class.java)); return true }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -641,6 +671,7 @@ class ConversationActivity : BaseActivity() {
             getString(R.string.select_message),
             getString(R.string.copy),
             getString(R.string.forward),
+            getString(R.string.save_message),
             getString(R.string.message_details),
             getString(R.string.delete_message)
         )
@@ -664,6 +695,7 @@ class ConversationActivity : BaseActivity() {
                             worker.execute { repo.send(recipient, message.body) }
                         }
                     }
+                    getString(R.string.save_message) -> saveMessage(message)
                     getString(R.string.message_details) -> {
                         adapter.clearSelection()
                         adapter.toggleSelection(message)
@@ -671,6 +703,16 @@ class ConversationActivity : BaseActivity() {
                     }
                     getString(R.string.delete_message) -> confirmDeleteMessage(message)
                 }
+            }.show()
+    }
+
+    private fun saveMessage(message: SmsMessage) {
+        val note = android.widget.EditText(this).apply { hint = getString(R.string.note_optional) }
+        MaterialAlertDialogBuilder(this).setTitle(R.string.save_message).setView(note)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.save) { _, _ ->
+                SavedMessageStore(this).save(message, note.text?.toString().orEmpty().trim())
+                Toast.makeText(this, R.string.message_saved, Toast.LENGTH_SHORT).show()
             }.show()
     }
 

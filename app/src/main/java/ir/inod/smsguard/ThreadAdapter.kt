@@ -76,6 +76,7 @@ object TextDir {
 class ThreadAdapter(
     private val onClick: (ThreadSummary) -> Unit,
     private val onLongClick: (ThreadSummary) -> Unit,
+    private val onCategoryClick: (ThreadSummary) -> Unit = {},
     private val onSelectionChanged: (Int) -> Unit = {}
 ) : RecyclerView.Adapter<ThreadAdapter.VH>() {
 
@@ -205,8 +206,12 @@ class ThreadAdapter(
         val showBadge = !compact
         val risk = if (item.categoryId == Cat.SUSPICIOUS) item.riskLabel else null
 
+        val draft = context.getSharedPreferences("conversation_drafts", Context.MODE_PRIVATE)
+            .getString(item.address, "").orEmpty().trim()
         b.textAddress.text = display
-        b.textSnippet.text = item.snippet
+        b.textSnippet.text = if (draft.isNotBlank()) {
+            context.getString(R.string.draft_preview, draft)
+        } else item.snippet
         b.textDate.text = Dates.listLabel(context, item.date)
         val persianUi = Dates.isPersian(context)
         b.textAddress.gravity = if (persianUi) Gravity.END else Gravity.START
@@ -217,11 +222,14 @@ class ThreadAdapter(
         // Names and bodies follow the ambient (RTL) direction; a preview that is
         // really a code, a link or an amount is pinned to LTR so its digits are
         // not reordered.
-        TextDir.apply(b.textAddress, display)
-        if (TextDir.isDirectionNeutral(item.snippet)) {
-            b.textSnippet.textDirection = View.TEXT_DIRECTION_LTR
+        // Inbox columns always align to the reading edge. Text direction only
+        // affects character order, never the physical placement of a row.
+        if (persianUi) {
+            b.textAddress.textDirection = View.TEXT_DIRECTION_RTL
+            b.textSnippet.textDirection = View.TEXT_DIRECTION_RTL
         } else {
-            TextDir.apply(b.textSnippet, item.snippet)
+            TextDir.apply(b.textAddress, display)
+            TextDir.apply(b.textSnippet, b.textSnippet.text.toString())
         }
 
         // --- typography -----------------------------------------------------
@@ -275,10 +283,12 @@ class ThreadAdapter(
         }
 
         // --- badge ----------------------------------------------------------
-        if (showBadge && bindBadge(context, b, item, risk)) {
+        if (showBadge && item.categoryId != Cat.PERSONAL && bindBadge(context, b, item, risk)) {
             b.textCategory.visibility = View.VISIBLE
+            b.textCategory.setOnClickListener { onCategoryClick(item) }
         } else {
             b.textCategory.visibility = View.GONE
+            b.textCategory.setOnClickListener(null)
         }
 
         // The warning icon marks a real risk, not merely an unknown sender: a
@@ -314,7 +324,8 @@ class ThreadAdapter(
         b.textSnippet.setTextColor(
             ContextCompat.getColor(
                 context,
-                if (unread) R.color.text_primary else R.color.text_secondary
+                if (draft.isNotBlank()) R.color.danger_deep
+                else if (unread) R.color.text_primary else R.color.text_secondary
             )
         )
 

@@ -22,7 +22,7 @@
     <string name="cat_promotion">تبلیغاتی</string>
     <string name="cat_suspicious">مشکوک</string>
     <string name="cat_spam">اسپم</string>
-    <string name="cat_other">سایر</string>
+    <string name="cat_other">دسته‌بندی‌نشده</string>
 
     <string name="thread_options">گزینه‌های گفتگو</string>
     <string name="change_category">تغییر دسته</string>
@@ -318,6 +318,19 @@
     <string name="ai_scan_progress">اسکن %1$d از %2$d · %3$d الگو یاد گرفته شد</string>
     <string name="ai_scan_done">اسکن کامل شد · %1$d الگو به‌صورت محلی یاد گرفته شد</string>
     <string name="start">شروع</string>
+    <string name="draft_preview">پیش‌نویس: %1$s</string>
+    <string name="disable_category">غیرفعال کردن دسته</string>
+    <string name="enable_category">فعال کردن دسته</string>
+    <string name="swipe_actions">عملیات کشیدن ردیف</string>
+    <string name="swipe_right">کشیدن به راست</string>
+    <string name="swipe_left">کشیدن به چپ</string>
+    <string name="swipe_mark_read">خوانده‌شده</string>
+    <string name="save_message">ذخیره پیام</string>
+    <string name="saved_messages">پیام‌های ذخیره‌شده</string>
+    <string name="no_saved_messages">پیام ذخیره‌شده‌ای نیست</string>
+    <string name="note_optional">یادداشت (اختیاری)</string>
+    <string name="message_saved">پیام به‌صورت محلی ذخیره شد</string>
+    <string name="text_size_saved">اندازه متن ذخیره شد</string>
     <string name="trash_retention">پاک‌سازی خودکار سطل زباله</string>
     <string name="trash_keep_forever">برای همیشه نگه‌دار</string>
     <string name="trash_days">حذف پس از %1$d روز</string>

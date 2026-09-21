@@ -33,6 +33,8 @@ class MessageAdapter(
 
     private val rows = mutableListOf<Row>()
     private val selectedIds = linkedSetOf<Long>()
+    private val expandedMetaIds = linkedSetOf<Long>()
+    private val latestOutgoingIds = linkedSetOf<Long>()
 
     val selectionCount: Int get() = selectedIds.size
 
@@ -76,6 +78,8 @@ class MessageAdapter(
 
     fun submit(list: List<SmsMessage>) {
         rows.clear()
+        latestOutgoingIds.clear()
+        list.asReversed().filterNot { it.isIncoming }.take(2).forEach { latestOutgoingIds += it.id }
         var lastDay = Int.MIN_VALUE
         var lastYear = Int.MIN_VALUE
         for (message in list) {
@@ -105,6 +109,12 @@ class MessageAdapter(
     }
 
     fun currentLayout(): MessageLayout = layout
+
+    /** Temporary pinch zoom; persisted by the conversation after the gesture. */
+    fun setFontZoom(scale: Float) {
+        val next = layout.copy(fontScale = scale.coerceIn(0.85f, 1.5f))
+        if (next != layout) { layout = next; notifyDataSetChanged() }
+    }
 
     private fun dayKey(millis: Long): Int {
         val c = Calendar.getInstance().apply { timeInMillis = millis }
@@ -170,7 +180,9 @@ class MessageAdapter(
 
         bubble.text = item.body
         time.text = Dates.full(context, item.date)
-        status.visibility = if (item.isIncoming) View.GONE else View.VISIBLE
+        val showMeta = item.id in latestOutgoingIds || item.id in expandedMetaIds || selectedIds.isNotEmpty()
+        time.visibility = if (item.isIncoming || showMeta) View.VISIBLE else View.GONE
+        status.visibility = if (item.isIncoming || !showMeta) View.GONE else View.VISIBLE
         if (!item.isIncoming) {
             status.text = when (item.delivery) {
                 DeliveryState.SENDING -> context.getString(R.string.delivery_sending)
@@ -182,7 +194,11 @@ class MessageAdapter(
             status.setTextColor(
                 androidx.core.content.ContextCompat.getColor(
                     context,
-                    if (item.delivery == DeliveryState.FAILED) R.color.danger else R.color.text_muted
+                    when (item.delivery) {
+                        DeliveryState.DELIVERED -> android.graphics.Color.parseColor("#16A34A")
+                        DeliveryState.FAILED -> androidx.core.content.ContextCompat.getColor(context, R.color.danger)
+                        else -> androidx.core.content.ContextCompat.getColor(context, R.color.text_muted)
+                    }
                 )
             )
             status.setOnClickListener {
@@ -238,7 +254,13 @@ class MessageAdapter(
             )
         )
 
-        holder.itemView.setOnClickListener { onClick(item) }
+        holder.itemView.setOnClickListener {
+            if (selectedIds.isEmpty()) {
+                if (!expandedMetaIds.add(item.id)) expandedMetaIds.remove(item.id)
+                notifyItemChanged(holder.bindingAdapterPosition)
+            }
+            onClick(item)
+        }
 
         holder.itemView.setOnLongClickListener {
             onLongClick(item)

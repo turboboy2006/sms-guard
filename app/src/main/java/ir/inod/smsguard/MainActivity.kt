@@ -146,6 +146,7 @@ class MainActivity : BaseActivity() {
                 if (adapter.selectionCount > 0) adapter.toggleSelection(thread) else openThread(thread)
             },
             onLongClick = { thread -> showOptions(thread) },
+            onCategoryClick = { thread -> showCategoryPicker(thread) },
             onSelectionChanged = { count -> updateSelectionUi(count) }
         )
         binding.recyclerThreads.layoutManager = LinearLayoutManager(this)
@@ -179,8 +180,8 @@ class MainActivity : BaseActivity() {
         // The stored inbox is on screen before the provider is even queried —
         // but it is read off the main thread, because at this point the cache
         // file can be at its largest.
-        ensurePermissions()
         loadCachedThreads()
+        ensurePermissions()
     }
 
     /**
@@ -194,7 +195,7 @@ class MainActivity : BaseActivity() {
     private fun setUpFilterChips() {
         binding.chipGroup.removeAllViews()
         val entries = listOf<Pair<String?, String>>(null to getString(R.string.tab_all)) +
-            CategoryStore(this).all().map { it.id to it.label(this) }
+            CategoryStore(this).active().map { it.id to it.label(this) }
         val idToCategory = HashMap<Int, String?>()
         val density = resources.displayMetrics.density
         entries.forEachIndexed { index, entry ->
@@ -222,13 +223,14 @@ class MainActivity : BaseActivity() {
                 if (icon != 0) {
                     chipIcon = ContextCompat.getDrawable(this@MainActivity, icon)
                     chipIconTint = ColorStateList.valueOf(ink)
-                    chipIconSize = 16f * density
+                    chipIconSize = 19f * density
                 }
                 chipStrokeWidth = 0f
-                chipStartPadding = 18f * density
-                chipEndPadding = 18f * density
-                chipCornerRadius = 23f * density
-                chipMinHeight = 46f * density
+                chipStartPadding = 10f * density
+                chipEndPadding = 10f * density
+                chipCornerRadius = 20f * density
+                chipMinHeight = 40f * density
+                layoutDirection = View.LAYOUT_DIRECTION_RTL
                 // The Kotlin property is private; the public setter is not.
                 setEnsureMinTouchTargetSize(false)
             }
@@ -590,18 +592,15 @@ class MainActivity : BaseActivity() {
             ) = false
 
             override fun getSwipeDirs(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int =
-                if (adapter.selectionCount > 0) 0 else super.getSwipeDirs(recyclerView, viewHolder)
+                if (adapter.selectionCount > 0 || !SettingsStore(this@MainActivity).swipeEnabled) 0
+                else super.getSwipeDirs(recyclerView, viewHolder)
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                 val row = adapter.itemAt(viewHolder.bindingAdapterPosition) ?: return
-                if (direction == ItemTouchHelper.RIGHT) {
-                    worker.execute {
-                        repo.markThreadRead(row.threadId)
-                        main.post { loadThreads() }
-                    }
-                } else {
-                    changeCategory(row, Cat.SPAM)
-                }
+                val action = if (direction == ItemTouchHelper.RIGHT) {
+                    SettingsStore(this@MainActivity).swipeRightAction
+                } else SettingsStore(this@MainActivity).swipeLeftAction
+                performSwipeAction(row, action)
             }
 
             override fun onChildDraw(
@@ -634,7 +633,7 @@ class MainActivity : BaseActivity() {
                     val baseline = item.top + item.height / 2f - (paint.ascent() + paint.descent()) / 2f
                     val inset = 20f * resources.displayMetrics.density
                     c.drawText(
-                        getString(if (dX > 0) R.string.mark_read else R.string.mark_spam),
+                        swipeActionLabel(if (dX > 0) SettingsStore(this@MainActivity).swipeRightAction else SettingsStore(this@MainActivity).swipeLeftAction),
                         if (dX > 0) item.left + inset else item.right - inset,
                         baseline,
                         paint
@@ -647,6 +646,22 @@ class MainActivity : BaseActivity() {
         }
         ItemTouchHelper(callback).attachToRecyclerView(binding.recyclerThreads)
     }
+
+    private fun performSwipeAction(row: ThreadSummary, action: String) {
+        when (action) {
+            SwipeAction.READ -> worker.execute { repo.markThreadRead(row.threadId); main.post { loadThreads() } }
+            SwipeAction.TRASH -> changeCategory(row, Cat.TRASH)
+            SwipeAction.ARCHIVE -> { senderStore.setArchived(row.address, true); applyFilter() }
+            else -> changeCategory(row, Cat.SPAM)
+        }
+    }
+
+    private fun swipeActionLabel(action: String): String = getString(when (action) {
+        SwipeAction.READ -> R.string.swipe_mark_read
+        SwipeAction.TRASH -> R.string.move_to_trash
+        SwipeAction.ARCHIVE -> R.string.archive
+        else -> R.string.mark_spam
+    })
 
     private fun bulkMarkRead() {
         val rows = adapter.selectedItems()
@@ -714,7 +729,7 @@ class MainActivity : BaseActivity() {
     }
 
     private fun applyFilter() {
-        val spamIds = CategoryStore(this).all().filter { it.spamFolder }.map { it.id }.toSet()
+        val spamIds = CategoryStore(this).active().filter { it.spamFolder }.map { it.id }.toSet()
         val byTab = when {
             contactsOnly -> allThreads.filter { ContactsIndex.isKnownContact(it.address) }
             selectedCategoryId != null -> allThreads.filter { it.categoryId == selectedCategoryId }
@@ -918,6 +933,40 @@ class MainActivity : BaseActivity() {
                 confirm(R.string.change_category, getString(R.string.confirm_category_msg)) {
                     changeCategory(thread, chosen.id)
                 }
+            }
+            .show()
+    }
+
+    /** Compact, coloured category chooser for the label directly on a row. */
+    private fun showCategoryPicker(thread: ThreadSummary) {
+        val categories = CategoryStore(this).active()
+            .filter { it.id != Cat.TRASH }
+        var chosen = categories.indexOfFirst { it.id == thread.categoryId }.coerceAtLeast(0)
+        val group = android.widget.RadioGroup(this).apply {
+            orientation = android.widget.RadioGroup.VERTICAL
+            val p = (8 * resources.displayMetrics.density).toInt()
+            setPadding(p, p, p, p)
+        }
+        categories.forEachIndexed { index, category ->
+            val row = android.widget.RadioButton(this).apply {
+                id = View.generateViewId()
+                text = category.label(this@MainActivity)
+                textSize = 15f
+                buttonTintList = ColorStateList.valueOf(
+                    runCatching { Color.parseColor(category.colorHex) }.getOrDefault(theme.accentColor())
+                )
+                setPadding(8, 4, 8, 4)
+                isChecked = index == chosen
+                setOnClickListener { chosen = index }
+            }
+            group.addView(row)
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.change_category)
+            .setView(group)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.confirm) { _, _ ->
+                categories.getOrNull(chosen)?.let { changeCategory(thread, it.id) }
             }
             .show()
     }

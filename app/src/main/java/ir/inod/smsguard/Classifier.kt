@@ -487,8 +487,10 @@ object Classifier {
      * O(1 x classify). Running it per row on the UI thread was producing
      * "ANR in ir.inod.smsguard" with CPU pinned above 100%.
      */
-    fun senderOrLocalCategory(context: Context, address: String, body: String): String =
-        senderCategories(context)[address] ?: classifyLocal(context, address, body).categoryId
+    fun senderOrLocalCategory(context: Context, address: String, body: String): String {
+        val category = senderCategories(context)[address] ?: classifyLocal(context, address, body).categoryId
+        return if (categories(context)[category]?.enabled == false) Cat.OTHER else category
+    }
 
     /**
      * Called once per incoming message. Remembers the sender, which is what

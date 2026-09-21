@@ -111,6 +111,7 @@ class SettingsActivity : BaseActivity() {
             listOf(getString(R.string.trash_keep_forever), getString(R.string.trash_days, 7), getString(R.string.trash_days, 30), getString(R.string.trash_days, 90)))
         binding.spinnerTrashRetention.setSelection(retentionValues.indexOf(settings.trashRetentionDays).coerceAtLeast(0))
         setUpSimPicker()
+        setUpSwipeActions()
 
         // --- appearance and cache ---
         binding.rowAppearance.setOnClickListener {
@@ -130,6 +131,9 @@ class SettingsActivity : BaseActivity() {
         }
         binding.buttonScheduled.setOnClickListener {
             startActivity(Intent(this, ScheduledMessagesActivity::class.java))
+        }
+        binding.buttonSavedMessages.setOnClickListener {
+            startActivity(Intent(this, SavedMessagesActivity::class.java))
         }
         binding.buttonExportBackup.setOnClickListener {
             exportBackup.launch("sms-guard-backup.json")
@@ -270,7 +274,8 @@ class SettingsActivity : BaseActivity() {
     private fun editCategory(category: Category) {
         val options = mutableListOf(
             getString(R.string.rename), getString(R.string.pick_color),
-            getString(R.string.choose_icon), getString(R.string.move_up), getString(R.string.move_down)
+            getString(R.string.choose_icon), getString(R.string.move_up), getString(R.string.move_down),
+            getString(if (category.enabled) R.string.disable_category else R.string.enable_category)
         )
         if (!category.isSystem) options += getString(R.string.delete)
         AlertDialog.Builder(this).setTitle(category.label(this))
@@ -287,7 +292,8 @@ class SettingsActivity : BaseActivity() {
                     2 -> pickCategoryIcon(category)
                     3 -> CategoryStore(this).move(category.id, -1)
                     4 -> CategoryStore(this).move(category.id, 1)
-                    5 -> CategoryStore(this).delete(category.id)
+                    5 -> CategoryStore(this).updateAny(category.copy(enabled = !category.enabled))
+                    6 -> CategoryStore(this).delete(category.id)
                 }
             }.show()
     }
@@ -362,6 +368,9 @@ class SettingsActivity : BaseActivity() {
         settings.language = langs[binding.spinnerLanguage.selectedItemPosition.coerceIn(0, 2)]
         settings.defaultSimId = simIds.getOrElse(binding.spinnerDefaultSim.selectedItemPosition) { -1 }
         settings.trashRetentionDays = retentionValues.getOrElse(binding.spinnerTrashRetention.selectedItemPosition) { 0 }
+        settings.swipeEnabled = binding.switchSwipe.isChecked
+        settings.swipeRightAction = SwipeAction.IDS.getOrElse(binding.spinnerSwipeRight.selectedItemPosition) { SwipeAction.READ }
+        settings.swipeLeftAction = SwipeAction.IDS.getOrElse(binding.spinnerSwipeLeft.selectedItemPosition) { SwipeAction.SPAM }
 
         // Applies immediately and survives restart.
         val tag = settings.language
@@ -402,6 +411,21 @@ class SettingsActivity : BaseActivity() {
             this, android.R.layout.simple_spinner_dropdown_item, labels
         )
         binding.spinnerDefaultSim.setSelection(ids.indexOf(settings.defaultSimId).coerceAtLeast(0))
+    }
+
+    private fun setUpSwipeActions() {
+        val ids = SwipeAction.IDS
+        val labels = listOf(R.string.swipe_mark_read, R.string.mark_spam, R.string.move_to_trash, R.string.archive)
+            .map { getString(it) }
+        binding.spinnerSwipeRight.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
+        binding.spinnerSwipeLeft.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
+        binding.spinnerSwipeRight.setSelection(ids.indexOf(settings.swipeRightAction).coerceAtLeast(0))
+        binding.spinnerSwipeLeft.setSelection(ids.indexOf(settings.swipeLeftAction).coerceAtLeast(0))
+        binding.switchSwipe.isChecked = settings.swipeEnabled
+        binding.switchSwipe.setOnCheckedChangeListener { _, enabled ->
+            binding.groupSwipeActions.visibility = if (enabled) View.VISIBLE else View.GONE
+        }
+        binding.groupSwipeActions.visibility = if (settings.swipeEnabled) View.VISIBLE else View.GONE
     }
 
     private fun testConnection() {

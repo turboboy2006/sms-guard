@@ -437,6 +437,24 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content" />
 
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchSwipe"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_16"
+                        android:text="@string/swipe_actions" />
+
+                    <LinearLayout
+                        android:id="@+id/groupSwipeActions"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+                        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/swipe_right" android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+                        <Spinner android:id="@+id/spinnerSwipeRight" style="@style/Widget.SmsGuard.Spinner" android:layout_width="match_parent" android:layout_height="wrap_content" />
+                        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/swipe_left" android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+                        <Spinner android:id="@+id/spinnerSwipeLeft" style="@style/Widget.SmsGuard.Spinner" android:layout_width="match_parent" android:layout_height="wrap_content" />
+                    </LinearLayout>
+
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -507,6 +525,15 @@
                         android:gravity="start|center_vertical"
                         android:minHeight="@dimen/touch_target"
                         android:text="@string/scheduled_messages" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonSavedMessages"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="start|center_vertical"
+                        android:minHeight="@dimen/touch_target"
+                        android:text="@string/saved_messages" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonExportBackup"

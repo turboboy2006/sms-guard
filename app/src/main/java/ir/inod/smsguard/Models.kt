@@ -102,7 +102,9 @@ data class Category(
     /** Pill colours; -1 means "use the shared neutral/badge palette". */
     val badgeBgColor: Int = -1,
     val badgeTextColor: Int = -1,
-    val iconId: String? = null
+    val iconId: String? = null,
+    /** Disabled categories fall back to Uncategorized without losing messages. */
+    val enabled: Boolean = true
 ) {
     fun label(context: Context): String =
         if (nameRes != 0) context.getString(nameRes) else customName
