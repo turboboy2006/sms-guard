@@ -471,10 +471,12 @@ class SmsRepository(private val context: Context) {
 
     fun send(address: String, body: String): Boolean {
         if (address.isBlank() || body.isBlank()) return false
+        var pendingId = -1L
         return try {
             val now = System.currentTimeMillis()
             val messageId = storePending(address, body, now)
             if (messageId < 0) return false
+            pendingId = messageId
             val sm = smsManager()
             val parts = sm.divideMessage(body)
             val sent = ArrayList<PendingIntent>(parts.size)
@@ -491,6 +493,18 @@ class SmsRepository(private val context: Context) {
             patchCacheForSentMessage(address, body, now)
             true
         } catch (e: Exception) {
+            if (pendingId >= 0) {
+                try {
+                    resolver.update(
+                        Telephony.Sms.CONTENT_URI,
+                        ContentValues().apply {
+                            put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_FAILED)
+                            put(Telephony.Sms.STATUS, Telephony.Sms.STATUS_FAILED)
+                        },
+                        "${Telephony.Sms._ID} = ?", arrayOf(pendingId.toString())
+                    )
+                } catch (_: Exception) { }
+            }
             false
         }
     }
