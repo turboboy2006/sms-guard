@@ -35,6 +35,32 @@ object AvatarHelper {
         return first.toString().uppercase()
     }
 
+    /**
+     * A soft, deterministic pair for a monogram: a pastel container and a deep
+     * text tone from the same hue family.
+     *
+     * Soft tints rather than saturated fills because every sender that is not a
+     * known brand lands here, and a list of twenty strong-coloured circles reads
+     * as noise. The hash makes a name keep the same colour forever, which is
+     * what lets a reader recognise a conversation before reading it.
+     */
+    private val MONOGRAM_PASTELS = listOf(
+        "#DBEAFE" to "#1E40AF",
+        "#DCFCE7" to "#166534",
+        "#FEF3C7" to "#92400E",
+        "#FCE7F3" to "#9D174D",
+        "#EDE9FE" to "#5B21B6",
+        "#CFFAFE" to "#155E75",
+        "#FFEDD5" to "#9A3412",
+        "#F1F5F9" to "#334155"
+    )
+
+    fun softPair(key: String): Pair<Int, Int> {
+        val hash = key.hashCode().let { if (it < 0) -it else it }
+        val entry = MONOGRAM_PASTELS[hash % MONOGRAM_PASTELS.size]
+        return Color.parseColor(entry.first) to Color.parseColor(entry.second)
+    }
+
     fun isUnknown(name: String): Boolean = name.trim().isEmpty() || monogram(name) == null
 
     fun colorFor(key: String): Int {

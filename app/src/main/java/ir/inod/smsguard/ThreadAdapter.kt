@@ -320,13 +320,18 @@ class ThreadAdapter(
         item: ThreadSummary,
         display: String
     ) {
+        // Views are recycled, so every branch below has to state its own
+        // padding, scale type and text colour; leaving one out is how a brand
+        // icon ends up tinted like a monogram.
+        b.avatarImage.setPadding(0, 0, 0, 0)
+        b.avatarLetter.setTextColor(Color.WHITE)
+
         val photo = AvatarHelper.photo(context, item.address)
         if (photo != null) {
             val rounded = RoundedBitmapDrawableFactory
                 .create(context.resources, photo)
                 .apply { isCircular = true }
             b.avatar.background = null
-            b.avatarImage.setPadding(0, 0, 0, 0)
             b.avatarImage.scaleType = ImageView.ScaleType.CENTER_CROP
             b.avatarImage.setImageDrawable(rounded)
             b.avatarLetter.text = null
@@ -334,6 +339,18 @@ class ThreadAdapter(
         }
 
         val spec = BrandResolver.resolve(context, item.address, display, item.categoryId)
+        val letter = AvatarHelper.monogram(display)
+        if (spec.iconRes == null && letter != null) {
+            // A person, not a brand: a soft tinted circle with a deep-coloured
+            // initial, so a list of private senders stays calm.
+            val (container, ink) = AvatarHelper.softPair(display)
+            b.avatar.background = AvatarHelper.circle(container)
+            b.avatarImage.setImageDrawable(null)
+            b.avatarLetter.setTextColor(ink)
+            b.avatarLetter.text = letter
+            return
+        }
+
         b.avatar.background = AvatarHelper.circle(parseColor(spec.colorHex))
 
         if (spec.iconRes != null) {
@@ -346,7 +363,7 @@ class ThreadAdapter(
         }
 
         b.avatarImage.setImageDrawable(null)
-        b.avatarLetter.text = AvatarHelper.monogram(display)
+        b.avatarLetter.text = null
     }
 
     private fun parseColor(hex: String): Int = try {

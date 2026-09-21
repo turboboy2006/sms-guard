@@ -146,6 +146,18 @@ class MainActivity : BaseActivity() {
             R.string.tab_notifications,
             R.string.tab_trash
         )
+        // One icon per category, the way the reference strip reads: the shape
+        // carries as much meaning as the word and survives a narrow screen
+        // where the label has to be cut.
+        val icons = listOf(
+            R.drawable.ic_tab_all,
+            R.drawable.ic_person,
+            R.drawable.ic_tab_suspicious,
+            R.drawable.ic_tab_spam,
+            R.drawable.ic_tab_banking,
+            R.drawable.ic_tab_service,
+            R.drawable.ic_tab_trash
+        )
         val idToIndex = HashMap<Int, Int>()
         val density = resources.displayMetrics.density
         labels.forEachIndexed { index, res ->
@@ -161,7 +173,14 @@ class MainActivity : BaseActivity() {
                 setTextColor(
                     ContextCompat.getColorStateList(this@MainActivity, R.color.chip_text)
                 )
+                chipIcon = ContextCompat.getDrawable(this@MainActivity, icons[index])
+                chipIconTint =
+                    ContextCompat.getColorStateList(this@MainActivity, R.color.chip_text)
+                chipIconSize = 16f * density
                 chipStrokeWidth = 0f
+                chipStartPadding = 10f * density
+                chipEndPadding = 12f * density
+                chipIconStartPadding = 0f
                 chipCornerRadius = 16f * density
                 chipMinHeight = 44f * density
                 // The Kotlin property is private; the public setter is not.

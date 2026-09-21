@@ -46,13 +46,13 @@ class AppearancePreviewView @JvmOverloads constructor(
         avatar = com.google.android.material.card.MaterialCardView(context).apply {
             radius = 100f
             cardElevation = 0f
-            setCardBackgroundColor(Color.parseColor("#1D4ED8"))
+            setCardBackgroundColor(Color.parseColor("#DCFCE7"))
             val size = dp(48)
             layoutParams = LayoutParams(size, size)
         }
         avatarLetter = TextView(context).apply {
             text = "ب"
-            setTextColor(Color.WHITE)
+            setTextColor(Color.parseColor("#166534"))
             gravity = Gravity.CENTER
             setTypeface(null, Typeface.BOLD)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
