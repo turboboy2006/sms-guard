@@ -375,6 +375,12 @@
     <string name="wallpaper_pastel">Happy pastel</string>
     <string name="wallpaper_neon">Neon bokeh</string>
     <string name="wallpaper_coral">Coral and aqua</string>
+    <string name="categories_drag_hint">Hold and drag a card to reorder it. Tap a card to edit its name, color and icon.</string>
+    <string name="category_enabled">Visible in inbox filters</string>
+    <string name="category_disabled">Hidden · messages go to Uncategorized</string>
+    <string name="category_builtin">Built-in category</string>
+    <string name="category_custom">Personal category</string>
+    <string name="edit_category">Edit category</string>
     <string name="trash_retention">Automatic trash cleanup</string>
     <string name="trash_keep_forever">Keep forever</string>
     <string name="trash_days">Delete after %1$d days</string>

@@ -1,0 +1,246 @@
+package ir.inod.smsguard
+
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.os.Bundle
+import android.view.Gravity
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
+import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.GridLayout
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.switchmaterial.SwitchMaterial
+import ir.inod.smsguard.databinding.ActivityCategoriesBinding
+import java.util.Collections
+
+/** Visual category editor with direct enable, colour/icon preview and drag ordering. */
+class CategoriesActivity : BaseActivity() {
+    private lateinit var binding: ActivityCategoriesBinding
+    private lateinit var adapter: CategoryAdapter
+    private val store by lazy { CategoryStore(this) }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityCategoriesBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        setSupportActionBar(binding.toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
+        adapter = CategoryAdapter(store.all().toMutableList(), ::editCategory) { category, enabled ->
+            if (category.id != Cat.OTHER) {
+                store.updateAny(category.copy(enabled = enabled))
+                Classifier.invalidateCaches()
+                ThreadCache.clear(this)
+                reload()
+            }
+        }
+        binding.recyclerCategories.layoutManager = LinearLayoutManager(this)
+        binding.recyclerCategories.adapter = adapter
+        binding.recyclerCategories.itemAnimator = null
+        ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
+        ) {
+            override fun onMove(rv: RecyclerView, from: RecyclerView.ViewHolder, to: RecyclerView.ViewHolder): Boolean {
+                adapter.move(from.bindingAdapterPosition, to.bindingAdapterPosition)
+                return true
+            }
+            override fun onSwiped(holder: RecyclerView.ViewHolder, direction: Int) = Unit
+            override fun clearView(rv: RecyclerView, holder: RecyclerView.ViewHolder) {
+                super.clearView(rv, holder)
+                store.reorder(adapter.ids())
+                Classifier.invalidateCaches()
+                ThreadCache.clear(this@CategoriesActivity)
+            }
+        }).attachToRecyclerView(binding.recyclerCategories)
+        binding.buttonAddCategory.setOnClickListener { editCategory(null) }
+    }
+
+    private fun reload() = adapter.replace(store.all())
+
+    private fun editCategory(original: Category?) {
+        val density = resources.displayMetrics.density
+        var selectedColor = original?.colorHex ?: Categories.PALETTE.first()
+        var selectedIcon = original?.iconId ?: "unknown"
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val p = (18 * density).toInt(); setPadding(p, p / 2, p, p)
+        }
+        val name = EditText(this).apply {
+            hint = getString(R.string.category_name_hint)
+            setText(original?.label(this@CategoriesActivity).orEmpty())
+            setSingleLine(true)
+        }
+        body.addView(name, LinearLayout.LayoutParams(-1, -2))
+        body.addView(sectionLabel(getString(R.string.pick_color)))
+        val colorGrid = GridLayout(this).apply { columnCount = 6 }
+        val colorViews = mutableListOf<View>()
+        Categories.PALETTE.forEach { hex ->
+            val swatch = View(this).apply {
+                val size = (42 * density).toInt()
+                layoutParams = GridLayout.LayoutParams().apply {
+                    width = size; height = size; setMargins(5, 5, 5, 5)
+                }
+                contentDescription = hex
+                setOnClickListener { selectedColor = hex; updateSwatches(colorViews, selectedColor) }
+            }
+            colorViews += swatch; colorGrid.addView(swatch)
+        }
+        body.addView(colorGrid)
+        updateSwatches(colorViews, selectedColor)
+
+        body.addView(sectionLabel(getString(R.string.choose_icon)))
+        val iconGrid = GridLayout(this).apply { columnCount = 6 }
+        val iconViews = mutableListOf<ImageView>()
+        IconCatalog.ALL.distinctBy { it.id }.forEach { spec ->
+            val icon = ImageView(this).apply {
+                val size = (46 * density).toInt()
+                layoutParams = GridLayout.LayoutParams().apply {
+                    width = size; height = size; setMargins(4, 4, 4, 4)
+                }
+                setPadding(11, 11, 11, 11)
+                setImageResource(spec.drawable)
+                tag = spec.id
+                contentDescription = spec.id
+                setOnClickListener { selectedIcon = spec.id; updateIcons(iconViews, selectedIcon, selectedColor) }
+            }
+            iconViews += icon; iconGrid.addView(icon)
+        }
+        body.addView(iconGrid)
+        updateIcons(iconViews, selectedIcon, selectedColor)
+
+        val scroll = ScrollView(this).apply { addView(body) }
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle(if (original == null) R.string.new_category else R.string.edit_category)
+            .setView(scroll)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.save, null)
+        if (original != null && !original.isSystem) {
+            builder.setNeutralButton(R.string.delete, null)
+        }
+        val dialog = builder.create()
+        dialog.setOnShowListener {
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val title = name.text?.toString()?.trim().orEmpty()
+                if (title.isBlank()) { name.error = getString(R.string.category_name_hint); return@setOnClickListener }
+                if (original == null) {
+                    val created = store.add(title, selectedColor)
+                    store.update(created.copy(iconId = selectedIcon))
+                } else {
+                    store.updateAny(original.copy(nameRes = 0, customName = title, colorHex = selectedColor, iconId = selectedIcon))
+                }
+                Classifier.invalidateCaches(); ThreadCache.clear(this); reload(); dialog.dismiss()
+            }
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener {
+                original?.let { store.delete(it.id) }
+                Classifier.invalidateCaches(); ThreadCache.clear(this); reload(); dialog.dismiss()
+                Toast.makeText(this, R.string.cleared, Toast.LENGTH_SHORT).show()
+            }
+        }
+        dialog.show()
+    }
+
+    private fun sectionLabel(value: String) = TextView(this).apply {
+        text = value; textSize = 13f; setTextColor(ContextCompat.getColor(this@CategoriesActivity, R.color.text_secondary))
+        setPadding(0, (16 * resources.displayMetrics.density).toInt(), 0, 5)
+    }
+
+    private fun updateSwatches(views: List<View>, selected: String) = views.forEach { view ->
+        val hex = view.contentDescription.toString()
+        view.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL; setColor(Color.parseColor(hex))
+            if (hex == selected) setStroke((3 * resources.displayMetrics.density).toInt(), Color.WHITE)
+        }
+        view.scaleX = if (hex == selected) 1.12f else 1f
+        view.scaleY = view.scaleX
+    }
+
+    private fun updateIcons(views: List<ImageView>, selected: String, color: String) = views.forEach { view ->
+        val active = view.tag == selected
+        view.imageTintList = ColorStateList.valueOf(if (active) Color.WHITE else Color.parseColor(color))
+        view.background = GradientDrawable().apply {
+            cornerRadius = 13f * resources.displayMetrics.density
+            setColor(if (active) Color.parseColor(color) else Color.argb(22, Color.red(Color.parseColor(color)), Color.green(Color.parseColor(color)), Color.blue(Color.parseColor(color))))
+        }
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == android.R.id.home) { finish(); return true }
+        return super.onOptionsItemSelected(item)
+    }
+
+    private inner class CategoryAdapter(
+        private val items: MutableList<Category>,
+        private val edit: (Category) -> Unit,
+        private val toggle: (Category, Boolean) -> Unit
+    ) : RecyclerView.Adapter<CategoryAdapter.Holder>() {
+        inner class Holder(val card: MaterialCardView, val iconBox: FrameLayout, val icon: ImageView,
+            val title: TextView, val subtitle: TextView, val switch: SwitchMaterial) : RecyclerView.ViewHolder(card)
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
+            val d = parent.resources.displayMetrics.density
+            val card = MaterialCardView(parent.context).apply {
+                radius = 18f * d; cardElevation = 0f; strokeWidth = 1
+                layoutParams = RecyclerView.LayoutParams(-1, -2).apply { setMargins(0, (5*d).toInt(), 0, (5*d).toInt()) }
+            }
+            val row = LinearLayout(parent.context).apply {
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                setPadding((14*d).toInt(), (12*d).toInt(), (10*d).toInt(), (12*d).toInt())
+            }
+            val iconBox = FrameLayout(parent.context).apply { layoutParams = LinearLayout.LayoutParams((48*d).toInt(), (48*d).toInt()) }
+            val icon = ImageView(parent.context).apply { setPadding((12*d).toInt(), (12*d).toInt(), (12*d).toInt(), (12*d).toInt()) }
+            iconBox.addView(icon, FrameLayout.LayoutParams(-1, -1))
+            val texts = LinearLayout(parent.context).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = (12*d).toInt() }
+            }
+            val title = TextView(parent.context).apply { textSize = 16f; setTextColor(ContextCompat.getColor(context, R.color.text_primary)) }
+            val subtitle = TextView(parent.context).apply { textSize = 12.5f; setTextColor(ContextCompat.getColor(context, R.color.text_secondary)) }
+            texts.addView(title); texts.addView(subtitle)
+            val toggle = SwitchMaterial(parent.context).apply { showText = false }
+            val drag = TextView(parent.context).apply { text = "≡"; textSize = 25f; gravity = Gravity.CENTER; setTextColor(ContextCompat.getColor(context, R.color.text_muted)); contentDescription = getString(R.string.categories_drag_hint) }
+            row.addView(iconBox); row.addView(texts); row.addView(toggle, LinearLayout.LayoutParams((52*d).toInt(), -2)); row.addView(drag, LinearLayout.LayoutParams((36*d).toInt(), (48*d).toInt()))
+            card.addView(row)
+            return Holder(card, iconBox, icon, title, subtitle, toggle)
+        }
+
+        override fun getItemCount() = items.size
+        override fun onBindViewHolder(holder: Holder, position: Int) {
+            val item = items[position]
+            val color = runCatching { Color.parseColor(item.colorHex) }.getOrDefault(Color.GRAY)
+            holder.title.text = item.label(this@CategoriesActivity)
+            holder.subtitle.text = getString(if (item.enabled) R.string.category_enabled else R.string.category_disabled) + " · " +
+                getString(if (item.isSystem) R.string.category_builtin else R.string.category_custom)
+            holder.icon.setImageResource((IconCatalog.byId(item.iconId) ?: IconCatalog.forCategory(item.id)).drawable)
+            holder.icon.imageTintList = ColorStateList.valueOf(color)
+            holder.iconBox.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.argb(28, Color.red(color), Color.green(color), Color.blue(color))) }
+            holder.card.strokeColor = Color.argb(if (item.enabled) 85 else 30, Color.red(color), Color.green(color), Color.blue(color))
+            holder.card.setCardBackgroundColor(if (item.enabled) Color.argb(12, Color.red(color), Color.green(color), Color.blue(color)) else ContextCompat.getColor(this@CategoriesActivity, R.color.card_bg))
+            holder.switch.setOnCheckedChangeListener(null)
+            holder.switch.isChecked = item.enabled
+            holder.switch.isEnabled = item.id != Cat.OTHER
+            holder.switch.setOnCheckedChangeListener { _, checked -> toggle(item, checked) }
+            holder.card.alpha = if (item.enabled) 1f else .62f
+            holder.card.setOnClickListener { edit(item) }
+        }
+
+        fun move(from: Int, to: Int) {
+            if (from !in items.indices || to !in items.indices) return
+            Collections.swap(items, from, to); notifyItemMoved(from, to)
+        }
+        fun ids() = items.map { it.id }
+        fun replace(next: List<Category>) { items.clear(); items.addAll(next); notifyDataSetChanged() }
+    }
+}

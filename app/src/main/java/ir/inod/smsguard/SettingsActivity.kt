@@ -112,6 +112,7 @@ class SettingsActivity : BaseActivity() {
         binding.spinnerTrashRetention.setSelection(retentionValues.indexOf(settings.trashRetentionDays).coerceAtLeast(0))
         setUpSimPicker()
         setUpSwipeActions()
+        decorateManagementRows()
 
         // --- appearance and cache ---
         binding.rowAppearance.setOnClickListener {
@@ -122,7 +123,9 @@ class SettingsActivity : BaseActivity() {
         binding.buttonSave.setOnClickListener { save() }
         binding.buttonTest.setOnClickListener { testConnection() }
         binding.buttonAiScan.setOnClickListener { confirmAiScan() }
-        binding.buttonCategories.setOnClickListener { manageCategories() }
+        binding.buttonCategories.setOnClickListener {
+            startActivity(Intent(this, CategoriesActivity::class.java))
+        }
         binding.buttonBrands.setOnClickListener {
             startActivity(Intent(this, ManagerActivity::class.java))
         }
@@ -140,6 +143,27 @@ class SettingsActivity : BaseActivity() {
         }
         binding.buttonImportBackup.setOnClickListener {
             importBackup.launch(arrayOf("application/json", "text/plain"))
+        }
+    }
+
+    private fun decorateManagementRows() {
+        val rows = listOf(
+            binding.buttonCategories to R.drawable.ic_tab_service,
+            binding.buttonBrands to R.drawable.ic_person,
+            binding.buttonRules to R.drawable.ic_cat_security,
+            binding.buttonScheduled to R.drawable.ic_send,
+            binding.buttonSavedMessages to R.drawable.ic_cat_receipt,
+            binding.buttonExportBackup to R.drawable.ic_chevron,
+            binding.buttonImportBackup to R.drawable.ic_chevron
+        )
+        rows.forEachIndexed { index, (button, icon) ->
+            button.setIconResource(icon)
+            button.iconGravity = com.google.android.material.button.MaterialButton.ICON_GRAVITY_TEXT_START
+            button.iconPadding = (12 * resources.displayMetrics.density).toInt()
+            button.iconTint = android.content.res.ColorStateList.valueOf(
+                if (index < 5) theme.accentColor() else androidx.core.content.ContextCompat.getColor(this, R.color.text_secondary)
+            )
+            button.cornerRadius = (14 * resources.displayMetrics.density).toInt()
         }
     }
 

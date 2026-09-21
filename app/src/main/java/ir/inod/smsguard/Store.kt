@@ -639,6 +639,11 @@ class CategoryStore(context: Context) {
         list.forEachIndexed { index, category -> updateAny(category.copy(order = index)) }
     }
 
+    fun reorder(ids: List<String>) {
+        val byId = all().associateBy { it.id }
+        ids.forEachIndexed { index, id -> byId[id]?.let { updateAny(it.copy(order = index)) } }
+    }
+
     private companion object { const val KEY = "custom"; const val SYSTEM_KEY = "system_overrides" }
 }
 

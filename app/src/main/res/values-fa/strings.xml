@@ -351,6 +351,12 @@
     <string name="wallpaper_pastel">پاستلی شاد</string>
     <string name="wallpaper_neon">بوکه نئونی</string>
     <string name="wallpaper_coral">مرجانی و فیروزه‌ای</string>
+    <string name="categories_drag_hint">برای جابه‌جایی، کارت را نگه دارید و بکشید. با لمس کارت نام، رنگ و آیکن را ویرایش کنید.</string>
+    <string name="category_enabled">نمایش در فیلترهای صندوق</string>
+    <string name="category_disabled">غیرفعال · پیام‌ها به دسته‌بندی‌نشده می‌روند</string>
+    <string name="category_builtin">دستهٔ آماده</string>
+    <string name="category_custom">دستهٔ شخصی</string>
+    <string name="edit_category">ویرایش دسته</string>
     <string name="trash_retention">پاک‌سازی خودکار سطل زباله</string>
     <string name="trash_keep_forever">برای همیشه نگه‌دار</string>
     <string name="trash_days">حذف پس از %1$d روز</string>
