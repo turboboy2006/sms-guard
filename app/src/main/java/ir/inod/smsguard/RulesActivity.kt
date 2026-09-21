@@ -13,7 +13,7 @@ import ir.inod.smsguard.databinding.DialogRuleBinding
 
 class RulesActivity : BaseActivity() {
 
-    private companion object { const val MENU_DELETE_SELECTED = 3101 }
+    private companion object { const val MENU_DELETE_SELECTED = 3101; const val MENU_SAMPLES = 3102 }
 
     private lateinit var binding: ActivityRulesBinding
     private lateinit var adapter: RuleAdapter
@@ -131,6 +131,21 @@ class RulesActivity : BaseActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == MENU_SAMPLES) {
+            val samples = listOf(
+                Triple("برنده شدید،جایزه", RuleJoin.ANY, RuleAction.SPAM),
+                Triple("وام فوری،بدون ضامن", RuleJoin.ALL, RuleAction.PROMOTION),
+                Triple("تخفیف ویژه،فروش فوق‌العاده", RuleJoin.ANY, RuleAction.PROMOTION),
+                Triple("قرعه‌کشی،دریافت جایزه", RuleJoin.ALL, RuleAction.SPAM)
+            )
+            AlertDialog.Builder(this).setTitle(R.string.sample_rules)
+                .setItems(samples.map { it.first.replace('،', ' + ') }.toTypedArray()) { _, index ->
+                    val sample = samples[index]
+                    store.addSimple(sample.first.replace('،', ','), "", sample.second, RuleTarget.BODY, sample.third)
+                    reload()
+                }.setNegativeButton(R.string.cancel, null).show()
+            return true
+        }
         if (item.itemId == MENU_DELETE_SELECTED) {
             adapter.selectedRules().forEach { store.delete(it.id) }
             adapter.clearSelection()
@@ -145,6 +160,7 @@ class RulesActivity : BaseActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menu.add(0, MENU_SAMPLES, 1, R.string.sample_rules)
         menu.add(0, MENU_DELETE_SELECTED, 0, R.string.delete)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
         return true
@@ -153,6 +169,7 @@ class RulesActivity : BaseActivity() {
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         menu.findItem(MENU_DELETE_SELECTED)?.isVisible =
             ::adapter.isInitialized && adapter.selectionCount > 0
+        menu.findItem(MENU_SAMPLES)?.isVisible = ::adapter.isInitialized && adapter.selectionCount == 0
         return super.onPrepareOptionsMenu(menu)
     }
 

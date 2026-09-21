@@ -28,6 +28,7 @@ import java.util.Collections
 
 /** Visual category editor with direct enable, colour/icon preview and drag ordering. */
 class CategoriesActivity : BaseActivity() {
+    private companion object { const val MENU_AUTO_ORDER = 4101; const val MENU_AUTO_COLOR = 4102 }
     private lateinit var binding: ActivityCategoriesBinding
     private lateinit var adapter: CategoryAdapter
     private val store by lazy { CategoryStore(this) }
@@ -177,8 +178,26 @@ class CategoriesActivity : BaseActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == MENU_AUTO_ORDER) {
+            val ordered = store.all().sortedWith(compareBy<Category> { !it.isSystem }.thenBy { if (it.isSystem) Categories.system().indexOfFirst { base -> base.id == it.id }.coerceAtLeast(99) else it.order })
+            store.reorder(ordered.map { it.id }); reload(); return true
+        }
+        if (item.itemId == MENU_AUTO_COLOR) {
+            store.all().forEachIndexed { index, category ->
+                store.updateAny(category.copy(colorHex = Categories.PALETTE[index % Categories.PALETTE.size]))
+            }
+            Classifier.invalidateCaches(); ThreadCache.clear(this); reload(); return true
+        }
         if (item.itemId == android.R.id.home) { finish(); return true }
         return super.onOptionsItemSelected(item)
+    }
+
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menu.add(0, MENU_AUTO_ORDER, 0, R.string.auto_arrange).setIcon(R.drawable.ic_tab_all)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        menu.add(0, MENU_AUTO_COLOR, 1, R.string.auto_colors).setIcon(R.drawable.ic_cat_shop)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        return true
     }
 
     private inner class CategoryAdapter(

@@ -102,6 +102,15 @@
                         android:textSize="15sp"
                         android:textStyle="bold" />
 
+                    <ImageView
+                        android:id="@+id/iconPinned"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginStart="4dp"
+                        android:contentDescription="@string/pin"
+                        android:src="@drawable/ic_pin"
+                        android:visibility="gone" />
+
                     <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

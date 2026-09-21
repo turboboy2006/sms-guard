@@ -44,6 +44,7 @@ class MainActivity : BaseActivity() {
         const val MENU_BULK_RESTORE = 2104
         const val MENU_ARCHIVED = 2007
         const val MENU_CAMPAIGNS = 2008
+        const val MENU_SETTINGS = 2009
 
         /** Tab order, matching the chips built in [setUpFilterChips]. */
         const val TAB_ALL = 0
@@ -86,6 +87,7 @@ class MainActivity : BaseActivity() {
      * "اسپم", which narrow a list of everything.
      */
     private var contactsOnly = false
+    private var archiveMode = false
 
     private val worker = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
@@ -164,16 +166,18 @@ class MainActivity : BaseActivity() {
         binding.fabCompose.setOnClickListener { startCompose() }
         binding.bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.nav_settings -> {
-                    startActivity(Intent(this, SettingsActivity::class.java))
+                R.id.nav_saved -> {
+                    startActivity(Intent(this, SavedMessagesActivity::class.java))
                     false
                 }
                 R.id.nav_contacts -> {
+                    archiveMode = false
                     contactsOnly = true
                     applyFilter()
                     true
                 }
                 else -> {
+                    archiveMode = false
                     contactsOnly = false
                     applyFilter()
                     true
@@ -258,7 +262,7 @@ class MainActivity : BaseActivity() {
     /** Hides the parts of the screen the user asked not to see. */
     private fun applyChipVisibility() {
         binding.chipScroll.visibility =
-            if (theme.showChips && !contactsOnly) View.VISIBLE else View.GONE
+            if (theme.showChips && !contactsOnly && !archiveMode) View.VISIBLE else View.GONE
     }
 
     // ------------------------------------------------------------- lifecycle
@@ -305,6 +309,7 @@ class MainActivity : BaseActivity() {
             applyFilter()
         }
         BackgroundRenderer.apply(binding.root, this, theme.backgroundStyle, theme.backgroundImageUri, theme.backgroundPreset)
+        applyGlassSurfaces()
 
         loadThreads()
     }
@@ -316,6 +321,14 @@ class MainActivity : BaseActivity() {
         applyListPadding()
         applyPalette()
         BackgroundRenderer.apply(binding.root, this, theme.backgroundStyle, theme.backgroundImageUri, theme.backgroundPreset)
+        applyGlassSurfaces()
+    }
+
+    private fun applyGlassSurfaces() {
+        val alpha = if (theme.hasWallpaper()) (theme.surfaceOpacity * 255 / 100) else 255
+        val surface = (alpha shl 24) or 0x00FFFFFF
+        binding.toolbar.setBackgroundColor(surface)
+        binding.bottomNav.backgroundTintList = ColorStateList.valueOf(surface)
     }
 
     private fun applyPalette() {
@@ -532,6 +545,9 @@ class MainActivity : BaseActivity() {
         menu.add(0, MENU_MANAGE, 5, R.string.manage_brands)
         menu.add(0, MENU_ARCHIVED, 6, R.string.archived)
         menu.add(0, MENU_CAMPAIGNS, 7, R.string.campaigns)
+            .setIcon(R.drawable.ic_search)
+        menu.add(0, MENU_SETTINGS, 8, R.string.settings)
+            .setIcon(R.drawable.ic_settings)
         menu.add(0, MENU_MARK_READ, 0, R.string.mark_read)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_BULK_SPAM, 1, R.string.mark_spam)
@@ -550,7 +566,7 @@ class MainActivity : BaseActivity() {
         }
         menu.findItem(MENU_BULK_RESTORE)?.isVisible = selecting && selectedCategoryId == Cat.TRASH
         if (selectedCategoryId == Cat.TRASH) menu.findItem(MENU_BULK_TRASH)?.isVisible = false
-        listOf(MENU_SEARCH, MENU_REFRESH, MENU_RULES, MENU_BLOCKED, MENU_TRASH, MENU_MANAGE, MENU_ARCHIVED, MENU_CAMPAIGNS).forEach {
+        listOf(MENU_SEARCH, MENU_REFRESH, MENU_RULES, MENU_BLOCKED, MENU_TRASH, MENU_MANAGE, MENU_ARCHIVED, MENU_CAMPAIGNS, MENU_SETTINGS).forEach {
             menu.findItem(it)?.isVisible = !selecting
         }
         return super.onPrepareOptionsMenu(menu)
@@ -579,6 +595,7 @@ class MainActivity : BaseActivity() {
             MENU_MANAGE -> startActivity(Intent(this, ManagerActivity::class.java))
             MENU_ARCHIVED -> showArchived()
             MENU_CAMPAIGNS -> startActivity(Intent(this, CampaignsActivity::class.java))
+            MENU_SETTINGS -> startActivity(Intent(this, SettingsActivity::class.java))
             MENU_MARK_READ -> bulkMarkRead()
             MENU_BULK_SPAM -> bulkCategory(Cat.SPAM)
             MENU_BULK_TRASH -> bulkCategory(Cat.TRASH)
@@ -730,6 +747,7 @@ class MainActivity : BaseActivity() {
     @Deprecated("Handled for selection mode")
     override fun onBackPressed() {
         if (::adapter.isInitialized && adapter.selectionCount > 0) adapter.clearSelection()
+        else if (archiveMode) { archiveMode = false; applyFilter() }
         else super.onBackPressed()
     }
 
@@ -745,6 +763,7 @@ class MainActivity : BaseActivity() {
         val inboxFlags = senderStore.inboxFlags()
         val spamIds = CategoryStore(this).active().filter { it.spamFolder }.map { it.id }.toSet()
         val byTab = when {
+            archiveMode -> allThreads
             contactsOnly -> allThreads.filter { ContactsIndex.isKnownContact(it.address) }
             selectedCategoryId != null -> allThreads.filter { it.categoryId == selectedCategoryId }
             // "All" hides the spam folder and the trash alike.
@@ -752,9 +771,9 @@ class MainActivity : BaseActivity() {
                 it.categoryId in spamIds || it.categoryId == Cat.TRASH
             }
         }
-        val visibleRows = byTab.filterNot { inboxFlags[it.address]?.second == true }
+        val visibleRows = byTab.filter { (inboxFlags[it.address]?.second == true) == archiveMode }
             .sortedWith(compareByDescending<ThreadSummary> { inboxFlags[it.address]?.first == true }.thenByDescending { it.date })
-        val filtered = if (query.isBlank()) {
+        val filteredBase = if (query.isBlank()) {
             visibleRows
         } else {
             val needle = query.lowercase()
@@ -764,6 +783,7 @@ class MainActivity : BaseActivity() {
                     ContactNames.displayNameUi(it.address).lowercase().contains(needle)
             }
         }
+        val filtered = filteredBase.map { row -> row.copy(pinned = inboxFlags[row.address]?.first == true) }
 
         if (rendered.isEmpty()) adapter.submit(filtered) else adapter.merge(filtered)
         rendered = filtered
@@ -776,9 +796,9 @@ class MainActivity : BaseActivity() {
         // The category strip belongs to the message list; the Contacts
         // destination answers a different question.
         binding.chipScroll.visibility =
-            if (theme.showChips && !contactsOnly) View.VISIBLE else View.GONE
+            if (theme.showChips && !contactsOnly && !archiveMode) View.VISIBLE else View.GONE
         supportActionBar?.title =
-            getString(if (contactsOnly) R.string.tab_contacts else R.string.tab_messages)
+            getString(if (archiveMode) R.string.archived else if (contactsOnly) R.string.tab_contacts else R.string.tab_messages)
     }
 
     private fun openThread(thread: ThreadSummary) {
@@ -810,6 +830,14 @@ class MainActivity : BaseActivity() {
     // ------------------------------------------------- long-press: categorise
 
     private fun showOptions(thread: ThreadSummary) {
+        if (archiveMode) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(ContactNames.displayNameUi(thread.address))
+                .setPositiveButton(R.string.unarchive) { _, _ -> senderStore.setArchived(thread.address, false); applyFilter() }
+                .setNeutralButton(R.string.open) { _, _ -> openThread(thread) }
+                .setNegativeButton(R.string.cancel, null).show()
+            return
+        }
         val inTrash = thread.categoryId == Cat.TRASH
         val options = if (inTrash) {
             arrayOf(
@@ -876,16 +904,10 @@ class MainActivity : BaseActivity() {
     }
 
     private fun showArchived() {
-        val rows = allThreads.filter { senderStore.isArchived(it.address) }
-        if (rows.isEmpty()) { toast(R.string.no_archived); return }
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.archived)
-            .setItems(rows.map { ContactNames.displayNameUi(it.address) }.toTypedArray()) { _, which ->
-                senderStore.setArchived(rows[which].address, false)
-                applyFilter()
-            }
-            .setNegativeButton(R.string.close, null)
-            .show()
+        contactsOnly = false
+        binding.bottomNav.selectedItemId = R.id.nav_messages
+        archiveMode = true
+        applyFilter()
     }
 
     /**

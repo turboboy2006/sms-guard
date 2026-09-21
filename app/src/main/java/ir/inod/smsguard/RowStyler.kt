@@ -39,10 +39,12 @@ object RowStyler {
     ): Drawable? {
         val density = context.resources.displayMetrics.density
         val radius = layout.bubbleRadius * density
-        val surface = ContextCompat.getColor(context, R.color.surface_elevated)
+        val theme = ThemePrefs(context)
+        val alpha = if (theme.hasWallpaper()) (255 * theme.surfaceOpacity / 100f).toInt() else 255
+        val surface = ColorUtils.setAlphaComponent(ContextCompat.getColor(context, R.color.surface_elevated), alpha)
         val unreadColor = ColorUtils.blendARGB(surface, ThemePrefs(context).accentColor(), 0.11f)
-        val sunken = ContextCompat.getColor(context, R.color.surface_sunken)
-        val border = ContextCompat.getColor(context, R.color.border_soft)
+        val sunken = ColorUtils.setAlphaComponent(ContextCompat.getColor(context, R.color.surface_sunken), alpha)
+        val border = ColorUtils.setAlphaComponent(ContextCompat.getColor(context, R.color.border_soft), (alpha + 20).coerceAtMost(255))
 
         return when (layout.style) {
             RowStyle.CARD -> InsetDrawable(

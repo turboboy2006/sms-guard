@@ -32,15 +32,15 @@ object MessageStyler {
         val radius = radiusDp * density
         val border = ContextCompat.getColor(context, R.color.border_soft)
         val accent = ThemePrefs(context).accentColor()
-        val surface = ContextCompat.getColor(context, R.color.card_bg)
+        val theme = ThemePrefs(context)
+        val alpha = if (theme.hasWallpaper()) (255 * theme.surfaceOpacity / 100f).toInt() else 255
+        val surface = ColorUtils.setAlphaComponent(ContextCompat.getColor(context, R.color.card_bg), alpha)
         val accentSoft = ColorUtils.blendARGB(surface, accent, 0.16f)
 
         return when (style) {
             MessageStyle.CONTRAST -> rounded(
-                fill = ContextCompat.getColor(
-                    context,
-                    if (outgoing) R.color.bubble_outgoing else R.color.card_bg
-                ),
+                fill = ColorUtils.setAlphaComponent(ContextCompat.getColor(context,
+                    if (outgoing) R.color.bubble_outgoing else R.color.card_bg), alpha),
                 radius = radius,
                 stroke = if (outgoing) 0 else 1,
                 strokeColor = border
@@ -58,24 +58,22 @@ object MessageStyler {
             )
 
             MessageStyle.SOFT -> rounded(
-                fill = ContextCompat.getColor(
-                    context,
-                    if (outgoing) R.color.blue_100 else R.color.surface_sunken
-                ),
+                fill = ColorUtils.setAlphaComponent(ContextCompat.getColor(context,
+                    if (outgoing) R.color.blue_100 else R.color.surface_sunken), alpha),
                 radius = radius
             )
 
             MessageStyle.CLEAN -> rounded(
-                fill = ContextCompat.getColor(context, R.color.surface_elevated),
+                fill = ColorUtils.setAlphaComponent(ContextCompat.getColor(context, R.color.surface_elevated), alpha),
                 radius = radius,
                 stroke = 1,
                 strokeColor = ContextCompat.getColor(context, R.color.divider)
             )
 
             else -> rounded(
-                fill = if (outgoing) accentSoft else ContextCompat.getColor(
+                fill = ColorUtils.setAlphaComponent(if (outgoing) accentSoft else ContextCompat.getColor(
                     context, R.color.bubble_incoming
-                ),
+                ), alpha),
                 radius = radius
             )
         }

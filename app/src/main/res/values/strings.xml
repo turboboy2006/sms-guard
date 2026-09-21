@@ -381,8 +381,15 @@
     <string name="category_builtin">Built-in category</string>
     <string name="category_custom">Personal category</string>
     <string name="edit_category">Edit category</string>
+    <string name="auto_arrange">Automatic arrangement</string>
+    <string name="auto_colors">Automatic colors</string>
+    <string name="glass_opacity">Glass surface opacity</string>
     <string name="trash_retention">Automatic trash cleanup</string>
     <string name="trash_keep_forever">Keep forever</string>
     <string name="trash_days">Delete after %1$d days</string>
     <string name="send_with_sim">Send using a specific SIM</string>
+    <string name="unarchive">Remove from archive</string>
+    <string name="open">Open</string>
+    <string name="starred">Starred</string>
+    <string name="sample_rules">Rule examples</string>
 </resources>

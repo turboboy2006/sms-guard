@@ -265,6 +265,12 @@ class ConversationActivity : BaseActivity() {
         BackgroundRenderer.apply(binding.root, this, senderStyle ?: theme.backgroundStyle,
             senderImage ?: if (senderStyle == null && senderPreset == null) theme.backgroundImageUri else null,
             senderPreset ?: if (senderStyle == null && senderImage == null) theme.backgroundPreset else null)
+        val hasPhoto = senderImage != null || senderPreset != null ||
+            (senderStyle == null && theme.hasWallpaper())
+        val alpha = if (hasPhoto) theme.surfaceOpacity * 255 / 100 else 255
+        val surface = (alpha shl 24) or 0x00FFFFFF
+        binding.toolbar.setBackgroundColor(surface)
+        binding.composer.setBackgroundColor(surface)
     }
 
     private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()

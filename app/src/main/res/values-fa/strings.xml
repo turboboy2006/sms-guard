@@ -357,8 +357,15 @@
     <string name="category_builtin">دستهٔ آماده</string>
     <string name="category_custom">دستهٔ شخصی</string>
     <string name="edit_category">ویرایش دسته</string>
+    <string name="auto_arrange">چیدمان خودکار</string>
+    <string name="auto_colors">رنگ‌بندی خودکار</string>
+    <string name="glass_opacity">شفافیت سطح شیشه‌ای</string>
     <string name="trash_retention">پاک‌سازی خودکار سطل زباله</string>
     <string name="trash_keep_forever">برای همیشه نگه‌دار</string>
     <string name="trash_days">حذف پس از %1$d روز</string>
     <string name="send_with_sim">ارسال با سیم‌کارت مشخص</string>
+    <string name="unarchive">خروج از آرشیو</string>
+    <string name="open">باز کردن</string>
+    <string name="starred">ستاره‌دار</string>
+    <string name="sample_rules">نمونه قواعد</string>
 </resources>

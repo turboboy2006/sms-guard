@@ -4,7 +4,7 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
-data class SavedMessage(val id: Long, val address: String, val body: String, val date: Long, val note: String)
+data class SavedMessage(val id: Long, val address: String, val body: String, val date: Long, val note: String, val starred: Boolean = false)
 
 /** A local vault for messages the user wants to retain without forwarding them. */
 class SavedMessageStore(context: Context) {
@@ -12,22 +12,23 @@ class SavedMessageStore(context: Context) {
     fun all(): List<SavedMessage> = runCatching {
         val arr = JSONArray(prefs.getString("items", "[]"))
         (0 until arr.length()).map { i -> arr.getJSONObject(i).let { o ->
-            SavedMessage(o.getLong("id"), o.getString("address"), o.getString("body"), o.getLong("date"), o.optString("note"))
+            SavedMessage(o.getLong("id"), o.getString("address"), o.getString("body"), o.getLong("date"), o.optString("note"), o.optBoolean("starred"))
         } }.sortedByDescending { it.date }
     }.getOrDefault(emptyList())
     fun save(message: SmsMessage, note: String) {
         val list = all().filterNot { it.id == message.id }.toMutableList()
-        list += SavedMessage(message.id, message.address, message.body, message.date, note)
+        list += SavedMessage(message.id, message.address, message.body, message.date, note, all().firstOrNull { it.id == message.id }?.starred == true)
         val arr = JSONArray(); list.take(1000).forEach { m -> arr.put(JSONObject().apply {
-            put("id", m.id); put("address", m.address); put("body", m.body); put("date", m.date); put("note", m.note)
+            put("id", m.id); put("address", m.address); put("body", m.body); put("date", m.date); put("note", m.note); put("starred", m.starred)
         }) }
         prefs.edit().putString("items", arr.toString()).apply()
     }
     fun remove(id: Long) = saveRaw(all().filterNot { it.id == id })
     fun updateNote(id: Long, note: String) = saveRaw(all().map { if (it.id == id) it.copy(note = note) else it })
+    fun setStarred(id: Long, starred: Boolean) = saveRaw(all().map { if (it.id == id) it.copy(starred = starred) else it })
     private fun saveRaw(list: List<SavedMessage>) {
         val arr = JSONArray(); list.forEach { m -> arr.put(JSONObject().apply {
-            put("id", m.id); put("address", m.address); put("body", m.body); put("date", m.date); put("note", m.note)
+            put("id", m.id); put("address", m.address); put("body", m.body); put("date", m.date); put("note", m.note); put("starred", m.starred)
         }) }; prefs.edit().putString("items", arr.toString()).apply()
     }
 }
@@ -285,6 +286,13 @@ class ThemePrefs(context: Context) {
     var backgroundPreset: String?
         get() = prefs.getString("background_preset", null)
         set(v) = prefs.edit().putString("background_preset", BuiltInWallpaper.validOrNull(v)).apply()
+
+    /** Opacity of cards/toolbars above a photo wallpaper, 70..100 percent. */
+    var surfaceOpacity: Int
+        get() = prefs.getInt("surface_opacity", 90)
+        set(v) = prefs.edit().putInt("surface_opacity", v.coerceIn(70, 100)).apply()
+
+    fun hasWallpaper(): Boolean = backgroundImageUri != null || backgroundPreset != null
 
     fun accentColor(): Int = android.graphics.Color.parseColor(ThemePalette.hex(colorScheme))
 

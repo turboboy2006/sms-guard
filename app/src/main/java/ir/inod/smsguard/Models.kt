@@ -165,7 +165,10 @@ object Categories {
     val PALETTE = listOf(
         "#2E7D32", "#43A047", "#00838F", "#1565C0", "#3949AB",
         "#6A1B9A", "#AD1457", "#D32F2F", "#EF6C00", "#F9A825",
-        "#616161", "#37474F"
+        "#616161", "#37474F", "#0D9488", "#06B6D4", "#0284C7",
+        "#4F46E5", "#7C3AED", "#A855F7", "#DB2777", "#F43F5E",
+        "#FB7185", "#F97316", "#EAB308", "#84CC16", "#16A34A",
+        "#14B8A6", "#64748B", "#8B5CF6", "#EC4899", "#B45309"
     )
 }
 
@@ -209,7 +212,8 @@ data class ThreadSummary(
      * false while a row is a placeholder restored from the inbox cache before
      * the provider pass has confirmed it.
      */
-    val known: Boolean = true
+    val known: Boolean = true,
+    val pinned: Boolean = false
 )
 
 /** One message inside a conversation. */

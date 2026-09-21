@@ -144,6 +144,28 @@ class SettingsActivity : BaseActivity() {
         binding.buttonImportBackup.setOnClickListener {
             importBackup.launch(arrayOf("application/json", "text/plain"))
         }
+        moveAdvancedSettingsToEnd()
+    }
+
+    private fun moveAdvancedSettingsToEnd() {
+        val column = binding.buttonSave.parent as ViewGroup
+        val aiCard = (binding.switchAi.parent as View).parent as View
+        val quietCard = (binding.switchQuiet.parent as View).parent as View
+        column.removeView(aiCard)
+        column.removeView(quietCard)
+        column.addView(quietCard, column.childCount - 1)
+        column.addView(aiCard, column.childCount - 1)
+        val aiContent = binding.switchAi.parent as ViewGroup
+        val details = listOf(binding.editBase.parent, binding.editKey.parent,
+            binding.editModel.parent, binding.editTimeout.parent,
+            binding.buttonTest, binding.buttonAiScan, binding.textTestResult).map { it as View }
+        details.forEach { it.visibility = View.GONE }
+        val heading = aiContent.getChildAt(0)
+        heading.setOnClickListener {
+            val show = details.first().visibility != View.VISIBLE
+            details.forEach { it.visibility = if (show) View.VISIBLE else View.GONE }
+        }
+        heading.isClickable = true
     }
 
     private fun decorateManagementRows() {

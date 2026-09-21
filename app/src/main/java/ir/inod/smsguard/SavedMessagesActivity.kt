@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 
 class SavedMessagesActivity : BaseActivity() {
     private lateinit var list: LinearLayout
+    private var starredOnly = false
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; val p=(16*resources.displayMetrics.density).toInt(); setPadding(p,p,p,p) }
@@ -19,7 +20,11 @@ class SavedMessagesActivity : BaseActivity() {
     }
     private fun render() {
         list.removeAllViews(); list.addView(TextView(this).apply { text=getString(R.string.saved_messages); textSize=22f })
-        val items = SavedMessageStore(this).all()
+        list.addView(MaterialButton(this).apply {
+            text = if (starredOnly) getString(R.string.saved_messages) else getString(R.string.starred)
+            setOnClickListener { starredOnly = !starredOnly; render() }
+        })
+        val items = SavedMessageStore(this).all().filter { !starredOnly || it.starred }
         if (items.isEmpty()) list.addView(TextView(this).apply { text=getString(R.string.no_saved_messages); textSize=15f })
         items.forEach { item ->
             val gap = (8 * resources.displayMetrics.density).toInt()
@@ -52,6 +57,11 @@ class SavedMessagesActivity : BaseActivity() {
                 background = ContextCompat.getDrawable(this@SavedMessagesActivity, R.drawable.day_pill)
             })
             val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            actions.addView(MaterialButton(this).apply {
+                text = if (item.starred) "★" else "☆"
+                contentDescription = getString(R.string.starred)
+                setOnClickListener { SavedMessageStore(this@SavedMessagesActivity).setStarred(item.id, !item.starred); render() }
+            })
             actions.addView(MaterialButton(this).apply {
                 text = getString(R.string.note_optional)
                 setOnClickListener {

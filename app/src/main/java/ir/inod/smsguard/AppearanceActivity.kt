@@ -128,6 +128,13 @@ class AppearanceActivity : BaseActivity() {
     }
 
     private fun setUpSliders() {
+        binding.sliderSurfaceOpacity.value = theme.surfaceOpacity.toFloat()
+        binding.sliderSurfaceOpacity.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) {
+                theme.surfaceOpacity = value.toInt(); theme.touch()
+                BackgroundRenderer.apply(binding.preview, this, theme.backgroundStyle, theme.backgroundImageUri, theme.backgroundPreset)
+            }
+        }
         binding.sliderRowPadding.value = theme.rowPadding.toFloat()
         binding.sliderRowSpacing.value = theme.rowSpacing.toFloat()
         binding.sliderRowInset.value = theme.rowInset.toFloat()
@@ -222,17 +229,27 @@ class AppearanceActivity : BaseActivity() {
                 radius = 16f * density
                 strokeWidth = if (selected) (2 * density).toInt() else 0
                 strokeColor = theme.accentColor()
-                layoutParams = android.widget.LinearLayout.LayoutParams(-1, (84 * density).toInt()).apply { bottomMargin = (8 * density).toInt() }
+                layoutParams = android.widget.LinearLayout.LayoutParams(-1, (120 * density).toInt()).apply { bottomMargin = (8 * density).toInt() }
             }
-            val sample = android.widget.TextView(this).apply {
+            val row = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding((8 * density).toInt(), (7 * density).toInt(), (8 * density).toInt(), (7 * density).toInt())
+            }
+            val preview = android.view.View(this).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams((64 * density).toInt(), (104 * density).toInt())
+            }
+            render(preview)
+            row.addView(preview)
+            val labelView = android.widget.TextView(this).apply {
                 text = label
                 textSize = 17f
                 setTextColor(androidx.core.content.ContextCompat.getColor(this@AppearanceActivity, R.color.text_primary))
                 gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
                 setPadding((18 * density).toInt(), 0, (18 * density).toInt(), 0)
             }
-            render(sample)
-            card.addView(sample, android.view.ViewGroup.LayoutParams(-1, -1))
+            row.addView(labelView, android.widget.LinearLayout.LayoutParams(0, -1, 1f))
+            card.addView(row, android.view.ViewGroup.LayoutParams(-1, -1))
             card.setOnClickListener { select(); dialog.dismiss() }
             list.addView(card)
         }
@@ -371,6 +388,7 @@ class AppearanceActivity : BaseActivity() {
         theme.backgroundStyle = BackgroundStyle.CLEAN
         theme.backgroundImageUri = null
         theme.backgroundPreset = null
+        theme.surfaceOpacity = 90
         binding.sliderRowPadding.value = theme.rowPadding.toFloat()
         binding.sliderRowSpacing.value = theme.rowSpacing.toFloat()
         binding.sliderRowInset.value = theme.rowInset.toFloat()

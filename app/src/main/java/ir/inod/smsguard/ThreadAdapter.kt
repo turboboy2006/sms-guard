@@ -219,6 +219,8 @@ class ThreadAdapter(
         val draft = context.getSharedPreferences("conversation_drafts", Context.MODE_PRIVATE)
             .getString(item.address, "").orEmpty().trim()
         b.textAddress.text = display
+        b.iconPinned.visibility = if (item.pinned) View.VISIBLE else View.GONE
+        b.iconPinned.setColorFilter(themeColor(context, item.colorHex))
         b.textSnippet.text = if (draft.isNotBlank()) {
             context.getString(R.string.draft_preview, draft)
         } else item.snippet
@@ -512,4 +514,7 @@ class ThreadAdapter(
     } catch (e: Exception) {
         android.graphics.Color.GRAY
     }
+
+    private fun themeColor(context: Context, hex: String): Int = runCatching { android.graphics.Color.parseColor(hex) }
+        .getOrDefault(ThemePrefs(context).accentColor())
 }
