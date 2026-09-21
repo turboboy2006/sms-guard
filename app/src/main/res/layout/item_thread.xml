@@ -150,7 +150,7 @@
                     android:layout_height="wrap_content"
                     android:maxLines="1"
                     android:textAlignment="textStart"
-                    android:textColor="@color/text_muted"
+                    android:textColor="@color/inbox_time"
                     android:textSize="11sp" />
 
                 <TextView

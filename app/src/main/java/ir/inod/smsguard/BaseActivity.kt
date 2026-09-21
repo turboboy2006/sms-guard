@@ -2,7 +2,11 @@ package ir.inod.smsguard
 
 import android.content.Context
 import android.content.res.Configuration
+import android.os.Build
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 
 /**
  * Applies the user's font scale to every screen.
@@ -34,9 +38,40 @@ open class BaseActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
+        applySystemBars()
         // Read after super.onCreate: only then is the Activity's context fully
         // attached and safe to hand to a store.
         fontRevisionAtCreate = SettingsStore(this).revision
+    }
+
+    /**
+     * Keep the operating-system chrome visually attached to our surface.
+     * Material's default light-status-bar flag is theme dependent, whereas this
+     * app owns a deliberately fixed blue-and-white palette, so set the icon
+     * contrast explicitly on every screen.
+     */
+    @Suppress("DEPRECATION")
+    private fun applySystemBars() {
+        val surface = ContextCompat.getColor(this, R.color.card_bg)
+        window.statusBarColor = surface
+        window.navigationBarColor = surface
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            var flags = window.decorView.systemUiVisibility
+            val lightSurface = ColorUtils.calculateLuminance(surface) > 0.5
+            flags = if (lightSurface) {
+                flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            } else {
+                flags and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv()
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                flags = if (lightSurface) {
+                    flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                } else {
+                    flags and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+                }
+            }
+            window.decorView.systemUiVisibility = flags
+        }
     }
 
     override fun onResume() {

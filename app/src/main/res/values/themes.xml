@@ -31,7 +31,9 @@
         <item name="fontFamily">@font/vazirmatn</item>
         <item name="android:fontFamily">@font/vazirmatn</item>
 
-        <item name="android:statusBarColor">@color/colorPrimaryDark</item>
+        <!-- The app bar is a calm white surface; keeping the status bar on the
+             same surface makes the title area read as one modern header. -->
+        <item name="android:statusBarColor">@color/card_bg</item>
         <item name="android:navigationBarColor">@color/card_bg</item>
 
         <!-- One shape scale for cards, buttons, inputs and dialogs -->

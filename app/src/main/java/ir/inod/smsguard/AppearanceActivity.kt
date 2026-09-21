@@ -26,6 +26,25 @@ class AppearanceActivity : BaseActivity() {
     private val listFontScales = listOf(0.9f, 1f, 1.1f, 1.25f, 1.4f)
     private val messageFontScales = listOf(0.9f, 1f, 1.15f, 1.3f, 1.5f)
 
+    /** A few intentional starting points, rather than asking everyone to
+     * understand seven spacing sliders before they can make the inbox pleasant. */
+    private enum class Preset(
+        val rowStyle: String,
+        val padding: Int,
+        val spacing: Int,
+        val inset: Int,
+        val listPadding: Int,
+        val messageStyle: String,
+        val messageSpacing: Int,
+        val radius: Int,
+        val dividers: Boolean,
+        val chips: Boolean
+    ) {
+        MODERN(RowStyle.CLASSIC, 12, 0, 0, 8, MessageStyle.FILLED, 2, 14, true, true),
+        COMPACT(RowStyle.COMPACT, 6, 0, 0, 4, MessageStyle.CLEAN, 2, 12, false, true),
+        CARDS(RowStyle.CARD, 10, 8, 4, 12, MessageStyle.SOFT, 8, 18, false, true)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityAppearanceBinding.inflate(layoutInflater)
@@ -36,6 +55,7 @@ class AppearanceActivity : BaseActivity() {
         setUpSpinners()
         setUpSliders()
         setUpSwitches()
+        setUpPresets()
         binding.buttonReset.setOnClickListener { reset() }
         refresh()
     }
@@ -129,6 +149,19 @@ class AppearanceActivity : BaseActivity() {
         }
     }
 
+    private fun setUpPresets() {
+        binding.presetGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (bindingUi || !isChecked) return@addOnButtonCheckedListener
+            val preset = when (checkedId) {
+                R.id.buttonPresetModern -> Preset.MODERN
+                R.id.buttonPresetCompact -> Preset.COMPACT
+                R.id.buttonPresetCards -> Preset.CARDS
+                else -> return@addOnButtonCheckedListener
+            }
+            applyPreset(preset)
+        }
+    }
+
     // ------------------------------------------------------------- helpers
 
     /** Writes the current preferences back into every control and the preview. */
@@ -152,6 +185,16 @@ class AppearanceActivity : BaseActivity() {
         )
         binding.switchDividers.isChecked = theme.showDividers
         binding.switchChips.isChecked = theme.showChips
+        binding.presetGroup.clearChecked()
+        presetForCurrent()?.let { preset ->
+            binding.presetGroup.check(
+                when (preset) {
+                    Preset.MODERN -> R.id.buttonPresetModern
+                    Preset.COMPACT -> R.id.buttonPresetCompact
+                    Preset.CARDS -> R.id.buttonPresetCards
+                }
+            )
+        }
         binding.textRowStyleHint.setText(
             when (theme.rowStyle) {
                 RowStyle.FLAT -> R.string.row_style_flat_hint
@@ -162,6 +205,40 @@ class AppearanceActivity : BaseActivity() {
         )
         bindingUi = false
         binding.preview.bind(theme.snapshot())
+    }
+
+    /** Applies a complete, internally consistent layout in a single revision. */
+    private fun applyPreset(preset: Preset) {
+        theme.listFontScale = 1f
+        theme.messageFontScale = 1f
+        theme.rowStyle = preset.rowStyle
+        theme.rowPadding = preset.padding
+        theme.rowSpacing = preset.spacing
+        theme.rowInset = preset.inset
+        theme.listPadding = preset.listPadding
+        theme.messageStyle = preset.messageStyle
+        theme.messageSpacing = preset.messageSpacing
+        theme.bubbleRadius = preset.radius
+        theme.showDividers = preset.dividers
+        theme.showChips = preset.chips
+        theme.touch()
+        refresh()
+    }
+
+    /** Returns a preset only when every relevant value still matches it. */
+    private fun presetForCurrent(): Preset? = Preset.entries.firstOrNull { preset ->
+        theme.listFontScale == 1f &&
+            theme.messageFontScale == 1f &&
+            theme.rowStyle == preset.rowStyle &&
+            theme.rowPadding == preset.padding &&
+            theme.rowSpacing == preset.spacing &&
+            theme.rowInset == preset.inset &&
+            theme.listPadding == preset.listPadding &&
+            theme.messageStyle == preset.messageStyle &&
+            theme.messageSpacing == preset.messageSpacing &&
+            theme.bubbleRadius == preset.radius &&
+            theme.showDividers == preset.dividers &&
+            theme.showChips == preset.chips
     }
 
     private fun reset() {

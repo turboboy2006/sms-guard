@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.RemoteInput
 
 /**
  * Posts "new message" notifications. A single notification per thread is
@@ -25,6 +26,24 @@ class Notifier(private val context: Context) {
             intent,
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
+        val replyIntent = Intent(context, NotificationReplyReceiver::class.java).apply {
+            putExtra(NotificationReplyReceiver.EXTRA_ADDRESS, address)
+            putExtra(NotificationReplyReceiver.EXTRA_THREAD_ID, threadId)
+        }
+        val replyPi = android.app.PendingIntent.getBroadcast(
+            context,
+            (threadId xor 0x5245504cL).toInt(),
+            replyIntent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_MUTABLE
+        )
+        val remoteInput = RemoteInput.Builder(NotificationReplyReceiver.KEY_REPLY)
+            .setLabel(context.getString(R.string.quick_reply))
+            .build()
+        val replyAction = NotificationCompat.Action.Builder(
+            R.drawable.ic_send,
+            context.getString(R.string.quick_reply),
+            replyPi
+        ).addRemoteInput(remoteInput).build()
 
         val notification = NotificationCompat.Builder(context, SmsApp.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
@@ -33,6 +52,7 @@ class Notifier(private val context: Context) {
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setContentIntent(pi)
+            .addAction(replyAction)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
 

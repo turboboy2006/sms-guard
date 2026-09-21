@@ -26,6 +26,57 @@
         app:titleTextAppearance="@style/TextAppearance.SmsGuard.Title"
         app:titleTextColor="@color/text_primary" />
 
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardRisk"
+        style="@style/Widget.SmsGuard.Card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/gutter"
+        android:layout_marginTop="@dimen/space_8"
+        android:layout_marginEnd="@dimen/gutter"
+        android:layout_marginBottom="@dimen/space_8"
+        android:visibility="gone"
+        app:cardBackgroundColor="@color/danger_soft"
+        app:strokeColor="@color/danger">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/space_12">
+
+            <TextView
+                android:id="@+id/textRisk"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/danger_deep"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_8"
+                android:gravity="end"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonNotSpam"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/mark_not_spam" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonRiskBlock"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/block_sender"
+                    android:textColor="@color/danger" />
+            </LinearLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"

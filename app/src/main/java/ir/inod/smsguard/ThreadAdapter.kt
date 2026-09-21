@@ -74,10 +74,12 @@ object TextDir {
  */
 class ThreadAdapter(
     private val onClick: (ThreadSummary) -> Unit,
-    private val onLongClick: (ThreadSummary) -> Unit
+    private val onLongClick: (ThreadSummary) -> Unit,
+    private val onSelectionChanged: (Int) -> Unit = {}
 ) : RecyclerView.Adapter<ThreadAdapter.VH>() {
 
     private val items = mutableListOf<ThreadSummary>()
+    private val selectedIds = linkedSetOf<Long>()
     private var categoryCache: Map<String, Category>? = null
     private var nameCache: HashMap<String, String> = HashMap()
     private var layout = RowLayout(
@@ -170,6 +172,27 @@ class ThreadAdapter(
 
     fun currentLayout(): RowLayout = layout
 
+    val selectionCount: Int get() = selectedIds.size
+
+    fun itemAt(position: Int): ThreadSummary? = items.getOrNull(position)
+
+    fun selectedItems(): List<ThreadSummary> = items.filter { it.threadId in selectedIds }
+
+    fun toggleSelection(item: ThreadSummary) {
+        if (!selectedIds.add(item.threadId)) selectedIds.remove(item.threadId)
+        val position = items.indexOfFirst { it.threadId == item.threadId }
+        if (position >= 0) notifyItemChanged(position)
+        onSelectionChanged(selectedIds.size)
+    }
+
+    fun clearSelection() {
+        if (selectedIds.isEmpty()) return
+        val old = selectedIds.toSet()
+        selectedIds.clear()
+        items.forEachIndexed { index, item -> if (item.threadId in old) notifyItemChanged(index) }
+        onSelectionChanged(0)
+    }
+
     class VH(val binding: ItemThreadBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
@@ -255,21 +278,10 @@ class ThreadAdapter(
                 b.root.layoutParams = params
             }
         }
-        // A name, two lines of preview and a badge have a natural ceiling; the
-        // promise is a row between 88dp and 108dp whatever the text does.
-        val rowParams = b.rowContent.layoutParams as? LinearLayout.LayoutParams
-        if (rowParams != null) {
-            val ceiling = dp(density, 108)
-            val measured = b.rowContent.height
-            // Only ever written on a re-bind, when the previous layout is known:
-            // the first pass must be allowed to measure itself, or a tall row
-            // would be clamped to whatever the recycled view happened to be.
-            val target = if (measured > ceiling) ceiling else ViewGroup.LayoutParams.WRAP_CONTENT
-            if (rowParams.height != target) {
-                rowParams.height = target
-                b.rowContent.layoutParams = rowParams
-            }
-        }
+        // Keep a minimum touch target but let large accessibility fonts choose
+        // their natural height. Clamping after measurement caused recycled rows
+        // to jump and could clip the second preview line.
+        b.rowContent.minimumHeight = dp(density, if (compact) 72 else 84)
 
         // --- avatar ---------------------------------------------------------
         b.avatar.visibility = if (showAvatar) View.VISIBLE else View.GONE
@@ -303,6 +315,9 @@ class ThreadAdapter(
             android.graphics.Color.TRANSPARENT
         }
         RowStyler.apply(b.rowContent, background, fallback)
+        if (item.threadId in selectedIds) {
+            b.rowContent.setBackgroundColor(ContextCompat.getColor(context, R.color.selection_bg))
+        }
         // Unread is stated twice on purpose: the row tint, and a small blue disc
         // next to the time. The disc carries the count when there is more than
         // one, which the tint alone cannot say.

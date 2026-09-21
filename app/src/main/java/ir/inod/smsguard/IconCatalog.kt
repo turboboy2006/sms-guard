@@ -78,6 +78,13 @@ object BrandCatalog {
         BrandEntry("بانک پارسیان", Cat.BANKING, "bank", "#1D4ED8", listOf("PARSIAN", "بانک پارسیان")),
         BrandEntry("بانک کشاورزی", Cat.BANKING, "bank", "#1D4ED8", listOf("KESHAVARZI", "بانک کشاورزی")),
         BrandEntry("بانک رفاه", Cat.BANKING, "bank", "#1D4ED8", listOf("REFAH", "بانک رفاه")),
+        BrandEntry("بانک آینده", Cat.BANKING, "bank", "#1D4ED8", listOf("AYANDEH", "بانک آینده")),
+        BrandEntry("بانک شهر", Cat.BANKING, "bank", "#1D4ED8", listOf("SHAHR", "بانک شهر")),
+        BrandEntry("بانک دی", Cat.BANKING, "bank", "#1D4ED8", listOf("DAYBANK", "بانک دی")),
+        BrandEntry("بانک سینا", Cat.BANKING, "bank", "#1D4ED8", listOf("SINABANK", "بانک سینا")),
+        BrandEntry("بانک گردشگری", Cat.BANKING, "bank", "#1D4ED8", listOf("TOURISM", "TOURISMBANK", "بانک گردشگری")),
+        BrandEntry("بلوبانک", Cat.BANKING, "card", "#1D4ED8", listOf("BLUBANK", "بلو بانک", "بلوبانک")),
+        BrandEntry("توبانک", Cat.BANKING, "card", "#1D4ED8", listOf("TOBANK", "توبانک")),
         BrandEntry("شاپرک", Cat.BANKING, "card", "#1D4ED8", listOf("SHAPARAK", "شاپرک")),
         BrandEntry("زرین‌پال", Cat.BANKING, "card", "#1D4ED8", listOf("ZARINPAL", "زرین پال")),
 
@@ -86,7 +93,14 @@ object BrandCatalog {
         BrandEntry("رایتل", Cat.NOTIFICATION, "mobile", "#0891B2", listOf("RIGHTEL", "رایتل")),
 
         BrandEntry("دیجی‌کالا", Cat.PROMOTION, "shop", "#EA580C", listOf("DIGIKALA", "دیجی کالا")),
+        BrandEntry("دیوار", Cat.PROMOTION, "shop", "#EA580C", listOf("DIVAR", "دیوار")),
+        BrandEntry("تپسی", Cat.NOTIFICATION, "taxi", "#7C3AED", listOf("TAPSI", "تپسی")),
         BrandEntry("اسنپ", Cat.NOTIFICATION, "taxi", "#7C3AED", listOf("SNAPP", "اسنپ")),
+        BrandEntry("اسنپ‌فود", Cat.PROMOTION, "restaurant", "#EA580C", listOf("SNAPPFOOD", "اسنپ فود")),
+        BrandEntry("فیدیبو", Cat.PROMOTION, "shop", "#EA580C", listOf("FIDIBO", "فیدیبو")),
+        BrandEntry("فیلیمو", Cat.PROMOTION, "shop", "#EA580C", listOf("FILIMO", "فیلیمو")),
+        BrandEntry("آپ", Cat.NOTIFICATION, "card", "#1D4ED8", listOf("ASANPARDAKHT", "آپ", "آسان پرداخت")),
+        BrandEntry("تاپ", Cat.NOTIFICATION, "card", "#1D4ED8", listOf("TOP", "TOSAN", "تاپ")),
         BrandEntry("پست", Cat.NOTIFICATION, "delivery", "#7C3AED", listOf("POST", "پست جمهوری")),
         BrandEntry("بیمه", Cat.NOTIFICATION, "insurance", "#0F766E", listOf("INSURANCE", "بیمه")),
         BrandEntry("امور مالیاتی", Cat.NOTIFICATION, "government", "#475467", listOf("TAX", "مالیاتی", "INTAMEDIA"))

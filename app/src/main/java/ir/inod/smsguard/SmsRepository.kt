@@ -33,7 +33,7 @@ class SmsRepository(private val context: Context) {
      * @return the rows, newest first, and whether anything changed since the
      *         previous call (the caller uses that to skip a re-render).
      */
-    fun loadThreads(scanLimit: Int = 3000): List<ThreadSummary> {
+    fun loadThreads(scanLimit: Int = Int.MAX_VALUE): List<ThreadSummary> {
         val cached = ThreadCache.read(context)
         val cachedById = HashMap<Long, CachedThread>(cached.size * 2)
         for (row in cached) cachedById[row.threadId] = row
@@ -124,6 +124,63 @@ class SmsRepository(private val context: Context) {
      */
     fun cachedThreads(): List<ThreadSummary> =
         ThreadCache.read(context).map { it.toSummary() }
+
+    /** Searches the provider directly, so results are not limited to the inbox
+     * cache or to the latest message shown for each conversation. */
+    fun searchThreads(query: String, resultLimit: Int = 500): List<ThreadSummary> {
+        val needle = query.trim()
+        if (needle.isEmpty()) return emptyList()
+        val out = LinkedHashMap<Long, ThreadSummary>()
+        val projection = arrayOf(
+            Telephony.Sms._ID, Telephony.Sms.THREAD_ID, Telephony.Sms.ADDRESS,
+            Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.READ,
+            Telephony.Sms.TYPE
+        )
+        try {
+            resolver.query(
+                Telephony.Sms.CONTENT_URI,
+                projection,
+                "${Telephony.Sms.BODY} LIKE ? OR ${Telephony.Sms.ADDRESS} LIKE ?",
+                arrayOf("%$needle%", "%$needle%"),
+                "${Telephony.Sms.DATE} DESC"
+            )?.use { c ->
+                val iId = c.getColumnIndexOrThrow(Telephony.Sms._ID)
+                val iThread = c.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID)
+                val iAddr = c.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+                val iBody = c.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                val iDate = c.getColumnIndexOrThrow(Telephony.Sms.DATE)
+                val iRead = c.getColumnIndexOrThrow(Telephony.Sms.READ)
+                val iType = c.getColumnIndexOrThrow(Telephony.Sms.TYPE)
+                while (c.moveToNext() && out.size < resultLimit) {
+                    val threadId = c.getLong(iThread)
+                    if (out.containsKey(threadId)) continue
+                    val id = c.getLong(iId)
+                    val address = c.getString(iAddr) ?: ""
+                    val body = c.getString(iBody) ?: ""
+                    val category = categoryFor(address, body, id)
+                    out[threadId] = ThreadSummary(
+                        threadId = threadId,
+                        messageId = id,
+                        address = address,
+                        snippet = body,
+                        date = c.getLong(iDate),
+                        unreadCount = if (
+                            c.getInt(iType) == Telephony.Sms.MESSAGE_TYPE_INBOX &&
+                            c.getInt(iRead) == 0
+                        ) 1 else 0,
+                        categoryId = category,
+                        colorHex = colorFor(address, category),
+                        riskLabel = if (category == Cat.SUSPICIOUS) {
+                            Classifier.riskLabel(context, address, body)
+                        } else null
+                    )
+                }
+            }
+        } catch (_: Exception) {
+            // An unavailable provider produces an empty result, not a crash.
+        }
+        return out.values.toList()
+    }
 
     fun loadMessages(threadId: Long, limit: Int = 500): List<SmsMessage> {
         val out = mutableListOf<SmsMessage>()

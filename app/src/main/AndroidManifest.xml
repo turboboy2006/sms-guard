@@ -33,6 +33,9 @@
         android:theme="@style/Theme.SmsGuard">
 
         <activity
+            android:name=".SearchActivity"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
@@ -100,6 +103,10 @@
                 <action android:name="android.provider.Telephony.SMS_DELIVER" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".NotificationReplyReceiver"
+            android:exported="false" />
 
         <!--
           Declared so the app is eligible to be the default SMS app.

@@ -19,12 +19,14 @@
     <color name="text_primary">#E8EDF5</color>
     <color name="text_secondary">#9BA9BE</color>
     <color name="text_muted">#7B8AA0</color>
+    <color name="inbox_time">#A9B5C7</color>
     <color name="divider">#1E2A3E</color>
     <color name="border_soft">#24314A</color>
     <color name="skeleton">#1B2537</color>
 
     <color name="unread_bg">#16233A</color>
     <color name="unread_dot">@color/blue_500</color>
+    <color name="selection_bg">#243B63</color>
 
     <color name="chip_inactive_bg">#1B2537</color>
     <color name="chip_inactive_text">#C3CDDE</color>

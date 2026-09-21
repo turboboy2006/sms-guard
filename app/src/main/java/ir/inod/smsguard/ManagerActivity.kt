@@ -5,6 +5,8 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.view.Menu
+import android.view.MenuItem
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -29,17 +31,21 @@ import ir.inod.smsguard.databinding.ActivityManagerBinding
  */
 class ManagerActivity : BaseActivity() {
 
+    private companion object { const val MENU_CLEAR_SELECTED = 5101 }
+
     private lateinit var binding: ActivityManagerBinding
     private val senders by lazy { SenderStore(this) }
     private val blocks by lazy { BlockStore(this) }
     private var tabIndex = 0
 
     private data class Row(
+        val key: String,
         val title: String,
         val subtitle: String,
         val iconRes: Int?,
         val colorHex: String,
-        val action: () -> Unit
+        val action: () -> Unit,
+        val clear: () -> Unit
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,7 +69,11 @@ class ManagerActivity : BaseActivity() {
         })
 
         binding.recycler.layoutManager = LinearLayoutManager(this)
-        binding.recycler.adapter = RowAdapter()
+        binding.recycler.adapter = RowAdapter { count ->
+            supportActionBar?.title = if (count > 0) Dates.count(this, count)
+                else getString(R.string.manage_brands)
+            invalidateOptionsMenu()
+        }
         load()
     }
 
@@ -84,11 +94,13 @@ class ManagerActivity : BaseActivity() {
                 ?.let { CategoryStore(this).byId(it)?.label(this) }
                 .orEmpty()
             Row(
+                key = "sender:${override.address}",
                 title = override.displayName ?: override.address,
                 subtitle = if (category.isBlank()) override.address else category,
                 iconRes = icon?.drawable,
                 colorHex = color,
-                action = { editOverride(override) }
+                action = { editOverride(override) },
+                clear = { senders.clearOverride(override.address) }
             )
         }
 
@@ -97,6 +109,7 @@ class ManagerActivity : BaseActivity() {
         blocks.prefixes().sorted().forEach { prefix ->
             list.add(
                 Row(
+                    key = "prefix:$prefix",
                     title = prefix,
                     subtitle = getString(R.string.blocked_number_hint),
                     iconRes = IconCatalog.byId("warning")?.drawable,
@@ -109,13 +122,15 @@ class ManagerActivity : BaseActivity() {
                             blocks.unblockPrefix(prefix)
                             load()
                         }
-                    }
+                    },
+                    clear = { blocks.unblockPrefix(prefix) }
                 )
             )
         }
         blocks.domains().sorted().forEach { domain ->
             list.add(
                 Row(
+                    key = "domain:$domain",
                     title = domain,
                     subtitle = getString(R.string.blocked_domain_hint),
                     iconRes = IconCatalog.byId("security")?.drawable,
@@ -128,7 +143,8 @@ class ManagerActivity : BaseActivity() {
                             blocks.unblockDomain(domain)
                             load()
                         }
-                    }
+                    },
+                    clear = { blocks.unblockDomain(domain) }
                 )
             )
         }
@@ -137,6 +153,7 @@ class ManagerActivity : BaseActivity() {
             .forEach { spam ->
                 list.add(
                     Row(
+                        key = "spam:${spam.address}",
                         title = spam.displayName ?: spam.address,
                         subtitle = getString(R.string.blocked_sender_hint),
                         iconRes = IconCatalog.byId("warning")?.drawable,
@@ -150,7 +167,8 @@ class ManagerActivity : BaseActivity() {
                                 Classifier.invalidateCaches()
                                 load()
                             }
-                        }
+                        },
+                        clear = { senders.setCategory(spam.address, Cat.OTHER) }
                     )
                 )
             }
@@ -349,9 +367,22 @@ class ManagerActivity : BaseActivity() {
      * Rows are built in code rather than inflated, so this screen needs no item
      * layout and stays consistent with the rest of the app's token usage.
      */
-    private class RowAdapter : RecyclerView.Adapter<RowAdapter.VH>() {
+    private class RowAdapter(
+        private val onSelectionChanged: (Int) -> Unit
+    ) : RecyclerView.Adapter<RowAdapter.VH>() {
 
         private val items = mutableListOf<Row>()
+        private val selected = linkedSetOf<String>()
+        val selectionCount: Int get() = selected.size
+
+        fun selectedRows(): List<Row> = items.filter { it.key in selected }
+
+        fun clearSelection() {
+            if (selected.isEmpty()) return
+            selected.clear()
+            notifyDataSetChanged()
+            onSelectionChanged(0)
+        }
 
         fun submit(list: List<Row>) {
             items.clear()
@@ -465,7 +496,26 @@ class ManagerActivity : BaseActivity() {
                 }
             }
 
-            holder.root.setOnClickListener { row.action() }
+            holder.root.setOnClickListener {
+                if (selected.isEmpty()) row.action() else toggle(row)
+            }
+            holder.root.setOnLongClickListener {
+                toggle(row)
+                true
+            }
+            holder.root.setBackgroundColor(
+                ContextCompat.getColor(
+                    holder.itemView.context,
+                    if (row.key in selected) R.color.selection_bg else android.R.color.transparent
+                )
+            )
+        }
+
+        private fun toggle(row: Row) {
+            if (!selected.add(row.key)) selected.remove(row.key)
+            val position = items.indexOfFirst { it.key == row.key }
+            if (position >= 0) notifyItemChanged(position)
+            onSelectionChanged(selected.size)
         }
 
         private fun parseHex(hex: String): Int = try {
@@ -473,5 +523,40 @@ class ManagerActivity : BaseActivity() {
         } catch (e: Exception) {
             Color.GRAY
         }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menu.add(0, MENU_CLEAR_SELECTED, 0, R.string.clear_override)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        return true
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        val adapter = binding.recycler.adapter as? RowAdapter
+        menu.findItem(MENU_CLEAR_SELECTED)?.isVisible = (adapter?.selectionCount ?: 0) > 0
+        return super.onPrepareOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == MENU_CLEAR_SELECTED) {
+            val adapter = binding.recycler.adapter as RowAdapter
+            adapter.selectedRows().forEach { it.clear() }
+            adapter.clearSelection()
+            Classifier.invalidateCaches()
+            load()
+            return true
+        }
+        if (item.itemId == android.R.id.home) {
+            finish()
+            return true
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
+    @Deprecated("Handled for selection mode")
+    override fun onBackPressed() {
+        val adapter = binding.recycler.adapter as? RowAdapter
+        if ((adapter?.selectionCount ?: 0) > 0) adapter?.clearSelection()
+        else super.onBackPressed()
     }
 }

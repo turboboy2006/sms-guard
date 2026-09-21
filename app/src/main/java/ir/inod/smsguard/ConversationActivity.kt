@@ -23,6 +23,8 @@ class ConversationActivity : BaseActivity() {
 
         private const val MENU_BLOCK_SENDER = 1001
         private const val MENU_NEW_MESSAGE = 1002
+        private const val MENU_DELETE_SELECTED = 1003
+        private const val MENU_SPAM_SELECTED = 1004
     }
 
     private lateinit var binding: ActivityConversationBinding
@@ -32,6 +34,7 @@ class ConversationActivity : BaseActivity() {
     private val repo by lazy { SmsRepository(this) }
     private var threadId: Long = -1L
     private var address: String = ""
+    private var riskyMessageId: Long = -1L
 
     /** What the current list was drawn with, so a change can be detected. */
     private var drawnLayout: MessageLayout? = null
@@ -59,13 +62,21 @@ class ConversationActivity : BaseActivity() {
 
         supportActionBar?.title = ContactNames.displayNameUi(address)
 
-        adapter = MessageAdapter { message -> confirmDeleteMessage(message) }
+        adapter = MessageAdapter(
+            onLongClick = { message -> adapter.toggleSelection(message) },
+            onClick = { message ->
+                if (adapter.selectionCount > 0) adapter.toggleSelection(message)
+            },
+            onSelectionChanged = { count -> updateSelectionUi(count) }
+        )
         binding.recyclerMessages.layoutManager =
             LinearLayoutManager(this).apply { stackFromEnd = true }
         binding.recyclerMessages.adapter = adapter
 
         binding.buttonSend.setOnClickListener { sendCurrent() }
         binding.buttonPickRecipient.setOnClickListener { pickRecipient() }
+        binding.buttonNotSpam.setOnClickListener { markConversationSafe() }
+        binding.buttonRiskBlock.setOnClickListener { blockRiskySender() }
         updateEmptyState()
     }
 
@@ -165,6 +176,7 @@ class ConversationActivity : BaseActivity() {
                 }
                 updateEmptyState()
                 adapter.submit(messages)
+                bindRiskBanner(messages)
                 // The adapter also emits day dividers, so scroll to its own
                 // last row rather than to messages.size.
                 if (adapter.itemCount > 0) {
@@ -246,7 +258,20 @@ class ConversationActivity : BaseActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menu.add(0, MENU_NEW_MESSAGE, 0, R.string.compose)
         menu.add(0, MENU_BLOCK_SENDER, 1, R.string.block_sender)
+        menu.add(0, MENU_SPAM_SELECTED, 0, R.string.mark_spam)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        menu.add(0, MENU_DELETE_SELECTED, 1, R.string.delete)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
         return true
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        val selecting = ::adapter.isInitialized && adapter.selectionCount > 0
+        menu.findItem(MENU_NEW_MESSAGE)?.isVisible = !selecting
+        menu.findItem(MENU_BLOCK_SENDER)?.isVisible = !selecting
+        menu.findItem(MENU_SPAM_SELECTED)?.isVisible = selecting
+        menu.findItem(MENU_DELETE_SELECTED)?.isVisible = selecting
+        return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -274,7 +299,89 @@ class ConversationActivity : BaseActivity() {
                 }
                 return true
             }
+            MENU_SPAM_SELECTED -> {
+                markSelectedSpam()
+                return true
+            }
+            MENU_DELETE_SELECTED -> {
+                confirmDeleteSelected()
+                return true
+            }
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    private fun updateSelectionUi(count: Int) {
+        supportActionBar?.title = if (count > 0) Dates.count(this, count)
+        else ContactNames.displayNameUi(address)
+        invalidateOptionsMenu()
+    }
+
+    private fun bindRiskBanner(messages: List<SmsMessage>) {
+        val risky = messages.lastOrNull {
+            it.isIncoming && (it.categoryId == Cat.SUSPICIOUS || it.categoryId == Cat.SPAM)
+        }
+        riskyMessageId = risky?.id ?: -1L
+        binding.cardRisk.visibility = if (risky == null) View.GONE else View.VISIBLE
+        if (risky != null) {
+            binding.textRisk.text = Classifier.riskLabel(this, address, risky.body)
+                ?: getString(R.string.risk_banner_default)
+        }
+    }
+
+    private fun markConversationSafe() {
+        SenderStore(this).setPolicy(address, SenderPolicy.NEVER_ANALYZE)
+        SenderStore(this).setCategory(address, Cat.OTHER)
+        if (riskyMessageId >= 0) MessageCategoryStore(this).set(riskyMessageId, Cat.OTHER)
+        SenderProfileStore(this).recordFeedback(address, false)
+        Classifier.invalidateCaches()
+        ThreadCache.clear(this)
+        binding.cardRisk.visibility = View.GONE
+        load()
+    }
+
+    private fun blockRiskySender() {
+        if (address.isBlank()) return
+        RuleStore(this).add(address, RuleTarget.SENDER, false)
+        binding.cardRisk.visibility = View.GONE
+        Toast.makeText(this, R.string.sender_blocked, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun markSelectedSpam() {
+        val selected = adapter.selectedMessages()
+        val categories = MessageCategoryStore(this)
+        selected.forEach {
+            categories.set(it.id, Cat.SPAM)
+            LearnedWeights(this).record(it.body, true)
+            CampaignStore(this).markSpam(it.id)
+        }
+        SenderProfileStore(this).recordFeedback(address, true)
+        Classifier.invalidateCaches()
+        ThreadCache.clear(this)
+        adapter.clearSelection()
+        load()
+    }
+
+    private fun confirmDeleteSelected() {
+        val selected = adapter.selectedMessages()
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.delete_message)
+            .setMessage(getString(R.string.confirm_delete_selected, selected.size))
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.confirm) { _, _ ->
+                adapter.clearSelection()
+                worker.execute {
+                    selected.forEach { repo.deleteMessage(it.id) }
+                    ThreadCache.clear(this)
+                    load()
+                }
+            }
+            .show()
+    }
+
+    @Deprecated("Handled for selection mode")
+    override fun onBackPressed() {
+        if (::adapter.isInitialized && adapter.selectionCount > 0) adapter.clearSelection()
+        else super.onBackPressed()
     }
 }

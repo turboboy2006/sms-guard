@@ -18,7 +18,9 @@ import java.util.Calendar
  * background are switched in code.
  */
 class MessageAdapter(
-    private val onLongClick: (SmsMessage) -> Unit
+    private val onLongClick: (SmsMessage) -> Unit,
+    private val onClick: (SmsMessage) -> Unit = {},
+    private val onSelectionChanged: (Int) -> Unit = {}
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private sealed interface Row {
@@ -27,6 +29,27 @@ class MessageAdapter(
     }
 
     private val rows = mutableListOf<Row>()
+    private val selectedIds = linkedSetOf<Long>()
+
+    val selectionCount: Int get() = selectedIds.size
+
+    fun selectedMessages(): List<SmsMessage> = rows.mapNotNull {
+        (it as? Row.Msg)?.message?.takeIf { message -> message.id in selectedIds }
+    }
+
+    fun toggleSelection(message: SmsMessage) {
+        if (!selectedIds.add(message.id)) selectedIds.remove(message.id)
+        val index = rows.indexOfFirst { it is Row.Msg && it.message.id == message.id }
+        if (index >= 0) notifyItemChanged(index)
+        onSelectionChanged(selectedIds.size)
+    }
+
+    fun clearSelection() {
+        if (selectedIds.isEmpty()) return
+        selectedIds.clear()
+        notifyDataSetChanged()
+        onSelectionChanged(0)
+    }
 
     private var layout = MessageLayout(
         fontScale = 1f,
@@ -160,6 +183,14 @@ class MessageAdapter(
         val vertical = if (half < 1) 1 else half
         row.setPadding((12 * density).toInt(), vertical, (12 * density).toInt(), vertical)
         bubble.layoutParams = params
+        row.setBackgroundColor(
+            androidx.core.content.ContextCompat.getColor(
+                context,
+                if (item.id in selectedIds) R.color.selection_bg else android.R.color.transparent
+            )
+        )
+
+        holder.itemView.setOnClickListener { onClick(item) }
 
         holder.itemView.setOnLongClickListener {
             onLongClick(item)

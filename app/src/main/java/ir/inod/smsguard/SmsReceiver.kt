@@ -43,16 +43,18 @@ class SmsReceiver : BroadcastReceiver() {
     }
 
     private fun handle(context: Context, address: String, body: String, timestamp: Long) {
-        // 1. Hard blocking rules come first.
+        // 1. User rules come first. Only an explicit Block rule stops delivery;
+        // Spam and promotional rules keep the message accessible and merely
+        // file it in the requested category.
         val rule = RuleStore(context).blockingRuleFor(address, body)
-        if (rule != null) {
+        if (rule?.action == RuleAction.BLOCK) {
             BlockedStore(context).add(BlockedMessage(address, body, timestamp, rule.pattern))
             Log.i(TAG, "Blocked SMS from $address by rule '${rule.pattern}'")
             return
         }
 
         // 2. Local classification. No network, so this is instant.
-        val localCategory = Classifier.rememberSender(context, address, body)
+        var localCategory = Classifier.rememberSender(context, address, body)
 
         // 2b. Feed the behavioural profile: volume, burst and recency. This is
         // what later lets the classifier trust or distrust a sender.
@@ -63,6 +65,14 @@ class SmsReceiver : BroadcastReceiver() {
         val repo = SmsRepository(context)
         val messageId = repo.storeIncoming(address, body, timestamp)
         val threadId = repo.threadIdFor(address)
+
+        rule?.action?.categoryId?.let { category ->
+            if (messageId >= 0) {
+                MessageCategoryStore(context).set(messageId, category)
+                Classifier.invalidateCaches()
+                localCategory = category
+            }
+        }
 
         // The stored inbox is patched here, inside the receiver, so the next
         // launch is correct even if the app itself is never opened in between.

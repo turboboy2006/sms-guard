@@ -18,6 +18,14 @@ object Cat {
 /** Where a blocking rule looks for its pattern. */
 enum class RuleTarget { SENDER, BODY, BOTH }
 
+/** How a plain-language rule combines its included words. */
+enum class RuleJoin { ANY, ALL }
+
+/** A rule can hide a message outright or file it where the user expects. */
+enum class RuleAction(val categoryId: String?) {
+    BLOCK(null), SPAM(Cat.SPAM), PROMOTION(Cat.PROMOTION)
+}
+
 /**
  * A blocking rule. Matching is case-insensitive and an invalid regex simply
  * never matches, so a bad rule can never crash the SMS receiver.
@@ -27,26 +35,35 @@ data class Rule(
     val pattern: String,
     val target: RuleTarget = RuleTarget.BOTH,
     val isRegex: Boolean = false,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val excluded: String = "",
+    val join: RuleJoin = RuleJoin.ANY,
+    val action: RuleAction = RuleAction.BLOCK
 ) {
+    private fun words(value: String): List<String> = value
+        .split(',', '،', '\n')
+        .map { it.trim().lowercase() }
+        .filter { it.isNotBlank() }
+
     fun matches(address: String, body: String): Boolean {
         if (!enabled || pattern.isBlank()) return false
         val addr = address.lowercase()
+        val haystack = when (target) {
+            RuleTarget.SENDER -> addr
+            RuleTarget.BODY -> body.lowercase()
+            RuleTarget.BOTH -> "$addr\n${body.lowercase()}"
+        }
         return try {
             if (isRegex) {
                 val re = Regex(pattern, RegexOption.IGNORE_CASE)
-                when (target) {
-                    RuleTarget.SENDER -> re.containsMatchIn(addr)
-                    RuleTarget.BODY -> re.containsMatchIn(body)
-                    RuleTarget.BOTH -> re.containsMatchIn(addr) || re.containsMatchIn(body)
-                }
+                re.containsMatchIn(haystack)
             } else {
-                val p = pattern.trim().lowercase()
-                when (target) {
-                    RuleTarget.SENDER -> addr.contains(p)
-                    RuleTarget.BODY -> body.lowercase().contains(p)
-                    RuleTarget.BOTH -> addr.contains(p) || body.lowercase().contains(p)
+                val included = words(pattern)
+                val positive = when (join) {
+                    RuleJoin.ANY -> included.any(haystack::contains)
+                    RuleJoin.ALL -> included.all(haystack::contains)
                 }
+                positive && words(excluded).none(haystack::contains)
             }
         } catch (e: Exception) {
             false

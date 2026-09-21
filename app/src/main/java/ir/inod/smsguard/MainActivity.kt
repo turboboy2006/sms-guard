@@ -6,6 +6,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.graphics.Color
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -18,6 +20,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayout
@@ -32,6 +36,10 @@ class MainActivity : BaseActivity() {
         const val MENU_RULES = 2003
         const val MENU_BLOCKED = 2004
         const val MENU_REFRESH = 2005
+        const val MENU_TRASH = 2006
+        const val MENU_MARK_READ = 2101
+        const val MENU_BULK_SPAM = 2102
+        const val MENU_BULK_TRASH = 2103
 
         /** Tab order, matching the chips built in [setUpFilterChips]. */
         const val TAB_ALL = 0
@@ -39,6 +47,7 @@ class MainActivity : BaseActivity() {
         const val TAB_SPAM = 2
         const val TAB_BANKING = 3
         const val TAB_SERVICE = 4
+        const val TAB_TRASH = 5
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -81,7 +90,20 @@ class MainActivity : BaseActivity() {
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { loadThreads() }
+    ) { grants ->
+        loadThreads()
+        if (grants[Manifest.permission.READ_CONTACTS] == false) {
+            Snackbar.make(binding.root, R.string.contacts_permission_explanation, Snackbar.LENGTH_LONG)
+                .setAction(R.string.settings) {
+                    startActivity(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = android.net.Uri.parse("package:$packageName")
+                        }
+                    )
+                }
+                .show()
+        }
+    }
 
     /**
      * Watches the SMS provider so a message that arrives while the app is open
@@ -113,11 +135,15 @@ class MainActivity : BaseActivity() {
         setSupportActionBar(binding.toolbar)
 
         adapter = ThreadAdapter(
-            onClick = { thread -> openThread(thread) },
-            onLongClick = { thread -> showOptions(thread) }
+            onClick = { thread ->
+                if (adapter.selectionCount > 0) adapter.toggleSelection(thread) else openThread(thread)
+            },
+            onLongClick = { thread -> adapter.toggleSelection(thread) },
+            onSelectionChanged = { count -> updateSelectionUi(count) }
         )
         binding.recyclerThreads.layoutManager = LinearLayoutManager(this)
         binding.recyclerThreads.adapter = adapter
+        attachSwipeActions()
 
         setUpFilterChips()
         applyAppearance()
@@ -164,9 +190,13 @@ class MainActivity : BaseActivity() {
             R.string.tab_suspicious,
             R.string.tab_spam,
             R.string.tab_banking,
-            R.string.tab_notifications
+            R.string.tab_notifications,
+            R.string.tab_trash
         )
-        val icons = listOf(0, R.drawable.ic_tab_suspicious, 0, R.drawable.ic_tab_banking, R.drawable.ic_tab_service)
+        val icons = listOf(
+            0, R.drawable.ic_tab_suspicious, 0, R.drawable.ic_tab_banking,
+            R.drawable.ic_tab_service, R.drawable.ic_tab_trash
+        )
         val idToIndex = HashMap<Int, Int>()
         val density = resources.displayMetrics.density
         labels.forEachIndexed { index, res ->
@@ -425,8 +455,26 @@ class MainActivity : BaseActivity() {
         menu.add(0, MENU_REFRESH, 1, R.string.refresh)
         menu.add(0, MENU_RULES, 2, R.string.rules)
         menu.add(0, MENU_BLOCKED, 3, R.string.blocked_log)
-        menu.add(0, MENU_MANAGE, 4, R.string.manage_brands)
+        menu.add(0, MENU_TRASH, 4, R.string.tab_trash)
+        menu.add(0, MENU_MANAGE, 5, R.string.manage_brands)
+        menu.add(0, MENU_MARK_READ, 0, R.string.mark_read)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        menu.add(0, MENU_BULK_SPAM, 1, R.string.mark_spam)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        menu.add(0, MENU_BULK_TRASH, 2, R.string.move_to_trash)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         return true
+    }
+
+    override fun onPrepareOptionsMenu(menu: android.view.Menu): Boolean {
+        val selecting = ::adapter.isInitialized && adapter.selectionCount > 0
+        listOf(MENU_MARK_READ, MENU_BULK_SPAM, MENU_BULK_TRASH).forEach {
+            menu.findItem(it)?.isVisible = selecting
+        }
+        listOf(MENU_SEARCH, MENU_REFRESH, MENU_RULES, MENU_BLOCKED, MENU_TRASH, MENU_MANAGE).forEach {
+            menu.findItem(it)?.isVisible = !selecting
+        }
+        return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
@@ -439,10 +487,126 @@ class MainActivity : BaseActivity() {
             }
             MENU_RULES -> startActivity(Intent(this, RulesActivity::class.java))
             MENU_BLOCKED -> showBlockedLog()
+            MENU_TRASH -> {
+                contactsOnly = false
+                selectedTab = TAB_TRASH
+                binding.bottomNav.selectedItemId = R.id.nav_messages
+                applyFilter()
+            }
             MENU_MANAGE -> startActivity(Intent(this, ManagerActivity::class.java))
+            MENU_MARK_READ -> bulkMarkRead()
+            MENU_BULK_SPAM -> bulkCategory(Cat.SPAM)
+            MENU_BULK_TRASH -> bulkCategory(Cat.TRASH)
             else -> return super.onOptionsItemSelected(item)
         }
         return true
+    }
+
+    private fun updateSelectionUi(count: Int) {
+        supportActionBar?.title = if (count > 0) Dates.count(this, count) else
+            getString(if (contactsOnly) R.string.tab_contacts else R.string.tab_messages)
+        invalidateOptionsMenu()
+    }
+
+    private fun attachSwipeActions() {
+        val callback = object : ItemTouchHelper.SimpleCallback(
+            0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
+        ) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ) = false
+
+            override fun getSwipeDirs(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int =
+                if (adapter.selectionCount > 0) 0 else super.getSwipeDirs(recyclerView, viewHolder)
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val row = adapter.itemAt(viewHolder.bindingAdapterPosition) ?: return
+                if (direction == ItemTouchHelper.RIGHT) {
+                    worker.execute {
+                        repo.markThreadRead(row.threadId)
+                        main.post { loadThreads() }
+                    }
+                } else {
+                    changeCategory(row, Cat.SPAM)
+                }
+            }
+
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE) {
+                    val item = viewHolder.itemView
+                    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = ContextCompat.getColor(
+                            this@MainActivity,
+                            if (dX > 0) R.color.colorPrimary else R.color.danger
+                        )
+                    }
+                    if (dX > 0) c.drawRect(
+                        item.left.toFloat(), item.top.toFloat(),
+                        item.left + dX, item.bottom.toFloat(), paint
+                    ) else c.drawRect(
+                        item.right + dX, item.top.toFloat(),
+                        item.right.toFloat(), item.bottom.toFloat(), paint
+                    )
+                    paint.color = Color.WHITE
+                    paint.textSize = 14f * resources.displayMetrics.scaledDensity
+                    paint.textAlign = if (dX > 0) Paint.Align.LEFT else Paint.Align.RIGHT
+                    val baseline = item.top + item.height / 2f - (paint.ascent() + paint.descent()) / 2f
+                    val inset = 20f * resources.displayMetrics.density
+                    c.drawText(
+                        getString(if (dX > 0) R.string.mark_read else R.string.mark_spam),
+                        if (dX > 0) item.left + inset else item.right - inset,
+                        baseline,
+                        paint
+                    )
+                }
+                super.onChildDraw(
+                    c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive
+                )
+            }
+        }
+        ItemTouchHelper(callback).attachToRecyclerView(binding.recyclerThreads)
+    }
+
+    private fun bulkMarkRead() {
+        val rows = adapter.selectedItems()
+        adapter.clearSelection()
+        worker.execute {
+            rows.forEach { repo.markThreadRead(it.threadId) }
+            main.post { loadThreads() }
+        }
+    }
+
+    private fun bulkCategory(categoryId: String) {
+        val rows = adapter.selectedItems()
+        adapter.clearSelection()
+        rows.forEach { row ->
+            senderStore.setCategory(row.address, categoryId)
+            messageCats.set(row.messageId, categoryId)
+            if (categoryId == Cat.SPAM) {
+                SenderProfileStore(this).recordFeedback(row.address, true)
+                LearnedWeights(this).record(row.snippet, true)
+                CampaignStore(this).markSpam(row.messageId)
+            }
+        }
+        Classifier.invalidateCaches()
+        ThreadCache.clear(this)
+        loadThreads()
+    }
+
+    @Deprecated("Handled for selection mode")
+    override fun onBackPressed() {
+        if (::adapter.isInitialized && adapter.selectionCount > 0) adapter.clearSelection()
+        else super.onBackPressed()
     }
 
     /**
@@ -450,24 +614,7 @@ class MainActivity : BaseActivity() {
      * provider, so results appear as the user types.
      */
     private fun showSearch() {
-        val input = android.widget.EditText(this).apply {
-            hint = getString(R.string.search_hint)
-            setText(query)
-            setSelection(text.length)
-            setPadding(48, 32, 48, 32)
-        }
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.search)
-            .setView(input)
-            .setNegativeButton(R.string.clear) { _, _ ->
-                query = ""
-                applyFilter()
-            }
-            .setPositiveButton(R.string.search) { _, _ ->
-                query = input.text?.toString()?.trim().orEmpty()
-                applyFilter()
-            }
-            .show()
+        startActivity(Intent(this, SearchActivity::class.java))
     }
 
     private fun applyFilter() {
@@ -480,6 +627,7 @@ class MainActivity : BaseActivity() {
                 it.categoryId == Cat.BANKING || it.categoryId == Cat.OTP
             }
             selectedTab == TAB_SERVICE -> allThreads.filter { it.categoryId == Cat.NOTIFICATION }
+            selectedTab == TAB_TRASH -> allThreads.filter { it.categoryId == Cat.TRASH }
             // "All" hides the spam folder and the trash alike.
             else -> allThreads.filterNot {
                 it.categoryId in spamIds || it.categoryId == Cat.TRASH

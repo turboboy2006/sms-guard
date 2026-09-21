@@ -78,12 +78,14 @@
         android:layout_height="0dp"
         android:layout_weight="1">
 
+        <!-- Room for the compose button plus a little breathing space, so
+             the last conversation never ends up under the FAB. -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerThreads"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingBottom="96dp" />
+            android:paddingBottom="112dp" />
 
         <LinearLayout
             android:id="@+id/skeleton"

@@ -310,7 +310,12 @@ class RuleStore(context: Context) {
                         target = runCatching { RuleTarget.valueOf(o.optString("target", "BOTH")) }
                             .getOrDefault(RuleTarget.BOTH),
                         isRegex = o.optBoolean("isRegex", false),
-                        enabled = o.optBoolean("enabled", true)
+                        enabled = o.optBoolean("enabled", true),
+                        excluded = o.optString("excluded", ""),
+                        join = runCatching { RuleJoin.valueOf(o.optString("join", "ANY")) }
+                            .getOrDefault(RuleJoin.ANY),
+                        action = runCatching { RuleAction.valueOf(o.optString("action", "BLOCK")) }
+                            .getOrDefault(RuleAction.BLOCK)
                     )
                 )
             }
@@ -327,6 +332,7 @@ class RuleStore(context: Context) {
                 JSONObject().apply {
                     put("id", r.id); put("pattern", r.pattern); put("target", r.target.name)
                     put("isRegex", r.isRegex); put("enabled", r.enabled)
+                    put("excluded", r.excluded); put("join", r.join.name); put("action", r.action.name)
                 }
             )
         }
@@ -336,6 +342,23 @@ class RuleStore(context: Context) {
     fun add(pattern: String, target: RuleTarget, isRegex: Boolean) {
         val list = all()
         list.add(Rule(System.currentTimeMillis(), pattern.trim(), target, isRegex, true))
+        save(list)
+    }
+
+    fun addSimple(
+        included: String,
+        excluded: String,
+        join: RuleJoin,
+        target: RuleTarget,
+        action: RuleAction
+    ) {
+        val list = all()
+        list.add(
+            Rule(
+                id = System.currentTimeMillis(), pattern = included.trim(), target = target,
+                excluded = excluded.trim(), join = join, action = action
+            )
+        )
         save(list)
     }
 
@@ -509,6 +532,12 @@ class SenderStore(context: Context) {
                 iconId = o.optString("icon").ifBlank { null }
             )
         }.sortedBy { it.address }
+
+    fun clearOverride(sender: String) {
+        val map = load()
+        map.remove(sender)
+        save(map)
+    }
 
     /**
      * Snapshot accessors. The conversation list resolves a category per row, so
