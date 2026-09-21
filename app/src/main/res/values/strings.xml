@@ -334,4 +334,5 @@
     <string name="trash_retention">Automatic trash cleanup</string>
     <string name="trash_keep_forever">Keep forever</string>
     <string name="trash_days">Delete after %1$d days</string>
+    <string name="send_with_sim">Send using a specific SIM</string>
 </resources>

@@ -310,4 +310,5 @@
     <string name="trash_retention">پاک‌سازی خودکار سطل زباله</string>
     <string name="trash_keep_forever">برای همیشه نگه‌دار</string>
     <string name="trash_days">حذف پس از %1$d روز</string>
+    <string name="send_with_sim">ارسال با سیم‌کارت مشخص</string>
 </resources>

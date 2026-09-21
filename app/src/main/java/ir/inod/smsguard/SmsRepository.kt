@@ -496,17 +496,19 @@ class SmsRepository(private val context: Context) {
         }
     }
 
-    fun send(address: String, body: String): Boolean {
+    fun send(address: String, body: String, subscriptionOverride: Int? = null): Boolean {
         if (address.isBlank() || body.isBlank()) return false
         var pendingId = -1L
         return try {
             val now = System.currentTimeMillis()
-            val chosenSub = SenderStore(context).simFor(address).takeIf { it >= 0 }
-                ?: SettingsStore(context).defaultSimId
+            val chosenSub = subscriptionOverride ?: (
+                SenderStore(context).simFor(address).takeIf { it >= 0 }
+                    ?: SettingsStore(context).defaultSimId
+                )
             val messageId = storePending(address, body, now, chosenSub)
             if (messageId < 0) return false
             pendingId = messageId
-            val sm = smsManager(address)
+            val sm = smsManager(address, chosenSub)
             val parts = sm.divideMessage(body)
             val sent = ArrayList<PendingIntent>(parts.size)
             val delivered = ArrayList<PendingIntent>(parts.size)
@@ -561,9 +563,9 @@ class SmsRepository(private val context: Context) {
         else -> DeliveryState.SENT
     }
 
-    private fun smsManager(address: String): SmsManager {
+    private fun smsManager(address: String, explicitSubscription: Int? = null): SmsManager {
         val senderSim = SenderStore(context).simFor(address)
-        val chosen = if (senderSim >= 0) senderSim else SettingsStore(context).defaultSimId
+        val chosen = explicitSubscription ?: if (senderSim >= 0) senderSim else SettingsStore(context).defaultSimId
         val base = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             context.getSystemService(SmsManager::class.java)
         } else {

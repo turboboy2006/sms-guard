@@ -41,6 +41,7 @@ class ConversationActivity : BaseActivity() {
         private const val MENU_DELETE_THREAD = 1011
         private const val MENU_SEARCH_THREAD = 1012
         private const val MENU_ADD_RECIPIENT = 1013
+        private const val MENU_SEND_WITH_SIM = 1014
     }
 
     private lateinit var binding: ActivityConversationBinding
@@ -388,6 +389,7 @@ class ConversationActivity : BaseActivity() {
         menu.add(0, MENU_DELETE_THREAD, 8, R.string.delete_forever)
         menu.add(0, MENU_SEARCH_THREAD, 9, R.string.search_conversation)
         menu.add(0, MENU_ADD_RECIPIENT, 10, R.string.add_recipient)
+        menu.add(0, MENU_SEND_WITH_SIM, 11, R.string.send_with_sim)
         return true
     }
 
@@ -406,6 +408,7 @@ class ConversationActivity : BaseActivity() {
         menu.findItem(MENU_DELETE_THREAD)?.isVisible = !selecting && threadId >= 0
         menu.findItem(MENU_SEARCH_THREAD)?.isVisible = !selecting && threadId >= 0
         menu.findItem(MENU_ADD_RECIPIENT)?.isVisible = !selecting && address.isNotBlank()
+        menu.findItem(MENU_SEND_WITH_SIM)?.isVisible = !selecting && address.isNotBlank()
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -451,6 +454,7 @@ class ConversationActivity : BaseActivity() {
             MENU_DELETE_THREAD -> { confirmDeleteConversation(); return true }
             MENU_SEARCH_THREAD -> { searchConversation(); return true }
             MENU_ADD_RECIPIENT -> { addGroupRecipient(); return true }
+            MENU_SEND_WITH_SIM -> { chooseSimForCurrentSend(); return true }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -792,6 +796,30 @@ class ConversationActivity : BaseActivity() {
             supportActionBar?.subtitle = if (additionalRecipients.isEmpty()) null
             else getString(R.string.recipient_count, additionalRecipients.size + 1)
         }
+    }
+
+    private fun chooseSimForCurrentSend() {
+        val text = binding.editMessage.text?.toString()?.trim().orEmpty()
+        if (text.isBlank()) { Toast.makeText(this, R.string.message_hint, Toast.LENGTH_SHORT).show(); return }
+        val labels = mutableListOf<String>(); val ids = mutableListOf<Int>()
+        try {
+            getSystemService(android.telephony.SubscriptionManager::class.java)
+                ?.activeSubscriptionInfoList.orEmpty().forEach { info ->
+                    ids += info.subscriptionId
+                    labels += getString(R.string.sim_label, info.simSlotIndex + 1, info.carrierName?.toString().orEmpty())
+                }
+        } catch (_: SecurityException) { }
+        if (ids.isEmpty()) { sendCurrent(); return }
+        MaterialAlertDialogBuilder(this).setTitle(R.string.send_with_sim)
+            .setItems(labels.toTypedArray()) { _, which ->
+                binding.editMessage.setText(""); drafts.edit().remove(address).apply()
+                worker.execute {
+                    val targets = listOf(address) + additionalRecipients
+                    val sent = targets.count { repo.send(it, text, ids[which]) }
+                    runOnUiThread { Toast.makeText(this, getString(R.string.group_sent_report, sent, targets.size), Toast.LENGTH_SHORT).show() }
+                    load()
+                }
+            }.show()
     }
 
     @Deprecated("Handled for selection mode")
