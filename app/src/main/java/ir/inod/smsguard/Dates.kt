@@ -121,4 +121,8 @@ object Dates {
         }
         return sb.toString()
     }
+
+    /** A small count rendered the way the active language writes numbers. */
+    fun count(context: Context, value: Int): String =
+        if (isPersian(context)) faDigits(value.toString()) else value.toString()
 }

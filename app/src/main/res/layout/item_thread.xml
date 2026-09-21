@@ -43,14 +43,14 @@
             android:minHeight="@dimen/row_min_height"
             android:orientation="horizontal"
             android:paddingStart="16dp"
-            android:paddingTop="10dp"
+            android:paddingTop="8dp"
             android:paddingEnd="16dp"
-            android:paddingBottom="10dp">
+            android:paddingBottom="8dp">
 
             <FrameLayout
                 android:id="@+id/avatar"
-                android:layout_width="52dp"
-                android:layout_height="52dp">
+                android:layout_width="48dp"
+                android:layout_height="48dp">
 
                 <ImageView
                     android:id="@+id/avatarImage"
@@ -65,7 +65,7 @@
                     android:layout_height="match_parent"
                     android:gravity="center"
                     android:textColor="@android:color/white"
-                    android:textSize="18sp"
+                    android:textSize="17sp"
                     android:textStyle="bold" />
             </FrameLayout>
 
@@ -84,9 +84,9 @@
 
                     <ImageView
                         android:id="@+id/iconWarning"
-                        android:layout_width="17dp"
-                        android:layout_height="17dp"
-                        android:layout_marginEnd="6dp"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginEnd="5dp"
                         android:contentDescription="@string/cat_suspicious"
                         android:src="@drawable/ic_tab_suspicious"
                         android:visibility="gone" />
@@ -99,20 +99,8 @@
                         android:ellipsize="end"
                         android:maxLines="1"
                         android:textColor="@color/text_primary"
-                        android:textSize="15.5sp"
+                        android:textSize="15sp"
                         android:textStyle="bold" />
-
-                    <!-- Its own column, so every row's name ends on the same
-                         line no matter how long the time text is. -->
-                    <TextView
-                        android:id="@+id/textDate"
-                        android:layout_width="@dimen/time_column"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:maxLines="1"
-                        android:textAlignment="textStart"
-                        android:textColor="@color/text_muted"
-                        android:textSize="11.5sp" />
                 </LinearLayout>
 
                 <!-- Two lines maximum: a conversation preview is a summary, and
@@ -121,12 +109,12 @@
                     android:id="@+id/textSnippet"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
+                    android:layout_marginTop="2dp"
                     android:ellipsize="end"
-                    android:lineSpacingExtra="2dp"
+                    android:lineSpacingExtra="1dp"
                     android:maxLines="2"
                     android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
+                    android:textSize="12.5sp" />
 
                 <!-- On its own line, as in the reference: a category pill that
                      shares a line with the preview would steal its width. -->
@@ -134,15 +122,48 @@
                     android:id="@+id/textCategory"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="5dp"
                     android:ellipsize="end"
                     android:gravity="center"
                     android:maxLines="1"
-                    android:paddingStart="10dp"
+                    android:paddingStart="9dp"
                     android:paddingTop="2dp"
-                    android:paddingEnd="10dp"
+                    android:paddingEnd="9dp"
                     android:paddingBottom="2dp"
-                    android:textSize="11.5sp"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- Its own column at the trailing edge of the block, which in this
+                 right-to-left row is the physical left: every row's time lines
+                 up, and an unread conversation is marked right below it. -->
+            <LinearLayout
+                android:layout_width="@dimen/time_column"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:gravity="start"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/textDate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:textAlignment="textStart"
+                    android:textColor="@color/text_muted"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/textUnread"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_gravity="start"
+                    android:layout_marginTop="7dp"
+                    android:background="@drawable/unread_dot"
+                    android:gravity="center"
+                    android:textColor="@android:color/white"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
                     android:visibility="gone" />
             </LinearLayout>
         </LinearLayout>
@@ -156,7 +177,7 @@
             android:id="@+id/divider"
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:layout_marginStart="76dp"
+            android:layout_marginStart="78dp"
             android:layout_marginEnd="16dp"
             android:background="@color/divider" />
     </FrameLayout>

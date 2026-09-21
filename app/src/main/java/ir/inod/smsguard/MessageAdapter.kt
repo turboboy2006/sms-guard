@@ -105,14 +105,23 @@ class MessageAdapter(
         }
     }
 
+    /**
+     * One incoming message.
+     *
+     * The timestamp is a plain caption rather than a second bubble line, and it
+     * hugs the same edge as its bubble, so a run of messages reads as one
+     * column per speaker. The day divider gets its own small pill so a long
+     * thread still reads as sections.
+     */
     private fun bindMessage(holder: MsgVH, item: SmsMessage) {
         val context = holder.itemView.context
         val row = holder.binding.root
         val bubble = holder.binding.textBubble
+        val time = holder.binding.textTime
         val density = context.resources.displayMetrics.density
 
         bubble.text = item.body
-        holder.binding.textTime.text = Dates.full(context, item.date)
+        time.text = Dates.full(context, item.date)
         TextDir.apply(bubble, item.body)
 
         // Type and colour: two independent knobs, so a large font does not
@@ -121,9 +130,12 @@ class MessageAdapter(
             android.util.TypedValue.COMPLEX_UNIT_SP,
             15f * layout.fontScale
         )
-        holder.binding.textTime.setTextSize(
+        time.setTextSize(
             android.util.TypedValue.COMPLEX_UNIT_SP,
             10.5f * layout.fontScale.coerceAtMost(1.3f)
+        )
+        time.setTextColor(
+            androidx.core.content.ContextCompat.getColor(context, R.color.text_muted)
         )
         val pad = (MessageStyler.TEXT_PADDING_DP * density).toInt()
         bubble.setPadding(pad, pad, pad, pad)
@@ -137,9 +149,11 @@ class MessageAdapter(
         if (item.isIncoming) {
             row.gravity = Gravity.START
             params.marginStart = 0
+            time.gravity = Gravity.START
         } else {
             row.gravity = Gravity.END
             params.marginStart = (48 * density).toInt()
+            time.gravity = Gravity.END
         }
         // A minimum of one pixel keeps consecutive bubbles from touching when
         // the spacing preference is zero.

@@ -11,8 +11,11 @@ import androidx.core.content.ContextCompat
  * Five treatments are offered because the bubble is the single most visible
  * surface in the app and there is no one right answer: some people want the
  * outgoing message to shout, others want both sides quiet and a border to do
- * the work. All five keep incoming and outgoing distinguishable by something
- * other than hue alone — fill, border or alignment.
+ * the work.
+ *
+ * The default is the calm pairing from the reference — a neutral grey incoming
+ * bubble and a light blue outgoing one — because both sides then sit inside the
+ * same palette as the rest of the app instead of introducing a second one.
  */
 object MessageStyler {
 

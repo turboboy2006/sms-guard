@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The unread marker: a small blue disc. It carries the count when there is
+     more than one, which is why it is a shape with a text layer rather than a
+     plain dot drawable. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/unread_dot" />
+</shape>

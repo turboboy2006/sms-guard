@@ -303,9 +303,19 @@ class ThreadAdapter(
             android.graphics.Color.TRANSPARENT
         }
         RowStyler.apply(b.rowContent, background, fallback)
-        // Unread is carried by the background tint and the bolder name, the way
-        // the reference does it: a second dot on the row would be one marker too
-        // many for a state the reader can already see.
+        // Unread is stated twice on purpose: the row tint, and a small blue disc
+        // next to the time. The disc carries the count when there is more than
+        // one, which the tint alone cannot say.
+        if (unread) {
+            b.textUnread.visibility = View.VISIBLE
+            b.textUnread.text = if (item.unreadCount > 1) {
+                Dates.count(context, item.unreadCount)
+            } else {
+                ""
+            }
+        } else {
+            b.textUnread.visibility = View.GONE
+        }
         b.textAddress.setTypeface(null, Typeface.BOLD)
         b.textAddress.setAlpha(if (unread) 1f else 0.85f)
         b.textSnippet.setTextColor(

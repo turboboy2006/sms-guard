@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Centred day divider between message groups. -->
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/textDayHeader"
+<!-- Day divider between message groups: a small grey pill rather than a bare
+     line of text, so it reads as a separator and not as a message. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="center"
     android:paddingTop="@dimen/space_12"
-    android:paddingBottom="@dimen/space_8"
-    android:textAllCaps="false"
-    android:textColor="@color/text_muted"
-    android:textSize="12sp" />
+    android:paddingBottom="@dimen/space_8">
+
+    <TextView
+        android:id="@+id/textDayHeader"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/day_pill"
+        android:paddingStart="12dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="4dp"
+        android:textAllCaps="false"
+        android:textColor="@color/text_secondary"
+        android:textSize="11.5sp" />
+</LinearLayout>
