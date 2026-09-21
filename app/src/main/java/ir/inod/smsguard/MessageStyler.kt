@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 
 /**
  * Message bubble backgrounds.
@@ -30,6 +31,9 @@ object MessageStyler {
         val density = context.resources.displayMetrics.density
         val radius = radiusDp * density
         val border = ContextCompat.getColor(context, R.color.border_soft)
+        val accent = ThemePrefs(context).accentColor()
+        val surface = ContextCompat.getColor(context, R.color.card_bg)
+        val accentSoft = ColorUtils.blendARGB(surface, accent, 0.16f)
 
         return when (style) {
             MessageStyle.CONTRAST -> rounded(
@@ -47,7 +51,7 @@ object MessageStyler {
                 radius = radius,
                 stroke = 1,
                 strokeColor = if (outgoing) {
-                    ContextCompat.getColor(context, R.color.colorPrimary)
+                    ThemePrefs(context).accentColor()
                 } else {
                     border
                 }
@@ -69,9 +73,8 @@ object MessageStyler {
             )
 
             else -> rounded(
-                fill = ContextCompat.getColor(
-                    context,
-                    if (outgoing) R.color.bubble_outgoing else R.color.bubble_incoming
+                fill = if (outgoing) accentSoft else ContextCompat.getColor(
+                    context, R.color.bubble_incoming
                 ),
                 radius = radius
             )

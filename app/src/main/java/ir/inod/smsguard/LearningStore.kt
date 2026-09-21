@@ -249,6 +249,11 @@ object Learning {
 
     private const val MIN_TOKEN_LEN = 3
     private const val MAX_CHAR_GRAMS = 60
+    private val STOP_WORDS = setOf(
+        "است", "هست", "بود", "شد", "شده", "برای", "این", "آن", "شما", "ما",
+        "که", "را", "با", "از", "در", "به", "تا", "یا", "یک", "خود", "شود",
+        "می", "های", "the", "and", "for", "your", "you", "this", "that"
+    )
 
     /**
      * Feature keys for one message.
@@ -269,7 +274,9 @@ object Learning {
     fun tokens(body: String): List<String> {
         val words = Normalizer.normalize(body)
             .split(' ')
-            .filter { it.length >= MIN_TOKEN_LEN && it.any { c -> c.isLetter() } }
+            .filter {
+                it.length >= MIN_TOKEN_LEN && it.any { c -> c.isLetter() } && it !in STOP_WORDS
+            }
         if (words.isEmpty()) return emptyList()
 
         val out = LinkedHashSet<String>(words.size * 3)

@@ -6,6 +6,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
+import androidx.core.graphics.drawable.DrawableCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import ir.inod.smsguard.databinding.ActivityConversationBinding
 
@@ -127,6 +128,9 @@ class ConversationActivity : BaseActivity() {
         if (next != drawnLayout) {
             drawnLayout = next
             adapter.applyLayout(next)
+        }
+        binding.buttonSend.background?.mutate()?.let {
+            DrawableCompat.setTint(it, theme.accentColor())
         }
     }
 

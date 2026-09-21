@@ -207,6 +207,15 @@ class ThemePrefs(context: Context) {
             .putString("msg_style", if (v in MessageStyle.IDS) v else MessageStyle.FILLED)
             .apply()
 
+    /** Colour personality shared by previews, rows, bubbles and key actions. */
+    var colorScheme: String
+        get() = prefs.getString("color_scheme", ThemePalette.OCEAN) ?: ThemePalette.OCEAN
+        set(v) = prefs.edit().putString(
+            "color_scheme", if (v in ThemePalette.IDS) v else ThemePalette.OCEAN
+        ).apply()
+
+    fun accentColor(): Int = android.graphics.Color.parseColor(ThemePalette.hex(colorScheme))
+
     fun snapshot(): RowLayout = RowLayout(
         style = rowStyle,
         padding = rowPadding,
@@ -216,7 +225,8 @@ class ThemePrefs(context: Context) {
         listFont = listFontScale,
         messageFont = messageFontScale,
         bubbleRadius = bubbleRadius,
-        showDividers = showDividers
+        showDividers = showDividers,
+        colorScheme = colorScheme
     )
 
     /** The conversation screen's own snapshot, read once per list build. */
@@ -224,7 +234,8 @@ class ThemePrefs(context: Context) {
         fontScale = messageFontScale,
         spacing = messageSpacing,
         radius = bubbleRadius,
-        style = messageStyle
+        style = messageStyle,
+        colorScheme = colorScheme
     )
 
     /**
@@ -268,7 +279,8 @@ data class RowLayout(
     val listFont: Float,
     val messageFont: Float,
     val bubbleRadius: Int,
-    val showDividers: Boolean
+    val showDividers: Boolean,
+    val colorScheme: String
 )
 
 /** Background treatments offered for the message bubbles. */
@@ -282,12 +294,31 @@ object MessageStyle {
     val IDS = listOf(FILLED, CONTRAST, OUTLINE, SOFT, CLEAN)
 }
 
+/** Curated high-contrast palettes; appearance presets and density stay separate. */
+object ThemePalette {
+    const val OCEAN = "ocean"
+    const val EMERALD = "emerald"
+    const val VIOLET = "violet"
+    const val ROSE = "rose"
+    const val AMBER = "amber"
+    val IDS = listOf(OCEAN, EMERALD, VIOLET, ROSE, AMBER)
+
+    fun hex(id: String): String = when (id) {
+        EMERALD -> "#059669"
+        VIOLET -> "#7C3AED"
+        ROSE -> "#E11D48"
+        AMBER -> "#D97706"
+        else -> "#2563EB"
+    }
+}
+
 /** Everything the conversation screen needs to draw one message list. */
 data class MessageLayout(
     val fontScale: Float,
     val spacing: Int,
     val radius: Int,
-    val style: String
+    val style: String,
+    val colorScheme: String
 )
 
 /** Blocking rules (the original rule engine, still fully supported). */

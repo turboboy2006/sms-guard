@@ -127,12 +127,21 @@ object Classifier {
     private val OPT_OUT_REGEX = Regex("(لغو\\s*1?1)|(off\\s*-?\\s*\\d{3,})", RegexOption.IGNORE_CASE)
     private val BULK_SENDER_REGEX = Regex("^\\+?98?\\d{4,}$|^\\d{5,}$")
     private val NUMBER_REGEX = Regex("\\d{4,}")
+    private val OTP_CODE_REGEX = Regex("(?<!\\d)[0-9۰-۹]{4,8}(?!\\d)")
     private val CARD_REGEX = Regex("\\d{16}")
     private val SHEBA_REGEX = Regex("ir\\d{24}", RegexOption.IGNORE_CASE)
 
     // ------------------------------------------------------------ predicates
 
-    fun looksLikeOtp(body: String): Boolean = Normalizer.containsAny(body, OTP_WORDS)
+    fun looksLikeOtp(body: String): Boolean {
+        val hasCode = OTP_CODE_REGEX.containsMatchIn(body)
+        if (!hasCode) return false
+        val normalized = Normalizer.normalize(body)
+        val explicit = Normalizer.containsAny(normalized, OTP_WORDS)
+        val expiry = listOf("اعتبار", "دقیقه", "منقضی", "استفاده نکنید", "محرمانه")
+            .any(normalized::contains)
+        return explicit || expiry
+    }
 
     fun senderLooksBank(address: String): Boolean =
         BANK_SENDERS.any { address.lowercase().contains(it) }

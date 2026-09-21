@@ -56,6 +56,7 @@ class AppearanceActivity : BaseActivity() {
         setUpSliders()
         setUpSwitches()
         setUpPresets()
+        setUpPalettes()
         binding.buttonReset.setOnClickListener { reset() }
         refresh()
     }
@@ -162,6 +163,21 @@ class AppearanceActivity : BaseActivity() {
         }
     }
 
+    private fun setUpPalettes() {
+        binding.paletteGroup.addOnButtonCheckedListener { _, checkedId, checked ->
+            if (bindingUi || !checked) return@addOnButtonCheckedListener
+            theme.colorScheme = when (checkedId) {
+                R.id.buttonPaletteEmerald -> ThemePalette.EMERALD
+                R.id.buttonPaletteViolet -> ThemePalette.VIOLET
+                R.id.buttonPaletteRose -> ThemePalette.ROSE
+                R.id.buttonPaletteAmber -> ThemePalette.AMBER
+                else -> ThemePalette.OCEAN
+            }
+            theme.touch()
+            refresh()
+        }
+    }
+
     // ------------------------------------------------------------- helpers
 
     /** Writes the current preferences back into every control and the preview. */
@@ -195,6 +211,15 @@ class AppearanceActivity : BaseActivity() {
                 }
             )
         }
+        binding.paletteGroup.check(
+            when (theme.colorScheme) {
+                ThemePalette.EMERALD -> R.id.buttonPaletteEmerald
+                ThemePalette.VIOLET -> R.id.buttonPaletteViolet
+                ThemePalette.ROSE -> R.id.buttonPaletteRose
+                ThemePalette.AMBER -> R.id.buttonPaletteAmber
+                else -> R.id.buttonPaletteOcean
+            }
+        )
         binding.textRowStyleHint.setText(
             when (theme.rowStyle) {
                 RowStyle.FLAT -> R.string.row_style_flat_hint
@@ -254,6 +279,7 @@ class AppearanceActivity : BaseActivity() {
         theme.messageStyle = MessageStyle.FILLED
         theme.showDividers = true
         theme.showChips = true
+        theme.colorScheme = ThemePalette.OCEAN
         binding.sliderRowPadding.value = theme.rowPadding.toFloat()
         binding.sliderRowSpacing.value = theme.rowSpacing.toFloat()
         binding.sliderRowInset.value = theme.rowInset.toFloat()

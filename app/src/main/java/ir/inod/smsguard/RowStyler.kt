@@ -6,6 +6,7 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 
 /**
  * The visual furniture of one inbox row.
@@ -38,8 +39,8 @@ object RowStyler {
     ): Drawable? {
         val density = context.resources.displayMetrics.density
         val radius = layout.bubbleRadius * density
-        val unreadColor = ContextCompat.getColor(context, R.color.unread_bg)
         val surface = ContextCompat.getColor(context, R.color.surface_elevated)
+        val unreadColor = ColorUtils.blendARGB(surface, ThemePrefs(context).accentColor(), 0.11f)
         val sunken = ContextCompat.getColor(context, R.color.surface_sunken)
         val border = ContextCompat.getColor(context, R.color.border_soft)
 
@@ -96,7 +97,7 @@ object RowStyler {
             } catch (e: Exception) {
                 null
             }
-        } ?: ContextCompat.getColor(context, R.color.colorPrimary)
+        } ?: ThemePrefs(context).accentColor()
 
     /**
      * Writes the background of a row.

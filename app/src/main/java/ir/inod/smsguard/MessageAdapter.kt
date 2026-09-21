@@ -55,7 +55,8 @@ class MessageAdapter(
         fontScale = 1f,
         spacing = 2,
         radius = 14,
-        style = MessageStyle.FILLED
+        style = MessageStyle.FILLED,
+        colorScheme = ThemePalette.OCEAN
     )
 
     fun submit(list: List<SmsMessage>) {

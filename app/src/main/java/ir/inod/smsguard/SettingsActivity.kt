@@ -13,6 +13,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.LocaleListCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import ir.inod.smsguard.databinding.ActivitySettingsBinding
@@ -37,6 +38,32 @@ class SettingsActivity : BaseActivity() {
     private val theme by lazy { ThemePrefs(this) }
 
     private val langs = listOf("", "fa", "en")
+
+    private val exportBackup = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        runCatching {
+            contentResolver.openOutputStream(uri)?.bufferedWriter()?.use {
+                it.write(SettingsBackup.export(this))
+            }
+        }.onSuccess { Toast.makeText(this, R.string.backup_saved, Toast.LENGTH_SHORT).show() }
+            .onFailure { Toast.makeText(this, R.string.backup_failed, Toast.LENGTH_LONG).show() }
+    }
+
+    private val importBackup = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        runCatching {
+            val raw = contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                ?: error("empty backup")
+            SettingsBackup.import(this, raw)
+        }.onSuccess {
+            Toast.makeText(this, R.string.backup_restored, Toast.LENGTH_SHORT).show()
+            recreate()
+        }.onFailure { Toast.makeText(this, R.string.backup_failed, Toast.LENGTH_LONG).show() }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,6 +120,12 @@ class SettingsActivity : BaseActivity() {
         }
         binding.buttonRules.setOnClickListener {
             startActivity(Intent(this, RulesActivity::class.java))
+        }
+        binding.buttonExportBackup.setOnClickListener {
+            exportBackup.launch("sms-guard-backup.json")
+        }
+        binding.buttonImportBackup.setOnClickListener {
+            importBackup.launch(arrayOf("application/json", "text/plain"))
         }
     }
 

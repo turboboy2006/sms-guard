@@ -33,6 +33,9 @@ class AppearancePreviewView @JvmOverloads constructor(
     private val snippet: TextView
     private val time: TextView
     private val badge: TextView
+    private val sectionLabel: TextView
+    private val incomingBubble: TextView
+    private val outgoingBubble: TextView
 
     init {
         orientation = VERTICAL
@@ -119,6 +122,23 @@ class AppearancePreviewView @JvmOverloads constructor(
 
         addView(rowContent, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(divider)
+
+        sectionLabel = TextView(context).apply {
+            text = context.getString(R.string.preview_conversation)
+            setTextColor(ContextCompat.getColor(context, R.color.text_muted))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setPadding(dp(16), dp(12), dp(16), dp(6))
+        }
+        addView(sectionLabel)
+
+        incomingBubble = previewBubble(
+            context.getString(R.string.preview_incoming), Gravity.START
+        )
+        outgoingBubble = previewBubble(
+            context.getString(R.string.preview_outgoing), Gravity.END
+        )
+        addView(incomingBubble)
+        addView(outgoingBubble)
     }
 
     /** Redraws the sample row from the current preferences. */
@@ -182,6 +202,36 @@ class AppearancePreviewView @JvmOverloads constructor(
 
         val background = RowStyler.background(context, layout, 0, false)
         RowStyler.apply(rowContent, background, Color.TRANSPARENT)
+
+        bindBubble(incomingBubble, layout, outgoing = false)
+        bindBubble(outgoingBubble, layout, outgoing = true)
+        avatar.setStrokeColor(ThemePrefs(context).accentColor())
+        avatar.strokeWidth = dp(1)
+    }
+
+    private fun previewBubble(textValue: String, side: Int): TextView = TextView(context).apply {
+        text = textValue
+        maxWidth = dp(260)
+        gravity = Gravity.START
+        layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+            gravity = side
+            marginStart = dp(16)
+            marginEnd = dp(16)
+            bottomMargin = dp(6)
+        }
+    }
+
+    private fun bindBubble(view: TextView, layout: RowLayout, outgoing: Boolean) {
+        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f * layout.messageFont)
+        val pad = dp(MessageStyler.TEXT_PADDING_DP)
+        view.setPadding(pad, pad, pad, pad)
+        view.background = MessageStyler.background(
+            context, ThemePrefs(context).messageStyle, layout.bubbleRadius, outgoing
+        )
+        view.setTextColor(MessageStyler.textColor(context, outgoing))
+        val params = view.layoutParams as LayoutParams
+        params.bottomMargin = dp(ThemePrefs(context).messageSpacing.coerceAtLeast(2))
+        view.layoutParams = params
     }
 
     private fun pill(color: Int): GradientDrawable = GradientDrawable().apply {

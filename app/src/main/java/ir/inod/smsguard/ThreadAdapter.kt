@@ -91,7 +91,8 @@ class ThreadAdapter(
         listFont = 1f,
         messageFont = 1f,
         bubbleRadius = 14,
-        showDividers = true
+        showDividers = true,
+        colorScheme = ThemePalette.OCEAN
     )
 
     fun submit(list: List<ThreadSummary>) {

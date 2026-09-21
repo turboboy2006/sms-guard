@@ -33,7 +33,11 @@ class SmsRepository(private val context: Context) {
      * @return the rows, newest first, and whether anything changed since the
      *         previous call (the caller uses that to skip a re-render).
      */
-    fun loadThreads(scanLimit: Int = Int.MAX_VALUE): List<ThreadSummary> {
+    fun loadThreads(
+        scanLimit: Int = Int.MAX_VALUE,
+        progressEvery: Int = 0,
+        onProgress: ((List<ThreadSummary>) -> Unit)? = null
+    ): List<ThreadSummary> {
         val cached = ThreadCache.read(context)
         val cachedById = HashMap<Long, CachedThread>(cached.size * 2)
         for (row in cached) cachedById[row.threadId] = row
@@ -103,6 +107,14 @@ class SmsRepository(private val context: Context) {
                         )
                     } else if (unread) {
                         byThread[threadId] = existing.copy(unreadCount = existing.unreadCount + 1)
+                    }
+                    // Large mailboxes must become useful before the full scan
+                    // ends. Emit immutable snapshots from this worker; the UI
+                    // can paint them while the same cursor continues older.
+                    if (progressEvery > 0 &&
+                        (scanned == 500 || scanned % progressEvery == 0)
+                    ) {
+                        onProgress?.invoke(byThread.values.toList())
                     }
                     if (!c.moveToNext()) break
                 }
@@ -385,6 +397,28 @@ class SmsRepository(private val context: Context) {
             )
         } catch (e: Exception) {
             // ignore
+        }
+    }
+
+    fun markThreadUnread(threadId: Long) {
+        try {
+            var latestId = -1L
+            resolver.query(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(Telephony.Sms._ID),
+                "${Telephony.Sms.THREAD_ID} = ?",
+                arrayOf(threadId.toString()),
+                "${Telephony.Sms.DATE} DESC"
+            )?.use { c -> if (c.moveToFirst()) latestId = c.getLong(0) }
+            if (latestId < 0) return
+            resolver.update(
+                Telephony.Sms.CONTENT_URI,
+                ContentValues().apply { put(Telephony.Sms.READ, 0) },
+                "${Telephony.Sms._ID} = ?",
+                arrayOf(latestId.toString())
+            )
+        } catch (_: Exception) {
+            // Some providers reject subqueries. The operation is best effort.
         }
     }
 

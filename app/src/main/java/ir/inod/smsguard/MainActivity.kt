@@ -8,6 +8,7 @@ import android.database.ContentObserver
 import android.graphics.Color
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.content.res.ColorStateList
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -206,7 +207,10 @@ class MainActivity : BaseActivity() {
                 isClickable = true
                 id = View.generateViewId()
                 chipBackgroundColor =
-                    ContextCompat.getColorStateList(this@MainActivity, R.color.chip_bg)
+                    ColorStateList(
+                        arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+                        intArrayOf(theme.accentColor(), ContextCompat.getColor(this@MainActivity, R.color.chip_inactive_bg))
+                    )
                 setTextColor(
                     ContextCompat.getColorStateList(this@MainActivity, R.color.chip_text)
                 )
@@ -274,6 +278,7 @@ class MainActivity : BaseActivity() {
             drawnLayout = next
             adapter.applyLayout(next)
             applyListPadding()
+            applyPalette()
             applyFilter()
         }
 
@@ -285,6 +290,26 @@ class MainActivity : BaseActivity() {
         adapter.applyLayout(drawnLayout!!)
         applyChipVisibility()
         applyListPadding()
+        applyPalette()
+    }
+
+    private fun applyPalette() {
+        val accent = theme.accentColor()
+        binding.fabCompose.backgroundTintList = ColorStateList.valueOf(accent)
+        val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
+        binding.bottomNav.itemIconTintList = ColorStateList(
+            states, intArrayOf(accent, ContextCompat.getColor(this, R.color.nav_icon_inactive))
+        )
+        binding.bottomNav.itemTextColor = ColorStateList(
+            states, intArrayOf(accent, ContextCompat.getColor(this, R.color.nav_icon_inactive))
+        )
+        for (index in 0 until binding.chipGroup.childCount) {
+            (binding.chipGroup.getChildAt(index) as? com.google.android.material.chip.Chip)
+                ?.chipBackgroundColor = ColorStateList(
+                    states,
+                    intArrayOf(accent, ContextCompat.getColor(this, R.color.chip_inactive_bg))
+                )
+        }
     }
 
     private fun applyListPadding() {
@@ -395,7 +420,14 @@ class MainActivity : BaseActivity() {
                 // no contacts permission: an empty index is fine
             }
             val threads = try {
-                repo.loadThreads()
+                repo.loadThreads(progressEvery = 2000) { partial ->
+                    main.post {
+                        if (isFinishing || isDestroyed || partial.isEmpty()) return@post
+                        allThreads = partial
+                        showSkeleton(false)
+                        applyFilter()
+                    }
+                }
             } catch (t: Throwable) {
                 emptyList()
             }
@@ -582,12 +614,23 @@ class MainActivity : BaseActivity() {
         adapter.clearSelection()
         worker.execute {
             rows.forEach { repo.markThreadRead(it.threadId) }
-            main.post { loadThreads() }
+            main.post {
+                loadThreads()
+                showUndo {
+                    worker.execute {
+                        rows.forEach { repo.markThreadUnread(it.threadId) }
+                        main.post { loadThreads() }
+                    }
+                }
+            }
         }
     }
 
     private fun bulkCategory(categoryId: String) {
         val rows = adapter.selectedItems()
+        val previous = rows.associate { row ->
+            row.threadId to Pair(senderStore.categoryFor(row.address), messageCats.categoryFor(row.messageId))
+        }
         adapter.clearSelection()
         rows.forEach { row ->
             senderStore.setCategory(row.address, categoryId)
@@ -601,6 +644,20 @@ class MainActivity : BaseActivity() {
         Classifier.invalidateCaches()
         ThreadCache.clear(this)
         loadThreads()
+        showUndo {
+            rows.forEach { row ->
+                val old = previous[row.threadId]
+                senderStore.setCategory(row.address, old?.first ?: Cat.OTHER)
+                messageCats.set(row.messageId, old?.second ?: old?.first ?: Cat.OTHER)
+                if (categoryId == Cat.SPAM) {
+                    SenderProfileStore(this).revertFeedback(row.address, true)
+                    LearnedWeights(this).revert(row.snippet, true)
+                }
+            }
+            Classifier.invalidateCaches()
+            ThreadCache.clear(this)
+            loadThreads()
+        }
     }
 
     @Deprecated("Handled for selection mode")
