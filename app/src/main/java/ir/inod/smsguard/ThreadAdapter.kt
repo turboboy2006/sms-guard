@@ -240,7 +240,7 @@ class ThreadAdapter(
         // --- spacing --------------------------------------------------------
         val vertical = (layout.padding * density).toInt()
         b.rowContent.setPadding(
-            (8 * density).toInt(), vertical, (16 * density).toInt(), vertical
+            (16 * density).toInt(), vertical, (16 * density).toInt(), vertical
         )
 
         val params = b.root.layoutParams as? ViewGroup.MarginLayoutParams
@@ -271,7 +271,7 @@ class ThreadAdapter(
         // --- avatar ---------------------------------------------------------
         b.avatar.visibility = if (showAvatar) View.VISIBLE else View.GONE
         if (showAvatar) {
-            val avatarSize = dp(density, if (compact) 40 else 48)
+            val avatarSize = dp(density, if (compact) 40 else 52)
             if (b.avatar.layoutParams.width != avatarSize) {
                 b.avatar.layoutParams = b.avatar.layoutParams.apply {
                     width = avatarSize
@@ -300,7 +300,9 @@ class ThreadAdapter(
             android.graphics.Color.TRANSPARENT
         }
         RowStyler.apply(b.rowContent, background, fallback)
-        b.textUnread.visibility = if (unread) View.VISIBLE else View.GONE
+        // Unread is carried by the background tint and the bolder name, the way
+        // the reference does it: a second dot on the row would be one marker too
+        // many for a state the reader can already see.
         b.textAddress.setTypeface(null, Typeface.BOLD)
         b.textAddress.setAlpha(if (unread) 1f else 0.85f)
         b.textSnippet.setTextColor(
