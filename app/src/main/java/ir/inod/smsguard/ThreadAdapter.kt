@@ -257,7 +257,16 @@ class ThreadAdapter(
         }
         // A name, two lines of preview and a badge have a natural ceiling; the
         // promise is a row between 88dp and 108dp whatever the text does.
-        b.rowContent.maxHeight = (108 * density).toInt()
+        val rowParams = b.rowContent.layoutParams as? LinearLayout.LayoutParams
+        if (rowParams != null) {
+            val ceiling = dp(density, 108)
+            val measured = if (b.rowContent.height > 0) b.rowContent.height else 0
+            val target = if (measured > ceiling) ceiling else ViewGroup.LayoutParams.WRAP_CONTENT
+            if (rowParams.height != target) {
+                rowParams.height = target
+                b.rowContent.layoutParams = rowParams
+            }
+        }
 
         // --- avatar ---------------------------------------------------------
         b.avatar.visibility = if (showAvatar) View.VISIBLE else View.GONE
@@ -273,7 +282,11 @@ class ThreadAdapter(
         }
 
         // --- badge ----------------------------------------------------------
-        b.textCategory.visibility = if (showBadge) bindBadge(context, b, item, risk) else View.GONE
+        if (showBadge && bindBadge(context, b, item, risk)) {
+            b.textCategory.visibility = View.VISIBLE
+        } else {
+            b.textCategory.visibility = View.GONE
+        }
 
         // The warning icon marks a real risk, not merely an unknown sender: a
         // row already red-badged does not need a second alarm next to its name.
