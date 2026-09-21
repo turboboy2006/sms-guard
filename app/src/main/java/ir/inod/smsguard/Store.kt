@@ -22,9 +22,34 @@ class SettingsStore(context: Context) {
         get() = prefs.getString("ai_base", DEFAULT_BASE) ?: DEFAULT_BASE
         set(v) = prefs.edit().putString("ai_base", v.trim()).apply()
 
+    /**
+     * The API key is encrypted with an Android Keystore key; only ciphertext is
+     * stored. A plaintext value written by an earlier build is migrated on first
+     * read, so existing users are not asked to re-enter it.
+     */
     var aiApiKey: String
-        get() = prefs.getString("ai_key", "") ?: ""
-        set(v) = prefs.edit().putString("ai_key", v.trim()).apply()
+        get() {
+            val stored = prefs.getString("ai_key", "") ?: ""
+            if (stored.isEmpty()) return ""
+            if (!stored.startsWith(SecureKeyStore.PREFIX)) {
+                val encrypted = SecureKeyStore.encrypt(stored)
+                if (encrypted != null) {
+                    prefs.edit().putString("ai_key", encrypted).apply()
+                    return stored
+                }
+                return stored // Keystore unavailable: keep working, do not lose it
+            }
+            return SecureKeyStore.decrypt(stored) ?: ""
+        }
+        set(v) {
+            val trimmed = v.trim()
+            if (trimmed.isEmpty()) {
+                prefs.edit().remove("ai_key").apply()
+                return
+            }
+            val encrypted = SecureKeyStore.encrypt(trimmed)
+            prefs.edit().putString("ai_key", encrypted ?: trimmed).apply()
+        }
 
     var aiModel: String
         get() = prefs.getString("ai_model", DEFAULT_MODEL) ?: DEFAULT_MODEL
