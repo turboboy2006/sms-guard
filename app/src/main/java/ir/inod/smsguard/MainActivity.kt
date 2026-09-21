@@ -121,7 +121,8 @@ class MainActivity : AppCompatActivity() {
                 chipStrokeWidth = 0f
                 chipCornerRadius = 16f * density
                 chipMinHeight = 48f * density
-                ensureMinTouchTargetSize = true
+                // The Kotlin property is private; the public setter is not.
+                setEnsureMinTouchTargetSize(true)
             }
             idToIndex[chip.id] = index
             binding.chipGroup.addView(chip)
