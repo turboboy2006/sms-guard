@@ -69,6 +69,11 @@ class SettingsStore(context: Context) {
         get() = prefs.getString("language", "") ?: ""
         set(v) = prefs.edit().putString("language", v).apply()
 
+    /** 0.85 small · 1.0 normal · 1.15 large · 1.3 extra large. */
+    var fontScale: Float
+        get() = prefs.getFloat("font_scale", 1f)
+        set(v) = prefs.edit().putFloat("font_scale", v.coerceIn(0.85f, 1.3f)).apply()
+
     companion object {
         const val DEFAULT_BASE = "https://api.deepseek.com/v1"
         const val DEFAULT_MODEL = "deepseek-chat"

@@ -206,6 +206,20 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/space_8"
                         android:minHeight="@dimen/touch_target" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_16"
+                        android:text="@string/font_size"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Section" />
+
+                    <Spinner
+                        android:id="@+id/spinnerFont"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_8"
+                        android:minHeight="@dimen/touch_target" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

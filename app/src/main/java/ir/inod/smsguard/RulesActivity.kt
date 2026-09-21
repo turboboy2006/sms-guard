@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import ir.inod.smsguard.databinding.ActivityRulesBinding
 import ir.inod.smsguard.databinding.DialogRuleBinding
 
-class RulesActivity : AppCompatActivity() {
+class RulesActivity : BaseActivity() {
 
     private lateinit var binding: ActivityRulesBinding
     private lateinit var adapter: RuleAdapter

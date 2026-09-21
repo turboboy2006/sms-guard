@@ -27,7 +27,7 @@ import ir.inod.smsguard.databinding.ActivityManagerBinding
  * Per sender the user can set a display name, category, colour and catalog icon;
  * the override beats the brand catalog, which beats the detected category.
  */
-class ManagerActivity : AppCompatActivity() {
+class ManagerActivity : BaseActivity() {
 
     private lateinit var binding: ActivityManagerBinding
     private val senders by lazy { SenderStore(this) }

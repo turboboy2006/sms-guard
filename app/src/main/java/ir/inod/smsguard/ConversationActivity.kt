@@ -8,7 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import ir.inod.smsguard.databinding.ActivityConversationBinding
 
-class ConversationActivity : AppCompatActivity() {
+class ConversationActivity : BaseActivity() {
 
     companion object {
         const val EXTRA_THREAD_ID = "extra_thread_id"

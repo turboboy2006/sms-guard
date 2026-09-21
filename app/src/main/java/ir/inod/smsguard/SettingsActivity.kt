@@ -21,12 +21,17 @@ import ir.inod.smsguard.databinding.ActivitySettingsBinding
  * never sends a single byte off the device, and every feature still works
  * because categorisation is computed locally.
  */
-class SettingsActivity : AppCompatActivity() {
+class SettingsActivity : BaseActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private val settings by lazy { SettingsStore(this) }
 
     private val langs = listOf("", "fa", "en")
+
+    private companion object {
+        /** Must stay in step with the labels built in onCreate. */
+        val FONT_SCALES = listOf(0.85f, 1f, 1.15f, 1.3f)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,6 +58,22 @@ class SettingsActivity : AppCompatActivity() {
             this, android.R.layout.simple_spinner_dropdown_item, labels
         )
         binding.spinnerLanguage.setSelection(langs.indexOf(settings.language).coerceAtLeast(0))
+
+        // --- font size ---
+        val fontLabels = listOf(
+            getString(R.string.font_small),
+            getString(R.string.font_normal),
+            getString(R.string.font_large),
+            getString(R.string.font_xlarge)
+        )
+        binding.spinnerFont.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item, fontLabels
+        )
+        val current = settings.fontScale
+        val nearest = FONT_SCALES.indices.minByOrNull {
+            kotlin.math.abs(FONT_SCALES[it] - current)
+        } ?: 1
+        binding.spinnerFont.setSelection(nearest)
 
         binding.switchAi.setOnCheckedChangeListener { _, checked ->
             setAiFieldsEnabled(checked)
@@ -147,6 +168,12 @@ class SettingsActivity : AppCompatActivity() {
         settings.threshold = binding.editThreshold.text?.toString()?.toIntOrNull()
             ?.coerceIn(10, 95) ?: 40
         settings.language = langs[binding.spinnerLanguage.selectedItemPosition.coerceIn(0, 2)]
+
+        // Applied on the next screen build. Recreating the task is more
+        // disruptive than it is worth, so the change lands as the user navigates.
+        settings.fontScale = FONT_SCALES[
+            binding.spinnerFont.selectedItemPosition.coerceIn(0, FONT_SCALES.size - 1)
+        ]
 
         // Applies immediately and survives restart.
         val tag = settings.language
