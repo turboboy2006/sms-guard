@@ -32,7 +32,7 @@ object BackgroundRenderer {
         return blurred
     }
 
-    fun apply(view: View, context: Context, style: String?, imageUri: String? = null) {
+    fun apply(view: View, context: Context, style: String?, imageUri: String? = null, preset: String? = null) {
         val night = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
             android.content.res.Configuration.UI_MODE_NIGHT_YES
         val colors = when (style ?: BackgroundStyle.CLEAN) {
@@ -46,13 +46,17 @@ object BackgroundRenderer {
             )
         }
         val base = GradientDrawable(GradientDrawable.Orientation.TL_BR, colors)
-        val photo = imageUri?.let { uri -> softPhoto(context, uri)?.let { bitmap ->
+        val customPhoto = imageUri?.let { uri -> softPhoto(context, uri) }
+        val bundledPhoto = BuiltInWallpaper.drawable(preset).takeIf { it != 0 }?.let { res ->
+            android.graphics.BitmapFactory.decodeResource(context.resources, res)
+        }
+        val photo = (customPhoto ?: bundledPhoto)?.let { bitmap ->
             BitmapDrawable(context.resources, bitmap).apply {
-                alpha = if (night) 22 else 34
+                alpha = if (night) 48 else 72
                 gravity = Gravity.FILL
                 isFilterBitmap = true
             }
-        } }
+        }
         view.background = if (photo == null) base else LayerDrawable(arrayOf(base, photo))
     }
 }

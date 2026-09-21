@@ -27,6 +27,7 @@ class AppearanceActivity : BaseActivity() {
         uri ?: return@registerForActivityResult
         runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
         theme.backgroundImageUri = uri.toString()
+        theme.backgroundPreset = null
         theme.touch()
         BackgroundRenderer.apply(binding.preview, this, theme.backgroundStyle, theme.backgroundImageUri)
     }
@@ -193,9 +194,15 @@ class AppearanceActivity : BaseActivity() {
     }
 
     private fun chooseGlobalBackground() {
-        val labels = listOf(
+        val gradientLabels = listOf(
             R.string.background_clean, R.string.background_mist, R.string.background_aurora,
             R.string.background_dusk, R.string.background_bloom
+        ).map { getString(it) }
+        val wallpaperLabels = listOf(
+            R.string.wallpaper_mountains, R.string.wallpaper_eucalyptus, R.string.wallpaper_lake,
+            R.string.wallpaper_desert, R.string.wallpaper_lavender, R.string.wallpaper_rain,
+            R.string.wallpaper_ocean, R.string.wallpaper_pastel, R.string.wallpaper_neon,
+            R.string.wallpaper_coral
         ).map { getString(it) }
         val density = resources.displayMetrics.density
         val list = android.widget.LinearLayout(this).apply {
@@ -208,17 +215,14 @@ class AppearanceActivity : BaseActivity() {
             .setTitle(R.string.background_style)
             .setView(scroll)
             .setNeutralButton(R.string.background_photo) { _, _ -> backgroundPhotoPicker.launch(arrayOf("image/*")) }
-            .setNegativeButton(R.string.background_remove_photo) { _, _ -> theme.backgroundImageUri = null; theme.touch(); refresh() }
+            .setNegativeButton(R.string.background_remove_photo) { _, _ -> theme.backgroundImageUri = null; theme.backgroundPreset = null; theme.touch(); refresh() }
             .create()
-        labels.forEachIndexed { index, label ->
-            val style = BackgroundStyle.IDS[index]
+        fun addCard(label: String, selected: Boolean, render: (android.view.View) -> Unit, select: () -> Unit) {
             val card = com.google.android.material.card.MaterialCardView(this).apply {
                 radius = 16f * density
-                strokeWidth = if (theme.backgroundStyle == style) (2 * density).toInt() else 0
+                strokeWidth = if (selected) (2 * density).toInt() else 0
                 strokeColor = theme.accentColor()
-                layoutParams = android.widget.LinearLayout.LayoutParams(-1, (72 * density).toInt()).apply {
-                    bottomMargin = (8 * density).toInt()
-                }
+                layoutParams = android.widget.LinearLayout.LayoutParams(-1, (84 * density).toInt()).apply { bottomMargin = (8 * density).toInt() }
             }
             val sample = android.widget.TextView(this).apply {
                 text = label
@@ -227,15 +231,31 @@ class AppearanceActivity : BaseActivity() {
                 gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
                 setPadding((18 * density).toInt(), 0, (18 * density).toInt(), 0)
             }
-            BackgroundRenderer.apply(sample, this, style)
+            render(sample)
             card.addView(sample, android.view.ViewGroup.LayoutParams(-1, -1))
-            card.setOnClickListener {
-                theme.backgroundStyle = style
-                theme.touch()
-                BackgroundRenderer.apply(binding.preview, this, theme.backgroundStyle, theme.backgroundImageUri)
-                dialog.dismiss()
-            }
+            card.setOnClickListener { select(); dialog.dismiss() }
             list.addView(card)
+        }
+        gradientLabels.forEachIndexed { index, label ->
+            val style = BackgroundStyle.IDS[index]
+            addCard(label, theme.backgroundPreset == null && theme.backgroundImageUri == null && theme.backgroundStyle == style,
+                { BackgroundRenderer.apply(it, this, style) }) {
+                theme.backgroundStyle = style
+                theme.backgroundPreset = null
+                theme.backgroundImageUri = null
+                theme.touch()
+                BackgroundRenderer.apply(binding.preview, this, style)
+            }
+        }
+        wallpaperLabels.forEachIndexed { index, label ->
+            val preset = BuiltInWallpaper.IDS[index]
+            addCard(label, theme.backgroundPreset == preset,
+                { BackgroundRenderer.apply(it, this, theme.backgroundStyle, preset = preset) }) {
+                theme.backgroundPreset = preset
+                theme.backgroundImageUri = null
+                theme.touch()
+                BackgroundRenderer.apply(binding.preview, this, theme.backgroundStyle, preset = preset)
+            }
         }
         dialog.show()
     }
@@ -297,7 +317,7 @@ class AppearanceActivity : BaseActivity() {
         )
         bindingUi = false
         binding.preview.bind(theme.snapshot())
-        BackgroundRenderer.apply(binding.preview, this, theme.backgroundStyle, theme.backgroundImageUri)
+        BackgroundRenderer.apply(binding.preview, this, theme.backgroundStyle, theme.backgroundImageUri, theme.backgroundPreset)
     }
 
     /** Applies a complete, internally consistent layout in a single revision. */
@@ -348,6 +368,9 @@ class AppearanceActivity : BaseActivity() {
         theme.showDividers = true
         theme.showChips = true
         theme.colorScheme = ThemePalette.OCEAN
+        theme.backgroundStyle = BackgroundStyle.CLEAN
+        theme.backgroundImageUri = null
+        theme.backgroundPreset = null
         binding.sliderRowPadding.value = theme.rowPadding.toFloat()
         binding.sliderRowSpacing.value = theme.rowSpacing.toFloat()
         binding.sliderRowInset.value = theme.rowInset.toFloat()

@@ -80,6 +80,7 @@ class ConversationActivity : BaseActivity() {
         uri ?: return@registerForActivityResult
         runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
         SenderStore(this).setBackgroundImage(address, uri.toString())
+        SenderStore(this).setBackgroundPreset(address, null)
         applyAppearance()
     }
 
@@ -260,8 +261,10 @@ class ConversationActivity : BaseActivity() {
         val sender = SenderStore(this)
         val senderStyle = sender.backgroundFor(address)
         val senderImage = sender.backgroundImageFor(address)
+        val senderPreset = sender.backgroundPresetFor(address)
         BackgroundRenderer.apply(binding.root, this, senderStyle ?: theme.backgroundStyle,
-            senderImage ?: if (senderStyle == null) theme.backgroundImageUri else null)
+            senderImage ?: if (senderStyle == null && senderPreset == null) theme.backgroundImageUri else null,
+            senderPreset ?: if (senderStyle == null && senderImage == null) theme.backgroundPreset else null)
     }
 
     private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
@@ -783,18 +786,41 @@ class ConversationActivity : BaseActivity() {
     }
 
     private fun pickChatBackground() {
-        val labels = listOf(
+        val gradients = listOf(
             R.string.background_clean, R.string.background_mist, R.string.background_aurora,
-            R.string.background_dusk, R.string.background_bloom, R.string.background_photo,
-            R.string.background_follow_global, R.string.background_remove_photo
-        ).map { getString(it) }.toTypedArray()
+            R.string.background_dusk, R.string.background_bloom
+        ).map { getString(it) }
+        val pictures = listOf(
+            R.string.wallpaper_mountains, R.string.wallpaper_eucalyptus, R.string.wallpaper_lake,
+            R.string.wallpaper_desert, R.string.wallpaper_lavender, R.string.wallpaper_rain,
+            R.string.wallpaper_ocean, R.string.wallpaper_pastel, R.string.wallpaper_neon,
+            R.string.wallpaper_coral
+        ).map { getString(it) }
+        val labels = (gradients + pictures + listOf(
+            getString(R.string.background_photo), getString(R.string.background_follow_global),
+            getString(R.string.background_remove_photo)
+        )).toTypedArray()
         MaterialAlertDialogBuilder(this).setTitle(R.string.chat_background)
             .setItems(labels) { _, which ->
                 when (which) {
-                    BackgroundStyle.IDS.size -> chatPhotoPicker.launch(arrayOf("image/*"))
-                    BackgroundStyle.IDS.size + 1 -> { SenderStore(this).setBackground(address, null); SenderStore(this).setBackgroundImage(address, null); applyAppearance() }
-                    BackgroundStyle.IDS.size + 2 -> { SenderStore(this).setBackgroundImage(address, null); applyAppearance() }
-                    else -> { SenderStore(this).setBackground(address, BackgroundStyle.IDS[which]); applyAppearance() }
+                    in BackgroundStyle.IDS.indices -> {
+                        SenderStore(this).setBackground(address, BackgroundStyle.IDS[which])
+                        SenderStore(this).setBackgroundImage(address, null)
+                        SenderStore(this).setBackgroundPreset(address, null)
+                        applyAppearance()
+                    }
+                    in BackgroundStyle.IDS.size until BackgroundStyle.IDS.size + BuiltInWallpaper.IDS.size -> {
+                        SenderStore(this).setBackground(address, null)
+                        SenderStore(this).setBackgroundImage(address, null)
+                        SenderStore(this).setBackgroundPreset(address, BuiltInWallpaper.IDS[which - BackgroundStyle.IDS.size])
+                        applyAppearance()
+                    }
+                    BackgroundStyle.IDS.size + BuiltInWallpaper.IDS.size -> chatPhotoPicker.launch(arrayOf("image/*"))
+                    BackgroundStyle.IDS.size + BuiltInWallpaper.IDS.size + 1 -> {
+                        SenderStore(this).setBackground(address, null); SenderStore(this).setBackgroundImage(address, null)
+                        SenderStore(this).setBackgroundPreset(address, null); applyAppearance()
+                    }
+                    else -> { SenderStore(this).setBackgroundImage(address, null); SenderStore(this).setBackgroundPreset(address, null); applyAppearance() }
                 }
             }.show()
     }

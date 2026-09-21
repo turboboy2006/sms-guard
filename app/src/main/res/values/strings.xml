@@ -365,6 +365,16 @@
     <string name="background_bloom">Bloom</string>
     <string name="background_photo">Choose photo</string>
     <string name="background_remove_photo">Remove photo</string>
+    <string name="wallpaper_mountains">Misty mountains</string>
+    <string name="wallpaper_eucalyptus">Soft eucalyptus</string>
+    <string name="wallpaper_lake">Alpine lake</string>
+    <string name="wallpaper_desert">Desert sunset</string>
+    <string name="wallpaper_lavender">Lavender mist</string>
+    <string name="wallpaper_rain">Rainy city</string>
+    <string name="wallpaper_ocean">Aqua shore</string>
+    <string name="wallpaper_pastel">Happy pastel</string>
+    <string name="wallpaper_neon">Neon bokeh</string>
+    <string name="wallpaper_coral">Coral and aqua</string>
     <string name="trash_retention">Automatic trash cleanup</string>
     <string name="trash_keep_forever">Keep forever</string>
     <string name="trash_days">Delete after %1$d days</string>

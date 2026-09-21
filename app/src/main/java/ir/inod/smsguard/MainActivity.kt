@@ -304,7 +304,7 @@ class MainActivity : BaseActivity() {
             applyPalette()
             applyFilter()
         }
-        BackgroundRenderer.apply(binding.root, this, theme.backgroundStyle, theme.backgroundImageUri)
+        BackgroundRenderer.apply(binding.root, this, theme.backgroundStyle, theme.backgroundImageUri, theme.backgroundPreset)
 
         loadThreads()
     }
@@ -315,7 +315,7 @@ class MainActivity : BaseActivity() {
         applyChipVisibility()
         applyListPadding()
         applyPalette()
-        BackgroundRenderer.apply(binding.root, this, theme.backgroundStyle, theme.backgroundImageUri)
+        BackgroundRenderer.apply(binding.root, this, theme.backgroundStyle, theme.backgroundImageUri, theme.backgroundPreset)
     }
 
     private fun applyPalette() {

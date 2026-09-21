@@ -282,6 +282,10 @@ class ThemePrefs(context: Context) {
         get() = prefs.getString("background_image_uri", null)
         set(v) = prefs.edit().putString("background_image_uri", v).apply()
 
+    var backgroundPreset: String?
+        get() = prefs.getString("background_preset", null)
+        set(v) = prefs.edit().putString("background_preset", BuiltInWallpaper.validOrNull(v)).apply()
+
     fun accentColor(): Int = android.graphics.Color.parseColor(ThemePalette.hex(colorScheme))
 
     fun snapshot(): RowLayout = RowLayout(
@@ -327,6 +331,34 @@ object BackgroundStyle {
     const val BLOOM = "bloom"
     val IDS = listOf(CLEAN, MIST, AURORA, DUSK, BLOOM)
     fun valid(value: String) = value.takeIf { it in IDS } ?: CLEAN
+}
+
+object BuiltInWallpaper {
+    const val MOUNTAINS = "mountains"
+    const val EUCALYPTUS = "eucalyptus"
+    const val LAKE = "lake"
+    const val DESERT = "desert"
+    const val LAVENDER = "lavender"
+    const val RAIN = "rain"
+    const val OCEAN = "ocean"
+    const val PASTEL = "pastel"
+    const val NEON = "neon"
+    const val CORAL = "coral"
+    val IDS = listOf(MOUNTAINS, EUCALYPTUS, LAKE, DESERT, LAVENDER, RAIN, OCEAN, PASTEL, NEON, CORAL)
+    fun validOrNull(value: String?) = value?.takeIf { it in IDS }
+    fun drawable(id: String?): Int = when (id) {
+        MOUNTAINS -> R.drawable.wallpaper_misty_mountains
+        EUCALYPTUS -> R.drawable.wallpaper_eucalyptus
+        LAKE -> R.drawable.wallpaper_alpine_lake
+        DESERT -> R.drawable.wallpaper_desert_sunset
+        LAVENDER -> R.drawable.wallpaper_lavender
+        RAIN -> R.drawable.wallpaper_rainy_city
+        OCEAN -> R.drawable.wallpaper_ocean
+        PASTEL -> R.drawable.wallpaper_pastel_rainbow
+        NEON -> R.drawable.wallpaper_neon_bokeh
+        CORAL -> R.drawable.wallpaper_coral_aqua
+        else -> 0
+    }
 }
 
 /** Numeric ids for the ten row looks offered on the settings screen. */
@@ -691,6 +723,13 @@ class SenderStore(context: Context) {
     fun setBackgroundImage(sender: String, uri: String?) {
         val o = entry(sender)
         if (uri.isNullOrBlank()) o.remove("background_image") else o.put("background_image", uri)
+        put(sender, o)
+    }
+    fun backgroundPresetFor(sender: String): String? = BuiltInWallpaper.validOrNull(entry(sender).optString("background_preset"))
+    fun setBackgroundPreset(sender: String, preset: String?) {
+        val o = entry(sender)
+        val valid = BuiltInWallpaper.validOrNull(preset)
+        if (valid == null) o.remove("background_preset") else o.put("background_preset", valid)
         put(sender, o)
     }
 

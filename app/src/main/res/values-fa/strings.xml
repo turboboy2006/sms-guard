@@ -341,6 +341,16 @@
     <string name="background_bloom">شکوفه</string>
     <string name="background_photo">انتخاب عکس</string>
     <string name="background_remove_photo">حذف عکس</string>
+    <string name="wallpaper_mountains">کوهستان مه‌آلود</string>
+    <string name="wallpaper_eucalyptus">اکالیپتوس آرام</string>
+    <string name="wallpaper_lake">دریاچه کوهستانی</string>
+    <string name="wallpaper_desert">غروب کویر</string>
+    <string name="wallpaper_lavender">مه اسطوخودوس</string>
+    <string name="wallpaper_rain">شهر بارانی</string>
+    <string name="wallpaper_ocean">ساحل فیروزه‌ای</string>
+    <string name="wallpaper_pastel">پاستلی شاد</string>
+    <string name="wallpaper_neon">بوکه نئونی</string>
+    <string name="wallpaper_coral">مرجانی و فیروزه‌ای</string>
     <string name="trash_retention">پاک‌سازی خودکار سطل زباله</string>
     <string name="trash_keep_forever">برای همیشه نگه‌دار</string>
     <string name="trash_days">حذف پس از %1$d روز</string>
