@@ -115,9 +115,7 @@ class MainActivity : BaseActivity() {
         applyAppearance()
 
         binding.buttonMakeDefault.setOnClickListener { requestDefaultRole() }
-        binding.fabCompose.setOnClickListener {
-            startActivity(Intent(this, ConversationActivity::class.java))
-        }
+        binding.fabCompose.setOnClickListener { startCompose() }
         binding.bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_settings -> {
@@ -349,17 +347,19 @@ class MainActivity : BaseActivity() {
         if (allThreads.isEmpty()) showSkeleton(true)
         worker.execute {
             val started = System.currentTimeMillis()
-            val threads = try {
-                repo.loadThreads()
-            } catch (t: Throwable) {
-                emptyList()
-            }
-            // Build the address book here, off the main thread, so the Contacts
-            // tab and every name lookup afterwards are memory reads.
+            // Build (or repair) the address book first, off the main thread, so
+            // the Contacts filter and every name lookup afterwards are memory
+            // reads. An empty index is rebuilt rather than trusted, which is how
+            // the Contacts tab recovers after the permission is granted.
             try {
                 ContactsIndex.ensure(this)
             } catch (t: Throwable) {
                 // no contacts permission: an empty index is fine
+            }
+            val threads = try {
+                repo.loadThreads()
+            } catch (t: Throwable) {
+                emptyList()
             }
             val elapsed = System.currentTimeMillis() - started
             runOnUiThread {
@@ -509,6 +509,23 @@ class MainActivity : BaseActivity() {
                 putExtra(ConversationActivity.EXTRA_ADDRESS, thread.address)
             }
         )
+    }
+
+    /**
+     * New message.
+     *
+     * The recipient is chosen here, before the conversation screen opens,
+     * because a conversation with nobody in it has nothing to show. The screen
+     * still handles a missing recipient on its own, for the case where it is
+     * opened from elsewhere.
+     */
+    private fun startCompose() {
+        RecipientPicker(this).show(this) { picked ->
+            startActivity(
+                Intent(this, ConversationActivity::class.java)
+                    .putExtra(ConversationActivity.EXTRA_ADDRESS, picked)
+            )
+        }
     }
 
     // ------------------------------------------------- long-press: categorise

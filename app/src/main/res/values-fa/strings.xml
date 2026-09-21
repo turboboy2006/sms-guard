@@ -47,7 +47,10 @@
     <string name="message_hint">پیام…</string>
     <string name="send">ارسال</string>
     <string name="send_failed">ارسال نشد</string>
-    <string name="no_recipient">شماره گیرنده مشخص نیست</string>
+    <string name="no_recipient">هنوز گیرنده‌ای انتخاب نشده. یک مخاطب انتخاب کن یا شماره بنویس.</string>
+    <string name="pick_recipient">انتخاب گیرنده</string>
+    <string name="recipient_hint">جستجوی نام یا شماره</string>
+    <string name="send_to_new">ارسال به %1$s</string>
 
     <string name="add_rule">افزودن قاعده</string>
     <string name="no_rules">هنوز قاعده‌ای نساخته‌ای.\nبا «افزودن قاعده» شروع کن.</string>

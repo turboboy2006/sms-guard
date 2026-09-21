@@ -57,12 +57,19 @@ object ContactsIndex {
 
     /** Builds the index if it is missing or stale. Safe to call from any thread. */
     fun ensure(context: Context): Index {
-        index?.let { if (System.currentTimeMillis() - builtAt < TTL_MS) return it }
+        // An empty index is never cached. It almost always means READ_CONTACTS
+        // was missing at that moment, and caching it would leave the Contacts
+        // tab empty for the whole TTL even after the user grants the permission.
+        index?.let { if (!it.isEmpty && System.currentTimeMillis() - builtAt < TTL_MS) return it }
         synchronized(lock) {
-            index?.let { if (System.currentTimeMillis() - builtAt < TTL_MS) return it }
+            index?.let {
+                if (!it.isEmpty && System.currentTimeMillis() - builtAt < TTL_MS) return it
+            }
             val built = build(context.applicationContext)
-            index = built
-            builtAt = System.currentTimeMillis()
+            if (!built.isEmpty) {
+                index = built
+                builtAt = System.currentTimeMillis()
+            }
             return built
         }
     }
@@ -107,6 +114,38 @@ object ContactsIndex {
     fun isKnownContact(address: String): Boolean = readyEntryFor(address) != null
 
     fun nameFor(context: Context, address: String): String? = entryFor(context, address)?.name
+
+    /**
+     * Every contact, newest-name-first alphabetically.
+     *
+     * Only the recipient picker uses this, and it is deliberately the *cached*
+     * index: the picker itself runs on the main thread and must not start a
+     * full address book read. The background sync has normally filled it
+     * already, and the picker simply shows what it has.
+     */
+    fun allEntries(): List<ContactEntry> {
+        val idx = index ?: return emptyList()
+        return idx.byNumber.values
+            .distinctBy { it.name to it.digits }
+            .sortedBy { it.name }
+    }
+
+    /** Contacts whose name contains [query], for the recipient picker. */
+    fun search(query: String, limit: Int = 40): List<ContactEntry> {
+        val all = allEntries()
+        val needle = query.trim()
+        if (needle.isEmpty()) return all.take(limit)
+        val digits = digitsOf(needle)
+        val byName = all.filter { it.name.contains(needle, ignoreCase = true) }
+        // A numeric query also matches on the tail, so typing the last few
+        // digits of a number finds the person.
+        val byNumber = if (digits.length >= 3) {
+            all.filter { it.digits.endsWith(digits) }
+        } else {
+            emptyList()
+        }
+        return (byName + byNumber).distinctBy { it.digits }.take(limit)
+    }
 
     /** True when the sender exists in the phone's address book. */
     fun isContact(context: Context, address: String): Boolean = entryFor(context, address) != null

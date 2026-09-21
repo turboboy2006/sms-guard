@@ -1,10 +1,11 @@
 package ir.inod.smsguard
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import ir.inod.smsguard.databinding.ActivityConversationBinding
 
@@ -13,7 +14,15 @@ class ConversationActivity : BaseActivity() {
     companion object {
         const val EXTRA_THREAD_ID = "extra_thread_id"
         const val EXTRA_ADDRESS = "extra_address"
+
+        /**
+         * Sent by the compose button. The screen opens with nobody to write to
+         * and asks, instead of showing an empty thread the user cannot use.
+         */
+        const val EXTRA_PICK_RECIPIENT = "extra_pick_recipient"
+
         private const val MENU_BLOCK_SENDER = 1001
+        private const val MENU_NEW_MESSAGE = 1002
     }
 
     private lateinit var binding: ActivityConversationBinding
@@ -56,6 +65,39 @@ class ConversationActivity : BaseActivity() {
         binding.recyclerMessages.adapter = adapter
 
         binding.buttonSend.setOnClickListener { sendCurrent() }
+        binding.buttonPickRecipient.setOnClickListener { pickRecipient() }
+        updateEmptyState()
+    }
+
+    /**
+     * Asks who the message is for.
+     *
+     * Called when this screen was opened with nobody to write to — through the
+     * compose button, or after a purge of the current conversation. The picker
+     * is the same one the inbox uses, so "new message" behaves identically from
+     * both places.
+     */
+    private fun pickRecipient() {
+        RecipientPicker(this).show(this) { picked ->
+            address = picked
+            threadId = -1L
+            applyAppearance()
+            load()
+        }
+    }
+
+    /**
+     * Shows the "no recipient" panel instead of an empty message list. An empty
+     * thread and a thread with nobody in it look the same otherwise, and only
+     * one of them is a dead end.
+     */
+    private fun updateEmptyState() {
+        val waiting = address.isBlank()
+        binding.textNoRecipient.visibility = if (waiting) View.VISIBLE else View.GONE
+        binding.recyclerMessages.visibility = if (waiting) View.GONE else View.VISIBLE
+        binding.editMessage.isEnabled = !waiting
+        binding.buttonSend.isEnabled = !waiting
+        if (waiting) supportActionBar?.title = getString(R.string.compose)
     }
 
     override fun onResume() {
@@ -116,7 +158,12 @@ class ConversationActivity : BaseActivity() {
             }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                supportActionBar?.title = ContactNames.displayNameUi(address)
+                supportActionBar?.title = if (address.isBlank()) {
+                    getString(R.string.compose)
+                } else {
+                    ContactNames.displayNameUi(address)
+                }
+                updateEmptyState()
                 adapter.submit(messages)
                 // The adapter also emits day dividers, so scroll to its own
                 // last row rather than to messages.size.
@@ -174,18 +221,31 @@ class ConversationActivity : BaseActivity() {
             .setMessage(R.string.confirm_delete_message)
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.confirm) { _, _ ->
-                if (repo.deleteMessage(message.id)) {
-                    Toast.makeText(this, R.string.cleared, Toast.LENGTH_SHORT).show()
-                    load()
-                } else {
-                    Toast.makeText(this, R.string.send_failed, Toast.LENGTH_SHORT).show()
+                // A provider delete is I/O; it runs on the worker like every
+                // other provider call in this screen.
+                worker.execute {
+                    val deleted = try {
+                        repo.deleteMessage(message.id)
+                    } catch (t: Throwable) {
+                        false
+                    }
+                    runOnUiThread {
+                        if (isFinishing || isDestroyed) return@runOnUiThread
+                        Toast.makeText(
+                            this,
+                            if (deleted) R.string.cleared else R.string.send_failed,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    if (deleted) load()
                 }
             }
             .show()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menu.add(0, MENU_BLOCK_SENDER, 0, R.string.block_sender)
+        menu.add(0, MENU_NEW_MESSAGE, 0, R.string.compose)
+        menu.add(0, MENU_BLOCK_SENDER, 1, R.string.block_sender)
         return true
     }
 
@@ -193,6 +253,18 @@ class ConversationActivity : BaseActivity() {
         when (item.itemId) {
             android.R.id.home -> {
                 finish()
+                return true
+            }
+            MENU_NEW_MESSAGE -> {
+                if (address.isBlank()) {
+                    // Already a blank compose screen: just ask again.
+                    pickRecipient()
+                } else {
+                    startActivity(
+                        Intent(this, ConversationActivity::class.java)
+                            .putExtra(ConversationActivity.EXTRA_PICK_RECIPIENT, true)
+                    )
+                }
                 return true
             }
             MENU_BLOCK_SENDER -> {

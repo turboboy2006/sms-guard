@@ -5,6 +5,10 @@
   Structure only: the bubble colours, corner radius, font size and spacing all
   come from the appearance preferences and are written by MessageAdapter on
   bind, which is what lets the settings screen change them without a rebuild.
+
+  `textNoRecipient` covers the one case where there is nothing to show: the
+  screen was opened without a recipient. It is a real state, not an error, so it
+  gets a message and a button instead of an empty thread.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -22,14 +26,53 @@
         app:titleTextAppearance="@style/TextAppearance.SmsGuard.Title"
         app:titleTextColor="@color/text_primary" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerMessages"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp" />
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerMessages"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp" />
+
+        <LinearLayout
+            android:id="@+id/textNoRecipient"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="@dimen/space_32"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:alpha="0.55"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_person"
+                app:tint="@color/text_muted" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_12"
+                android:gravity="center"
+                android:text="@string/no_recipient"
+                android:textAppearance="@style/TextAppearance.SmsGuard.Body" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonPickRecipient"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_16"
+                android:minHeight="@dimen/touch_target"
+                android:text="@string/pick_recipient" />
+        </LinearLayout>
+    </FrameLayout>
 
     <View
         android:layout_width="match_parent"
@@ -37,6 +80,7 @@
         android:background="@color/divider" />
 
     <LinearLayout
+        android:id="@+id/composer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/card_bg"
