@@ -62,6 +62,9 @@ class SettingsActivity : AppCompatActivity() {
         binding.buttonSave.setOnClickListener { save() }
         binding.buttonTest.setOnClickListener { testConnection() }
         binding.buttonCategories.setOnClickListener { manageCategories() }
+        binding.buttonBrands.setOnClickListener {
+            startActivity(android.content.Intent(this, ManagerActivity::class.java))
+        }
     }
 
     // ------------------------------------------------------- category manager
