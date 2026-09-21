@@ -196,16 +196,48 @@ class AppearanceActivity : BaseActivity() {
         val labels = listOf(
             R.string.background_clean, R.string.background_mist, R.string.background_aurora,
             R.string.background_dusk, R.string.background_bloom
-        ).map { getString(it) }.toTypedArray()
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        ).map { getString(it) }
+        val density = resources.displayMetrics.density
+        val list = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            val p = (12 * density).toInt()
+            setPadding(p, p, p, p)
+        }
+        val scroll = android.widget.ScrollView(this).apply { addView(list) }
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.background_style)
-            .setSingleChoiceItems(labels, BackgroundStyle.IDS.indexOf(theme.backgroundStyle).coerceAtLeast(0)) { dialog, which ->
-                theme.backgroundStyle = BackgroundStyle.IDS[which]
+            .setView(scroll)
+            .setNeutralButton(R.string.background_photo) { _, _ -> backgroundPhotoPicker.launch(arrayOf("image/*")) }
+            .setNegativeButton(R.string.background_remove_photo) { _, _ -> theme.backgroundImageUri = null; theme.touch(); refresh() }
+            .create()
+        labels.forEachIndexed { index, label ->
+            val style = BackgroundStyle.IDS[index]
+            val card = com.google.android.material.card.MaterialCardView(this).apply {
+                radius = 16f * density
+                strokeWidth = if (theme.backgroundStyle == style) (2 * density).toInt() else 0
+                strokeColor = theme.accentColor()
+                layoutParams = android.widget.LinearLayout.LayoutParams(-1, (72 * density).toInt()).apply {
+                    bottomMargin = (8 * density).toInt()
+                }
+            }
+            val sample = android.widget.TextView(this).apply {
+                text = label
+                textSize = 17f
+                setTextColor(androidx.core.content.ContextCompat.getColor(this@AppearanceActivity, R.color.text_primary))
+                gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
+                setPadding((18 * density).toInt(), 0, (18 * density).toInt(), 0)
+            }
+            BackgroundRenderer.apply(sample, this, style)
+            card.addView(sample, android.view.ViewGroup.LayoutParams(-1, -1))
+            card.setOnClickListener {
+                theme.backgroundStyle = style
                 theme.touch()
                 BackgroundRenderer.apply(binding.preview, this, theme.backgroundStyle, theme.backgroundImageUri)
                 dialog.dismiss()
-            }.setNeutralButton(R.string.background_photo) { _, _ -> backgroundPhotoPicker.launch(arrayOf("image/*")) }
-            .setNegativeButton(R.string.background_remove_photo) { _, _ -> theme.backgroundImageUri = null; theme.touch(); refresh() }.show()
+            }
+            list.addView(card)
+        }
+        dialog.show()
     }
 
     // ------------------------------------------------------------- helpers
@@ -265,6 +297,7 @@ class AppearanceActivity : BaseActivity() {
         )
         bindingUi = false
         binding.preview.bind(theme.snapshot())
+        BackgroundRenderer.apply(binding.preview, this, theme.backgroundStyle, theme.backgroundImageUri)
     }
 
     /** Applies a complete, internally consistent layout in a single revision. */

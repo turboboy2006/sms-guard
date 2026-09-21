@@ -258,8 +258,10 @@ class ConversationActivity : BaseActivity() {
             DrawableCompat.setTint(it, theme.accentColor())
         }
         val sender = SenderStore(this)
-        BackgroundRenderer.apply(binding.root, this, sender.backgroundFor(address) ?: theme.backgroundStyle,
-            sender.backgroundImageFor(address) ?: theme.backgroundImageUri)
+        val senderStyle = sender.backgroundFor(address)
+        val senderImage = sender.backgroundImageFor(address)
+        BackgroundRenderer.apply(binding.root, this, senderStyle ?: theme.backgroundStyle,
+            senderImage ?: if (senderStyle == null) theme.backgroundImageUri else null)
     }
 
     private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()

@@ -35,7 +35,7 @@ class MessageAdapter(
     private val rows = mutableListOf<Row>()
     private val selectedIds = linkedSetOf<Long>()
     private val expandedMetaIds = linkedSetOf<Long>()
-    private val latestOutgoingIds = linkedSetOf<Long>()
+    private val latestMetaIds = linkedSetOf<Long>()
 
     val selectionCount: Int get() = selectedIds.size
 
@@ -79,8 +79,8 @@ class MessageAdapter(
 
     fun submit(list: List<SmsMessage>) {
         rows.clear()
-        latestOutgoingIds.clear()
-        if (list.size > 2) list.asReversed().filterNot { it.isIncoming }.take(2).forEach { latestOutgoingIds += it.id }
+        latestMetaIds.clear()
+        list.asReversed().take(2).forEach { latestMetaIds += it.id }
         var lastDay = Int.MIN_VALUE
         var lastYear = Int.MIN_VALUE
         var lastOutgoingSim: Int? = null
@@ -192,8 +192,8 @@ class MessageAdapter(
 
         bubble.text = item.body
         time.text = Dates.full(context, item.date)
-        val showMeta = item.id in latestOutgoingIds || item.id in expandedMetaIds || selectedIds.isNotEmpty()
-        time.visibility = if (item.isIncoming || showMeta) View.VISIBLE else View.GONE
+        val showMeta = item.id in latestMetaIds || item.id in expandedMetaIds || selectedIds.isNotEmpty()
+        time.visibility = if (showMeta) View.VISIBLE else View.GONE
         status.visibility = if (item.isIncoming || !showMeta) View.GONE else View.VISIBLE
         if (!item.isIncoming) {
             status.text = when (item.delivery) {
@@ -264,7 +264,8 @@ class MessageAdapter(
         holder.itemView.setOnClickListener {
             if (selectedIds.isEmpty()) {
                 if (!expandedMetaIds.add(item.id)) expandedMetaIds.remove(item.id)
-                notifyItemChanged(holder.bindingAdapterPosition)
+                val changed = holder.bindingAdapterPosition
+                if (changed != RecyclerView.NO_POSITION) notifyItemChanged(changed)
             }
             onClick(item)
         }

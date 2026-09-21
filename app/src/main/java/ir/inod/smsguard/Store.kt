@@ -24,6 +24,7 @@ class SavedMessageStore(context: Context) {
         prefs.edit().putString("items", arr.toString()).apply()
     }
     fun remove(id: Long) = saveRaw(all().filterNot { it.id == id })
+    fun updateNote(id: Long, note: String) = saveRaw(all().map { if (it.id == id) it.copy(note = note) else it })
     private fun saveRaw(list: List<SavedMessage>) {
         val arr = JSONArray(); list.forEach { m -> arr.put(JSONObject().apply {
             put("id", m.id); put("address", m.address); put("body", m.body); put("date", m.date); put("note", m.note)

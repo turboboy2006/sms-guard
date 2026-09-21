@@ -239,7 +239,7 @@ class SmsRepository(private val context: Context) {
             resolver.query(
                 Telephony.Sms.CONTENT_URI, projection,
                 "${Telephony.Sms.THREAD_ID} = ?", arrayOf(threadId.toString()),
-                "${Telephony.Sms.DATE} ASC"
+                "${Telephony.Sms.DATE} DESC"
             )?.use { c ->
                 val iId = c.getColumnIndexOrThrow(Telephony.Sms._ID)
                 val iAddr = c.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
@@ -250,7 +250,7 @@ class SmsRepository(private val context: Context) {
                 val iError = c.getColumnIndex(Telephony.Sms.ERROR_CODE)
                 val iSub = c.getColumnIndex("sub_id")
 
-                while (c.moveToNext()) {
+                while (out.size < limit && c.moveToNext()) {
                     val id = c.getLong(iId)
                     val address = c.getString(iAddr) ?: ""
                     val body = c.getString(iBody) ?: ""
@@ -274,7 +274,7 @@ class SmsRepository(private val context: Context) {
         } catch (e: Exception) {
             // ignore
         }
-        return if (out.size > limit) out.takeLast(limit) else out
+        return out.asReversed()
     }
 
     fun messageCount(threadId: Long): Int = try {

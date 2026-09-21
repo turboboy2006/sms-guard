@@ -120,6 +120,12 @@ class ThreadAdapter(
      */
     fun merge(list: List<ThreadSummary>) {
         val old = items.toList()
+        if (old.size == list.size && old.indices.all { old[it].threadId == list[it].threadId }) {
+            items.clear()
+            items.addAll(list)
+            old.indices.forEach { index -> if (old[index] != list[index]) notifyItemChanged(index) }
+            return
+        }
         val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
             override fun getOldListSize() = old.size
             override fun getNewListSize() = list.size

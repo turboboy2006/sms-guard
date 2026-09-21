@@ -72,6 +72,8 @@ class MainActivity : BaseActivity() {
     private var rendered: List<ThreadSummary> = emptyList()
     private var drawnLayout: RowLayout? = null
     private var loadedFromCache = false
+    private var syncRunning = false
+    private var syncPending = false
     private var categorySignature = ""
     private var trashCleanupDone = false
 
@@ -223,13 +225,15 @@ class MainActivity : BaseActivity() {
                 val icon = if (entry.first == null) R.drawable.ic_tab_all else
                     (IconCatalog.byId(category?.iconId) ?: IconCatalog.forCategory(entry.first!!)).drawable
                 if (icon != 0) {
-                    chipIcon = ContextCompat.getDrawable(this@MainActivity, icon)
+                    chipIcon = ContextCompat.getDrawable(this@MainActivity, icon)?.mutate()?.apply {
+                        isAutoMirrored = true
+                    }
                     chipIconTint = ColorStateList.valueOf(ink)
-                    chipIconSize = 19f * density
+                    chipIconSize = 21f * density
                 }
                 chipStrokeWidth = 0f
-                chipStartPadding = 10f * density
-                chipEndPadding = 10f * density
+                chipStartPadding = 8f * density
+                chipEndPadding = 8f * density
                 chipCornerRadius = 20f * density
                 chipMinHeight = 40f * density
                 layoutDirection = View.LAYOUT_DIRECTION_RTL
@@ -300,6 +304,7 @@ class MainActivity : BaseActivity() {
             applyPalette()
             applyFilter()
         }
+        BackgroundRenderer.apply(binding.root, this, theme.backgroundStyle, theme.backgroundImageUri)
 
         loadThreads()
     }
@@ -423,6 +428,8 @@ class MainActivity : BaseActivity() {
      * show, so a warm start never flashes an empty screen.
      */
     private fun loadThreads() {
+        if (syncRunning) { syncPending = true; return }
+        syncRunning = true
         if (allThreads.isEmpty()) showSkeleton(true)
         worker.execute {
             val started = System.currentTimeMillis()
@@ -436,7 +443,7 @@ class MainActivity : BaseActivity() {
                 // no contacts permission: an empty index is fine
             }
             val threads = try {
-                repo.loadThreads(progressEvery = 2000) { partial ->
+                repo.loadThreads(progressEvery = Int.MAX_VALUE) { partial ->
                     main.post {
                         if (isFinishing || isDestroyed || partial.isEmpty()) return@post
                         allThreads = partial
@@ -449,6 +456,7 @@ class MainActivity : BaseActivity() {
             }
             val elapsed = System.currentTimeMillis() - started
             runOnUiThread {
+                syncRunning = false
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 if (threads.isNotEmpty()) allThreads = threads
                 cleanExpiredTrash(allThreads)
@@ -457,6 +465,7 @@ class MainActivity : BaseActivity() {
                 if (BuildConfig.DEBUG) {
                     android.util.Log.d("SmsGuard", "inbox sync finished in ${elapsed}ms")
                 }
+                if (syncPending) { syncPending = false; loadThreads() }
             }
         }
     }
