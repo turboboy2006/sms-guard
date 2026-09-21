@@ -37,6 +37,9 @@ class SmsRepository(private val context: Context) {
         val cached = ThreadCache.read(context)
         val cachedById = HashMap<Long, CachedThread>(cached.size * 2)
         for (row in cached) cachedById[row.threadId] = row
+        // Taken before the scan: if the receiver patches in a message while the
+        // provider is being read, that newer row must not be overwritten here.
+        val stamp = ThreadCache.stateStamp(context)
 
         val projection = arrayOf(
             Telephony.Sms._ID,
@@ -110,7 +113,7 @@ class SmsRepository(private val context: Context) {
 
         val fresh = byThread.values.toList()
         if (fresh.isNotEmpty()) {
-            ThreadCache.write(context, fresh.map { it.toCached() })
+            ThreadCache.writeUnlessChanged(context, stamp, fresh.map { it.toCached() })
         }
         return fresh
     }

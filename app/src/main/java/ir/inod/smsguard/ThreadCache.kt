@@ -124,6 +124,32 @@ object ThreadCache {
 
     fun size(context: Context): Int = read(context).size
 
+    /**
+     * A stamp of the current cache state.
+     *
+     * A caller that reads the cache, does slow work, and then writes the whole
+     * list can silently drop an update that landed in between — typically the
+     * SMS receiver patching in a message that arrived while the provider was
+     * being scanned. Comparing this stamp before the write closes that window.
+     */
+    fun stateStamp(context: Context): Long {
+        synchronized(lock) {
+            if (memory != null) return memoryNewestId
+        }
+        return newestMessageId(context)
+    }
+
+    /**
+     * Writes [threads] unless the cache changed since [stamp] was taken, in
+     * which case the newer version wins and nothing is written.
+     */
+    fun writeUnlessChanged(context: Context, stamp: Long, threads: List<CachedThread>) {
+        synchronized(lock) {
+            if (memory != null && memoryNewestId != stamp) return
+        }
+        write(context, threads)
+    }
+
     private fun file(context: Context) = File(context.applicationContext.filesDir, FILE_NAME)
 
     /**
