@@ -26,6 +26,10 @@ import ir.inod.smsguard.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
+    private companion object {
+        const val MENU_MANAGE = 2001
+    }
+
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: ThreadAdapter
 
@@ -240,6 +244,20 @@ class MainActivity : AppCompatActivity() {
         skeletonPulse?.cancel()
         worker.shutdownNow()
         super.onDestroy()
+    }
+
+    /** Entry point to the brand and blocklist manager. */
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menu.add(0, MENU_MANAGE, 0, R.string.manage_brands)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        if (item.itemId == MENU_MANAGE) {
+            startActivity(Intent(this, ManagerActivity::class.java))
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 
     private fun applyFilter() {

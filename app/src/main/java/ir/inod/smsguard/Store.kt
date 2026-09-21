@@ -205,6 +205,15 @@ class CategoryStore(context: Context) {
     private companion object { const val KEY = "custom" }
 }
 
+/** A user-defined appearance override for one sender or pattern. */
+data class SenderOverride(
+    val address: String,
+    val displayName: String?,
+    val categoryId: String?,
+    val colorHex: String?,
+    val iconId: String?
+)
+
 /** Per-sender memory: category, colour and whether the AI may ever see it. */
 class SenderStore(context: Context) {
 
@@ -255,6 +264,36 @@ class SenderStore(context: Context) {
 
     fun colorFor(sender: String): String? =
         entry(sender).optString("color").ifBlank { null }
+
+    // ---------------------------------------------------- appearance manager
+
+    fun iconFor(sender: String): String? = entry(sender).optString("icon").ifBlank { null }
+
+    fun setIcon(sender: String, iconId: String?) {
+        val o = entry(sender)
+        if (iconId == null) o.remove("icon") else o.put("icon", iconId)
+        put(sender, o)
+    }
+
+    fun nameFor(sender: String): String? = entry(sender).optString("name").ifBlank { null }
+
+    fun setName(sender: String, name: String?) {
+        val o = entry(sender)
+        if (name.isNullOrBlank()) o.remove("name") else o.put("name", name.trim())
+        put(sender, o)
+    }
+
+    /** Every sender carrying at least one override, for the manager screen. */
+    fun allOverrides(): List<SenderOverride> =
+        load().map { (addr, o) ->
+            SenderOverride(
+                address = addr,
+                displayName = o.optString("name").ifBlank { null },
+                categoryId = o.optString("cat").ifBlank { null },
+                colorHex = o.optString("color").ifBlank { null },
+                iconId = o.optString("icon").ifBlank { null }
+            )
+        }.sortedBy { it.address }
 
     /**
      * Snapshot accessors. The conversation list resolves a category per row, so

@@ -123,6 +123,22 @@
     <string name="risk_known">Sender reported before</string>
     <string name="risk_prize">Prize offer</string>
 
+    <!-- Brand and blocklist manager -->
+    <string name="manage_brands">Brands and blocked numbers</string>
+    <string name="appearance">Sender appearance</string>
+    <string name="blocked_numbers">Blocked</string>
+    <string name="no_overrides">No custom appearance yet.\nLong-press a conversation and pick a colour to start.</string>
+    <string name="blocked_none">Nothing is blocked.</string>
+    <string name="blocked_number_hint">Sender prefix</string>
+    <string name="blocked_domain_hint">Domain</string>
+    <string name="blocked_sender_hint">Sender marked as spam</string>
+    <string name="choose_icon">Choose icon</string>
+    <string name="choose_name">Choose display name</string>
+    <string name="clear_override">Clear override</string>
+    <string name="unblock">Unblock</string>
+    <string name="confirm_unblock">Remove “%1$s” from the blocklist?</string>
+    <string name="confirm_clear_override">Remove the custom name, icon and colour for this sender?</string>
+
     <!-- Categories management -->
     <string name="manage_categories">Manage categories</string>
     <string name="new_category">New category</string>
