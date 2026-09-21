@@ -148,8 +148,77 @@
     <string name="add">Add</string>
     <string name="tab_messages">Messages</string>
     <string name="search">Search</string>
-    <string name="compose">New message</string>    <string name="font_size">Font size</string>
+    <string name="search_hint">Search a sender or message text</string>
+    <string name="refresh">Refresh from the phone</string>
+    <string name="refreshing">Re-reading messages…</string>
+    <string name="compose">New message</string>
+
+    <!-- Header categories. "Contacts" only shows conversations whose sender is
+         a real entry in the phone's address book. -->
+    <string name="tab_contacts">Contacts</string>
+    <string name="no_contacts_threads">No conversations with your contacts yet.</string>
+
+    <!-- Font sizes -->
+    <string name="font_size">Font size</string>
     <string name="font_small">Small</string>
     <string name="font_normal">Normal</string>
     <string name="font_large">Large</string>
-    <string name="font_xlarge">Extra large</string></resources>
+    <string name="font_xlarge">Extra large</string>
+    <string name="font_huge">Huge</string>
+
+    <!-- Settings groups -->
+    <string name="group_detection">Message analysis</string>
+    <string name="group_appearance">Appearance</string>
+    <string name="group_general">General</string>
+    <string name="group_manage">Manage</string>
+
+    <!-- Appearance screen -->
+    <string name="appearance_section">Inbox appearance</string>
+    <string name="preview_title">Live preview</string>
+    <string name="preview_sender">Bank Melli</string>
+    <string name="preview_body">Your one-time code is 12345. It expires in two minutes.</string>
+    <string name="text_section">Text</string>
+    <string name="list_font">Message list font size</string>
+    <string name="message_font">Conversation font size</string>
+    <string name="row_style_section">Message row background</string>
+    <string name="message_style">Bubble background</string>
+    <string name="spacing_section">Spacing</string>
+    <string name="row_padding">Row vertical padding</string>
+    <string name="row_spacing">Gap between rows</string>
+    <string name="row_inset">Side margin of rows</string>
+    <string name="list_padding">Empty space above and below the list</string>
+    <string name="message_spacing">Gap between messages</string>
+    <string name="bubble_radius">Bubble corner radius</string>
+    <string name="show_dividers">Show row dividers</string>
+    <string name="show_chips">Show category chips on the inbox</string>
+    <string name="reset_appearance">Reset to defaults</string>
+    <string name="row_style_hint">Pick the row background that reads best to you.</string>
+    <string name="row_style_flat_hint">No avatars and no badges: the densest list.</string>
+    <string name="row_style_compact_hint">Smaller rows with no badges, for a long inbox.</string>
+    <string name="row_style_accent_hint">A coloured bar on each row, taken from the sender.</string>
+
+    <!-- The ten row backgrounds -->
+    <string name="row_style_classic">Classic (hairline divider)</string>
+    <string name="row_style_card">Card (rounded, bordered)</string>
+    <string name="row_style_flat">Flat (no avatar)</string>
+    <string name="row_style_accent">Accent bar</string>
+    <string name="row_style_bubble">Bubble</string>
+    <string name="row_style_compact">Compact</string>
+    <string name="row_style_soft">Soft fill</string>
+    <string name="row_style_outline">Outline</string>
+    <string name="row_style_striped">Striped (alternating)</string>
+    <string name="row_style_pill">Pill</string>
+
+    <!-- Bubble backgrounds -->
+    <string name="msg_style_filled">Filled (default)</string>
+    <string name="msg_style_contrast">Contrast (white incoming)</string>
+    <string name="msg_style_outline">Outline</string>
+    <string name="msg_style_soft">Soft</string>
+    <string name="msg_style_clean">Clean</string>
+
+    <!-- Cache -->
+    <string name="appearance_summary">%1$s · %2$s</string>
+    <string name="inbox_cache">Stored inbox</string>
+    <string name="cache_summary">%1$d conversations kept for instant loading</string>
+    <string name="confirm_clear_cache">Clear the stored copy of the inbox? It is rebuilt from the phone on the next launch; nothing is deleted.</string>
+</resources>

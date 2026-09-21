@@ -1,16 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  One conversation.
+
+  Structure only: the bubble colours, corner radius, font size and spacing all
+  come from the appearance preferences and are written by MessageAdapter on
+  bind, which is what lets the settings screen change them without a rebuild.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/screen_bg"
     android:orientation="vertical">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary"
-        app:titleTextColor="@android:color/white" />
+        android:layout_height="@dimen/appbar_height"
+        android:background="@color/card_bg"
+        app:navigationIcon="?attr/homeAsUpIndicator"
+        app:titleTextAppearance="@style/TextAppearance.SmsGuard.Title"
+        app:titleTextColor="@color/text_primary" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerMessages"
@@ -18,38 +28,50 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp" />
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp" />
 
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#DDDDDD" />
+        android:background="@color/divider" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@color/card_bg"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="8dp">
+        android:paddingStart="12dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="8dp">
 
         <EditText
             android:id="@+id/editMessage"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:background="@null"
             android:hint="@string/message_hint"
             android:importantForAutofill="no"
             android:inputType="textMultiLine|textCapSentences"
             android:maxLines="4"
-            android:minHeight="48dp" />
+            android:minHeight="48dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted"
+            android:textSize="15sp" />
 
-        <com.google.android.material.button.MaterialButton
+        <ImageButton
             android:id="@+id/buttonSend"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="@string/send" />
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/send_circle"
+            android:contentDescription="@string/send"
+            android:padding="13dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_send"
+            app:tint="@android:color/white" />
     </LinearLayout>
 
 </LinearLayout>

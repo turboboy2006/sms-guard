@@ -18,10 +18,14 @@ class ConversationActivity : BaseActivity() {
 
     private lateinit var binding: ActivityConversationBinding
     private lateinit var adapter: MessageAdapter
+    private val theme by lazy { ThemePrefs(this) }
 
     private val repo by lazy { SmsRepository(this) }
     private var threadId: Long = -1L
     private var address: String = ""
+
+    /** What the current list was drawn with, so a change can be detected. */
+    private var drawnLayout: MessageLayout? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,7 +67,21 @@ class ConversationActivity : BaseActivity() {
             repo.markThreadRead(threadId)
             Notifier(this).cancel(threadId)
         }
+        applyAppearance()
         load()
+    }
+
+    /**
+     * Pushes the bubble appearance into the list. Called on every resume, so a
+     * change made on the settings screen lands the moment the user comes back
+     * instead of on the next visit.
+     */
+    private fun applyAppearance() {
+        val next = theme.messageLayout()
+        if (next != drawnLayout) {
+            drawnLayout = next
+            adapter.applyLayout(next)
+        }
     }
 
     private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()

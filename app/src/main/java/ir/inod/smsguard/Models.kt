@@ -129,7 +129,18 @@ data class ThreadSummary(
     val date: Long,
     val unreadCount: Int,
     val categoryId: String,
-    val colorHex: String
+    val colorHex: String,
+    /**
+     * Ready-made "why is this suspicious" label. Computed once while the row is
+     * classified rather than on every bind: it runs the whole local classifier,
+     * which is far too heavy for a scroll.
+     */
+    val riskLabel: String? = null,
+    /**
+     * false while a row is a placeholder restored from the inbox cache before
+     * the provider pass has confirmed it.
+     */
+    val known: Boolean = true
 )
 
 /** One message inside a conversation. */

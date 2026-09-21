@@ -1,14 +1,9 @@
 package ir.inod.smsguard
 
-import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.provider.ContactsContract
-import java.io.InputStream
 
 /**
  * Conversation avatars, matching the familiar messaging pattern:
@@ -30,8 +25,6 @@ object AvatarHelper {
 
     private val GRAY = "#8A9BB0"
 
-    private val photoCache = HashMap<String, Bitmap?>()
-
     /**
      * First *letter* of the stored name, or null when there is nothing useful.
      * A sender ID such as "20009000" deliberately yields null: a "2" would be
@@ -51,49 +44,16 @@ object AvatarHelper {
 
     fun placeholderColor(): Int = Color.parseColor(GRAY)
 
-    /** Contact photo, cached per address. Null when the contact has none. */
-    fun photo(context: Context, address: String): Bitmap? {
-        if (address.isBlank()) return null
-        if (photoCache.containsKey(address)) return photoCache[address]
-        val bmp = loadPhoto(context, address)
-        photoCache[address] = bmp
-        return bmp
-    }
+    /**
+     * Contact photo, or null when the contact has none.
+     *
+     * The lookup and the bitmap cache both live in [ContactsIndex]; keeping the
+     * cache there means a photo is fetched once even though three screens ask
+     * for it.
+     */
+    fun photo(context: Context, address: String): Bitmap? = ContactsIndex.photo(context, address)
 
-    private fun loadPhoto(context: Context, address: String): Bitmap? {
-        var cursor: android.database.Cursor? = null
-        var stream: InputStream? = null
-        try {
-            val lookup = Uri.withAppendedPath(
-                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
-                Uri.encode(address)
-            )
-            cursor = context.contentResolver.query(
-                lookup, arrayOf(ContactsContract.PhoneLookup._ID), null, null, null
-            )
-            if (cursor != null && cursor.moveToFirst()) {
-                val contactId = cursor.getLong(0)
-                val contactUri = ContentUris.withAppendedId(
-                    ContactsContract.Contacts.CONTENT_URI, contactId
-                )
-                stream = ContactsContract.Contacts
-                    .openContactPhotoInputStream(context.contentResolver, contactUri)
-                if (stream != null) return BitmapFactory.decodeStream(stream)
-            }
-        } catch (e: Exception) {
-            // READ_CONTACTS missing or provider unavailable
-        } finally {
-            try {
-                stream?.close()
-            } catch (e: Exception) {
-                // ignore
-            }
-            cursor?.close()
-        }
-        return null
-    }
-
-    fun clearCache() = photoCache.clear()
+    fun clearCache() = ContactsIndex.invalidate()
 
     fun circle(color: Int): GradientDrawable = GradientDrawable().apply {
         shape = GradientDrawable.OVAL

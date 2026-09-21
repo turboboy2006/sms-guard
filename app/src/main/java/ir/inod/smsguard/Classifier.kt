@@ -502,4 +502,42 @@ object Classifier {
         senderColors(context)[address]
             ?: categories(context)[categoryId]?.colorHex
             ?: "#616161"
+
+    /**
+     * The single sentence shown on a suspicious row, e.g. "Unrelated callback
+     * number". It is produced here rather than in the adapter so the same
+     * ranking is used everywhere and can be computed once per row instead of
+     * once per bind.
+     */
+    fun riskLabel(context: Context, address: String, body: String): String? {
+        val tags = classifyLocal(context, address, body).reasons
+        val tag = RISK_PRIORITY.firstOrNull { it in tags } ?: tags.firstOrNull() ?: return null
+        val res = when (tag) {
+            "fraud-words" -> R.string.risk_fraud
+            "card-number", "sheba" -> R.string.risk_bank_details
+            "brand-impersonation", "brand-mismatch" -> R.string.risk_brand
+            "ip-link", "punycode", "shortener", "risky-tld", "link" -> R.string.risk_link
+            "domain-blocked", "prefix-blocked", "sender-hostile" -> R.string.risk_known
+            "callback-number" -> R.string.risk_callback
+            "campaign" -> R.string.risk_campaign
+            "money" -> R.string.risk_money
+            "emoji-lure" -> R.string.risk_prize
+            "cta" -> R.string.risk_cta
+            "urgency", "late-night" -> R.string.risk_urgency
+            else -> R.string.risk_promo
+        }
+        return context.getString(res)
+    }
+
+    /**
+     * Most specific reason first. A row only has space for one, and "asks for
+     * bank details" matters far more to the reader than "promotional wording".
+     */
+    private val RISK_PRIORITY = listOf(
+        "fraud-words", "card-number", "sheba", "brand-impersonation",
+        "brand-mismatch", "ip-link", "punycode", "domain-blocked",
+        "prefix-blocked", "sender-hostile", "callback-number",
+        "campaign", "shortener", "risky-tld", "money", "emoji-lure",
+        "link", "cta", "promo", "urgency", "late-night", "pattern"
+    )
 }

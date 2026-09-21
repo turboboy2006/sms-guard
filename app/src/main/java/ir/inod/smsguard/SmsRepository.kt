@@ -20,7 +20,24 @@ class SmsRepository(private val context: Context) {
     private val categoryCache = HashMap<String, String>()
     private val colorCache = HashMap<String, String>()
 
+    /**
+     * Loads the conversation list, reusing [ThreadCache] for everything that has
+     * not changed.
+     *
+     * The provider is still the source of truth — the cache only removes the
+     * repeated work. When the newest message in the mailbox is the same one the
+     * cache recorded, every row keeps its stored category and risk label, so a
+     * relaunch costs one cursor pass instead of one classification per sender.
+     * Any message the classifier has never seen is scored normally.
+     *
+     * @return the rows, newest first, and whether anything changed since the
+     *         previous call (the caller uses that to skip a re-render).
+     */
     fun loadThreads(scanLimit: Int = 3000): List<ThreadSummary> {
+        val cached = ThreadCache.read(context)
+        val cachedById = HashMap<Long, CachedThread>(cached.size * 2)
+        for (row in cached) cachedById[row.threadId] = row
+
         val projection = arrayOf(
             Telephony.Sms._ID,
             Telephony.Sms.THREAD_ID,
@@ -46,7 +63,11 @@ class SmsRepository(private val context: Context) {
                 val iRead = c.getColumnIndexOrThrow(Telephony.Sms.READ)
                 val iType = c.getColumnIndexOrThrow(Telephony.Sms.TYPE)
 
-                while (c.moveToNext() && scanned < scanLimit) {
+                // The newest row decides for the whole pass: if the cache
+                // already knows it, nothing above it in the list can be new.
+                val cacheCurrent = c.moveToFirst() && ThreadCache.newestMessageId(context) == c.getLong(iId)
+
+                while (!c.isAfterLast && scanned < scanLimit) {
                     scanned++
                     val threadId = c.getLong(iThread)
                     val existing = byThread[threadId]
@@ -57,7 +78,9 @@ class SmsRepository(private val context: Context) {
                         val messageId = c.getLong(iId)
                         val address = c.getString(iAddr) ?: ""
                         val body = c.getString(iBody) ?: ""
-                        val categoryId = categoryFor(address, body, messageId)
+                        val previous = if (cacheCurrent) cachedById[threadId] else null
+                        val categoryId = previous?.categoryId
+                            ?: categoryFor(address, body, messageId)
                         byThread[threadId] = ThreadSummary(
                             threadId = threadId,
                             messageId = messageId,
@@ -66,18 +89,38 @@ class SmsRepository(private val context: Context) {
                             date = c.getLong(iDate),
                             unreadCount = if (unread) 1 else 0,
                             categoryId = categoryId,
-                            colorHex = colorFor(address, categoryId)
+                            colorHex = previous?.colorHex ?: colorFor(address, categoryId),
+                            riskLabel = previous?.riskLabel
+                                ?: if (categoryId == Cat.SUSPICIOUS) {
+                                    Classifier.riskLabel(context, address, body)
+                                } else {
+                                    null
+                                },
+                            known = true
                         )
                     } else if (unread) {
                         byThread[threadId] = existing.copy(unreadCount = existing.unreadCount + 1)
                     }
+                    if (!c.moveToNext()) break
                 }
             }
         } catch (e: Exception) {
             // return whatever was collected
         }
-        return byThread.values.toList()
+
+        val fresh = byThread.values.toList()
+        if (fresh.isNotEmpty()) {
+            ThreadCache.write(context, fresh.map { it.toCached() })
+        }
+        return fresh
     }
+
+    /**
+     * The whole mailbox as the cache last saw it, without touching the provider.
+     * Used to paint the inbox on the very first frame of a launch.
+     */
+    fun cachedThreads(): List<ThreadSummary> =
+        ThreadCache.read(context).map { it.toSummary() }
 
     fun loadMessages(threadId: Long, limit: Int = 500): List<SmsMessage> {
         val out = mutableListOf<SmsMessage>()
@@ -123,6 +166,78 @@ class SmsRepository(private val context: Context) {
     }
 
     /**
+     * Called from the SMS receiver for a single new message, so the stored inbox
+     * is already correct the next time the app is opened — even if the app
+     * itself is never launched in between.
+     */
+    fun patchCacheForNewMessage(
+        address: String,
+        body: String,
+        date: Long,
+        messageId: Long = -1L
+    ) {
+        try {
+            val threadId = threadIdFor(address)
+            if (threadId < 0) return
+            val categoryId = categoryFor(address, body, messageId)
+            val updated = ThreadCache.read(context).toMutableList()
+            val index = updated.indexOfFirst { it.threadId == threadId }
+            val previous = if (index >= 0) updated[index] else null
+            val row = CachedThread(
+                threadId = threadId,
+                messageId = messageId,
+                address = address,
+                snippet = body,
+                date = date,
+                unreadCount = 1,
+                categoryId = categoryId,
+                colorHex = colorFor(address, categoryId),
+                riskLabel = if (categoryId == Cat.SUSPICIOUS) {
+                    Classifier.riskLabel(context, address, body)
+                } else {
+                    null
+                },
+                // keyed on the real row id when the provider gave us one
+                known = messageId >= 0
+            )
+            if (index >= 0) updated[index] = row else updated.add(0, row)
+            // A sender can be promoted into a category that remembers it, in
+            // which case the rest of its rows belong in the new place too.
+            if (previous != null && previous.categoryId != categoryId) {
+                for (i in updated.indices) {
+                    if (updated[i].threadId == threadId) {
+                        updated[i] = updated[i].copy(categoryId = categoryId)
+                    }
+                }
+            }
+            ThreadCache.write(context, updated)
+        } catch (e: Exception) {
+            // A cache miss is never worth crashing a receiver over.
+        }
+    }
+
+    /** Keeps the inbox order right after the user sends a message. */
+    fun patchCacheForSentMessage(address: String, body: String, date: Long) {
+        try {
+            val threadId = threadIdFor(address)
+            if (threadId < 0) return
+            val updated = ThreadCache.read(context).toMutableList()
+            val index = updated.indexOfFirst { it.threadId == threadId }
+            if (index < 0) return
+            updated[index] = updated[index].copy(
+                snippet = body,
+                date = date,
+                unreadCount = 0
+            )
+            val row = updated.removeAt(index)
+            updated.add(0, row)
+            ThreadCache.write(context, updated)
+        } catch (e: Exception) {
+            // ignore
+        }
+    }
+
+    /**
      * Cheap per-row resolution.
      *
      * The expensive classification is memoised per *address*, because a
@@ -130,7 +245,7 @@ class SmsRepository(private val context: Context) {
      * plus roughly twenty regexes) pinned the CPU and caused an ANR.
      */
     private fun categoryFor(address: String, body: String, messageId: Long): String {
-        Classifier.overrideFor(context, messageId)?.let { return it }
+        if (messageId >= 0) Classifier.overrideFor(context, messageId)?.let { return it }
         return categoryCache.getOrPut(address) {
             Classifier.senderOrLocalCategory(context, address, body)
         }
@@ -140,6 +255,20 @@ class SmsRepository(private val context: Context) {
         colorCache.getOrPut(address + "#" + categoryId) {
             Classifier.colorFor(context, address, categoryId)
         }
+
+    private fun ThreadSummary.toCached(): CachedThread = CachedThread(
+        threadId = threadId,
+        messageId = messageId,
+        address = address,
+        snippet = snippet,
+        date = date,
+        unreadCount = unreadCount,
+        categoryId = categoryId,
+        colorHex = colorHex,
+        riskLabel = riskLabel,
+        known = known
+    )
+
 
     /**
      * Removes one message from the provider for good.
@@ -241,7 +370,9 @@ class SmsRepository(private val context: Context) {
             } else {
                 sm.sendTextMessage(address, null, body, null, null)
             }
-            storeSent(address, body, System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            storeSent(address, body, now)
+            patchCacheForSentMessage(address, body, now)
             true
         } catch (e: Exception) {
             false

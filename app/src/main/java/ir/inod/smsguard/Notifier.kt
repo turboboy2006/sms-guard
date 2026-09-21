@@ -2,9 +2,6 @@ package ir.inod.smsguard
 
 import android.content.Context
 import android.content.Intent
-import android.database.Cursor
-import android.net.Uri
-import android.provider.ContactsContract
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 
@@ -59,30 +56,15 @@ class Notifier(private val context: Context) {
 /** Best-effort contact lookup. Falls back to the raw address. */
 object ContactNames {
 
+    /**
+     * The stored contact name, or the address itself when there is no contact.
+     *
+     * Resolution goes through [ContactsIndex]: the whole address book is read
+     * once and matched in memory, so a listed inbox does not run a provider
+     * query per visible row.
+     */
     fun displayName(context: Context, address: String): String {
         if (address.isBlank()) return address
-        var cursor: Cursor? = null
-        try {
-            val uri: Uri = Uri.withAppendedPath(
-                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
-                Uri.encode(address)
-            )
-            cursor = context.contentResolver.query(
-                uri,
-                arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME),
-                null,
-                null,
-                null
-            )
-            if (cursor != null && cursor.moveToFirst()) {
-                val name = cursor.getString(0)
-                if (!name.isNullOrBlank()) return name
-            }
-        } catch (e: Exception) {
-            // READ_CONTACTS missing or provider unavailable.
-        } finally {
-            cursor?.close()
-        }
-        return address
+        return ContactsIndex.nameFor(context, address) ?: address
     }
 }

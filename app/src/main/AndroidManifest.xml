@@ -79,6 +79,11 @@
             android:parentActivityName=".MainActivity" />
 
         <activity
+            android:name=".AppearanceActivity"
+            android:exported="false"
+            android:parentActivityName=".SettingsActivity" />
+
+        <activity
             android:name=".ManagerActivity"
             android:exported="false"
             android:parentActivityName=".MainActivity" />

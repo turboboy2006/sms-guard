@@ -135,8 +135,69 @@
     <string name="add">افزودن</string>
     <string name="tab_messages">پیام‌ها</string>
     <string name="search">جستجو</string>
-    <string name="compose">پیام جدید</string>    <string name="font_size">اندازه فونت</string>
+    <string name="search_hint">جستجوی فرستنده یا متن پیام</string>
+    <string name="refresh">تازه‌سازی از گوشی</string>
+    <string name="refreshing">در حال خواندن دوباره‌ی پیام‌ها…</string>
+    <string name="compose">پیام جدید</string>
+
+    <string name="tab_contacts">مخاطبین</string>
+    <string name="no_contacts_threads">هنوز گفتگویی با مخاطبین گوشی نداری.</string>
+
+    <string name="font_size">اندازه فونت</string>
     <string name="font_small">کوچک</string>
     <string name="font_normal">عادی</string>
     <string name="font_large">بزرگ</string>
-    <string name="font_xlarge">خیلی بزرگ</string></resources>
+    <string name="font_xlarge">خیلی بزرگ</string>
+    <string name="font_huge">بزرگ‌تر</string>
+
+    <string name="group_detection">تحلیل پیام‌ها</string>
+    <string name="group_appearance">ظاهر</string>
+    <string name="group_general">عمومی</string>
+    <string name="group_manage">مدیریت</string>
+
+    <string name="appearance_section">ظاهر صندوق پیام</string>
+    <string name="preview_title">پیش‌نمایش زنده</string>
+    <string name="preview_sender">بانک ملی</string>
+    <string name="preview_body">رمز یک‌بار مصرف شما ۱۲۳۴۵ است. تا دو دقیقه اعتبار دارد.</string>
+    <string name="text_section">متن</string>
+    <string name="list_font">اندازه فونت فهرست پیام‌ها</string>
+    <string name="message_font">اندازه فونت متن گفتگو</string>
+    <string name="row_style_section">پس‌زمینه‌ی ردیف پیام‌ها</string>
+    <string name="message_style">پس‌زمینه‌ی حباب پیام</string>
+    <string name="spacing_section">فاصله‌ها</string>
+    <string name="row_padding">فاصله‌ی عمودی داخل ردیف</string>
+    <string name="row_spacing">فاصله‌ی بین ردیف‌ها</string>
+    <string name="row_inset">حاشیه‌ی کنار ردیف‌ها</string>
+    <string name="list_padding">فضای خالی بالا و پایین فهرست</string>
+    <string name="message_spacing">فاصله‌ی بین پیام‌ها</string>
+    <string name="bubble_radius">گردی گوشه‌ی حباب</string>
+    <string name="show_dividers">نمایش خط جداکننده‌ی ردیف‌ها</string>
+    <string name="show_chips">نمایش چیپ‌های دسته در صندوق پیام</string>
+    <string name="reset_appearance">بازگشت به حالت پیش‌فرض</string>
+    <string name="row_style_hint">پس‌زمینه‌ای را انتخاب کن که برای تو خواناتر است.</string>
+    <string name="row_style_flat_hint">بدون آواتار و بدون برچسب: فشرده‌ترین فهرست.</string>
+    <string name="row_style_compact_hint">ردیف‌های کوچک‌تر و بدون برچسب، مناسب صندوق پر.</string>
+    <string name="row_style_accent_hint">یک نوار رنگی کنار هر ردیف، از رنگ خود فرستنده.</string>
+
+    <string name="row_style_classic">کلاسیک (خط جداکننده)</string>
+    <string name="row_style_card">کارتی (گرد با حاشیه)</string>
+    <string name="row_style_flat">تخت (بدون آواتار)</string>
+    <string name="row_style_accent">نوار رنگی کنار</string>
+    <string name="row_style_bubble">حبابی</string>
+    <string name="row_style_compact">فشرده</string>
+    <string name="row_style_soft">پس‌زمینه‌ی ملایم</string>
+    <string name="row_style_outline">قاب‌دار</string>
+    <string name="row_style_striped">راه‌راه (یک‌درمیان)</string>
+    <string name="row_style_pill">قرصی</string>
+
+    <string name="msg_style_filled">توپر (پیش‌فرض)</string>
+    <string name="msg_style_contrast">متفاوت (ورودی سفید)</string>
+    <string name="msg_style_outline">قاب‌دار</string>
+    <string name="msg_style_soft">ملایم</string>
+    <string name="msg_style_clean">تمیز</string>
+
+    <string name="appearance_summary">%1$s · %2$s</string>
+    <string name="inbox_cache">صندوق ذخیره‌شده</string>
+    <string name="cache_summary">%1$d گفتگو برای بارگذاری فوری نگه داشته شده</string>
+    <string name="confirm_clear_cache">نسخه‌ی ذخیره‌شده‌ی صندوق پاک شود؟ در اجرای بعدی از روی گوشی ساخته می‌شود و هیچ پیامی حذف نمی‌شود.</string>
+</resources>

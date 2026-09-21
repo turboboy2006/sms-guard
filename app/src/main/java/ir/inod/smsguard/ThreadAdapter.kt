@@ -30,6 +30,16 @@ object TextDir {
     }
 }
 
+/**
+ * The inbox list.
+ *
+ * Two things here are load-bearing for how the app feels on a real phone:
+ *
+ *  - every value the row needs (name, brand, category, risk sentence) is
+ *    already resolved when the data is built, so a bind is only view work;
+ *  - [merge] diffs by thread id, so a sync that changes one conversation
+ *    repaints one row instead of the whole list.
+ */
 class ThreadAdapter(
     private val onClick: (ThreadSummary) -> Unit,
     private val onLongClick: (ThreadSummary) -> Unit
@@ -37,13 +47,99 @@ class ThreadAdapter(
 
     private val items = mutableListOf<ThreadSummary>()
     private var categoryCache: Map<String, Category>? = null
+    private var nameCache: HashMap<String, String> = HashMap()
+    private var layout = RowLayout(
+        style = RowStyle.CLASSIC,
+        padding = 12,
+        spacing = 0,
+        inset = 0,
+        listPadding = 8,
+        listFont = 1f,
+        messageFont = 1f,
+        showDividers = true
+    )
 
     fun submit(list: List<ThreadSummary>) {
         items.clear()
         items.addAll(list)
         categoryCache = null
+        nameCache = HashMap()
         notifyDataSetChanged()
     }
+
+    /**
+     * Replaces the contents, emitting the smallest set of changes.
+     *
+     * An inbox usually changes in three small ways — a new message at the top,
+     * a conversation marked read, an old conversation deleted — and telling
+     * RecyclerView about only those changes is what keeps a live refresh from
+     * flashing the list and losing the scroll position.
+     *
+     * Order is not preserved for existing rows. A new message bumps its
+     * conversation to the top, and the next full sync sorts the list again;
+     * pretending otherwise here would cost a move for every moved row on every
+     * refresh for no visible gain.
+     */
+    fun merge(list: List<ThreadSummary>) {
+        if (items.isEmpty()) {
+            submit(list)
+            return
+        }
+        val old = items.toList()
+        val oldIndex = HashMap<Long, Int>(old.size * 2)
+        for (i in old.indices) oldIndex[old[i].threadId] = i
+
+        val nextIds = HashSet<Long>(list.size * 2)
+        for (row in list) nextIds.add(row.threadId)
+
+        // 1. Unchanged rows keep their view; changed rows are reported now,
+        //    while the old positions are still valid.
+        val survivors = ArrayList<ThreadSummary>(old.size)
+        val changedPositions = ArrayList<Int>()
+        for (row in old) {
+            if (row.threadId !in nextIds) continue
+            survivors.add(row)
+            val incoming = list.first { it.threadId == row.threadId }
+            if (incoming != row) changedPositions.add(survivors.size - 1)
+        }
+
+        // 2. Rows the provider no longer has, removed from the tail backwards.
+        for (i in old.indices.reversed()) {
+            if (old[i].threadId !in nextIds) {
+                items.removeAt(i)
+                notifyItemRemoved(i)
+            }
+        }
+        for (position in changedPositions) {
+            val row = survivors[position]
+            val incoming = list.first { it.threadId == row.threadId }
+            items[position] = incoming
+            notifyItemChanged(position)
+        }
+
+        // 3. New conversations, newest first, inserted from the top downwards.
+        for (i in list.indices) {
+            val row = list[i]
+            if (oldIndex[row.threadId] != null) continue
+            if (items.size < list.size) {
+                items.add(i, row)
+                notifyItemInserted(i)
+            }
+        }
+    }
+
+    /**
+     * Applies new appearance settings and repaints what is on screen. Called
+     * from the Activity, so a slider on the settings screen updates the list
+     * behind it as soon as it is let go.
+     */
+    fun applyLayout(next: RowLayout) {
+        layout = next
+        nameCache = HashMap()
+        notifyDataSetChanged()
+    }
+
+    fun currentLayout(): RowLayout = layout
 
     class VH(val binding: ItemThreadBinding) : RecyclerView.ViewHolder(binding.root)
 
@@ -56,18 +152,32 @@ class ThreadAdapter(
         categoryCache ?: CategoryStore(context).all().associateBy { it.id }
             .also { categoryCache = it }
 
+    /**
+     * Contact and brand resolution is memoised per address: the list is
+     * re-bound constantly while scrolling, and the address book is large.
+     */
+    private fun displayName(context: Context, address: String): String =
+        nameCache.getOrPut(address) {
+            val contact = ContactNames.displayName(context, address)
+            if (contact == address) {
+                // No contact: let the brand catalogue name a known sender ID.
+                BrandCatalog.find(address, "")?.displayName ?: address
+            } else {
+                contact
+            }
+        }
+
     override fun onBindViewHolder(holder: VH, position: Int) {
         val item = items[position]
         val context = holder.itemView.context
         val b = holder.binding
+        val density = context.resources.displayMetrics.density
 
-        val contactName = ContactNames.displayName(context, item.address)
-        val brandMatch = BrandCatalog.find(item.address, contactName)
-        val display = if (contactName == item.address && brandMatch != null) {
-            brandMatch.displayName
-        } else {
-            contactName
-        }
+        val display = displayName(context, item.address)
+        val unread = item.unreadCount > 0
+        val compact = layout.style == RowStyle.COMPACT
+        val showAvatar = layout.style != RowStyle.FLAT && layout.style != RowStyle.COMPACT
+
         b.textAddress.text = display
         b.textSnippet.text = item.snippet
         b.textDate.text = Dates.listLabel(context, item.date)
@@ -75,18 +185,67 @@ class ThreadAdapter(
         TextDir.apply(b.textAddress, display)
         TextDir.apply(b.textSnippet, item.snippet)
 
-        bindAvatar(context, b, item, display)
+        // --- typography -----------------------------------------------------
+        val titleSize = if (compact) 14.5f else 16f
+        val snippetSize = if (compact) 12.5f else 14f
+        b.textAddress.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, titleSize * layout.listFont)
+        b.textSnippet.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, snippetSize * layout.listFont)
+        b.textCategory.setTextSize(
+            android.util.TypedValue.COMPLEX_UNIT_SP,
+            11f * layout.listFont.coerceAtMost(1.3f)
+        )
+        b.textDate.setTextSize(
+            android.util.TypedValue.COMPLEX_UNIT_SP,
+            11.5f * layout.listFont.coerceAtMost(1.3f)
+        )
+
+        // --- spacing --------------------------------------------------------
+        val vertical = (layout.padding * density).toInt()
+        val horizontal = (16 * density).toInt()
+        b.rowContent.setPadding(horizontal, vertical, horizontal, vertical)
+
+        val params = b.root.layoutParams as? ViewGroup.MarginLayoutParams
+        if (params != null) {
+            val side = (layout.inset * density).toInt()
+            val gap = (layout.spacing * density).toInt()
+            val bottom = if (compact) (gap / 2) else gap
+            if (params.leftMargin != side || params.rightMargin != side ||
+                params.topMargin != 0 || params.bottomMargin != bottom
+            ) {
+                params.setMargins(side, 0, side, bottom)
+                b.root.layoutParams = params
+            }
+        }
+
+        // --- avatar ---------------------------------------------------------
+        b.avatar.visibility = if (showAvatar) View.VISIBLE else View.GONE
+        if (showAvatar) {
+            val avatarSize = dp(density, if (compact) 40 else 48)
+            if (b.avatar.layoutParams.width != avatarSize) {
+                b.avatar.layoutParams = b.avatar.layoutParams.apply {
+                    width = avatarSize
+                    height = avatarSize
+                }
+            }
+            bindAvatar(context, b, item, display)
+        }
+
         bindBadge(context, b, item)
+        b.textCategory.visibility =
+            if (!compact && b.textCategory.text.isNotEmpty()) View.VISIBLE else View.GONE
 
         val suspicious = item.categoryId == Cat.SUSPICIOUS
         b.iconWarning.visibility = if (suspicious) View.VISIBLE else View.GONE
 
-        // Unread: tinted row plus a dot, and a bolder name. The tint goes on the
-        // inner row so the hairline divider below stays neutral.
-        val unread = item.unreadCount > 0
-        b.rowContent.setBackgroundColor(
-            if (unread) ContextCompat.getColor(context, R.color.unread_bg) else Color.TRANSPARENT
-        )
+        // Unread: a tinted row, a dot, a bolder name and a darker preview. The
+        // tint goes on the inner row so the divider below stays neutral.
+        val background = RowStyler.background(context, layout, position, unread)
+        val fallback = if (unread) {
+            ContextCompat.getColor(context, R.color.unread_bg)
+        } else {
+            Color.TRANSPARENT
+        }
+        RowStyler.apply(b.rowContent, background, fallback)
         b.textUnread.visibility = if (unread) View.VISIBLE else View.GONE
         b.textAddress.setTypeface(null, Typeface.BOLD)
         b.textAddress.setAlpha(if (unread) 1f else 0.85f)
@@ -97,6 +256,21 @@ class ThreadAdapter(
             )
         )
 
+        // --- accent bar -----------------------------------------------------
+        val accent = layout.style == RowStyle.ACCENT
+        b.accentBar.visibility = if (accent) View.VISIBLE else View.GONE
+        if (accent) {
+            b.accentBar.setBackgroundColor(RowStyler.accentColor(context, item.colorHex))
+            val width = dp(density, RowStyler.STRIPE_DP)
+            if (b.accentBar.layoutParams.width != width) {
+                b.accentBar.layoutParams = b.accentBar.layoutParams.apply { this.width = width }
+            }
+        }
+
+        // --- divider --------------------------------------------------------
+        b.divider.visibility =
+            if (layout.showDividers && layout.style != RowStyle.CARD) View.VISIBLE else View.GONE
+
         holder.itemView.setOnClickListener { onClick(item) }
         holder.itemView.setOnLongClickListener {
             onLongClick(item)
@@ -104,16 +278,17 @@ class ThreadAdapter(
         }
     }
 
+    private fun dp(density: Float, value: Int): Int = (value * density).toInt()
+
     /**
-     * Neutral grey badge for an ordinary category; a red badge carrying the
+     * Neutral badge for an ordinary category; a red badge carrying the
      * reason for a suspicious one, so the row states *why* rather than only
      * turning red.
      */
     private fun bindBadge(context: Context, b: ItemThreadBinding, item: ThreadSummary) {
         if (item.categoryId == Cat.SUSPICIOUS) {
-            val reason = riskLabel(context, item.address, item.snippet)
+            b.textCategory.text = item.riskLabel
                 ?: context.getString(R.string.cat_suspicious)
-            b.textCategory.text = reason
             b.textCategory.background =
                 badge(ContextCompat.getColor(context, R.color.badge_danger_bg))
             b.textCategory.setTextColor(
@@ -130,6 +305,7 @@ class ThreadAdapter(
             b.textCategory.setTextColor(ContextCompat.getColor(context, R.color.badge_text))
             b.textCategory.visibility = View.VISIBLE
         } else {
+            b.textCategory.text = ""
             b.textCategory.visibility = View.GONE
         }
     }
@@ -164,7 +340,7 @@ class ThreadAdapter(
         b.avatar.background = AvatarHelper.circle(parseColor(spec.colorHex))
 
         if (spec.iconRes != null) {
-            val pad = (13 * context.resources.displayMetrics.density).toInt()
+            val pad = (12 * context.resources.displayMetrics.density).toInt()
             b.avatarLetter.text = null
             b.avatarImage.setPadding(pad, pad, pad, pad)
             b.avatarImage.scaleType = ImageView.ScaleType.CENTER_INSIDE
@@ -174,33 +350,6 @@ class ThreadAdapter(
 
         b.avatarImage.setImageDrawable(null)
         b.avatarLetter.text = AvatarHelper.monogram(display)
-    }
-
-    private fun riskLabel(context: Context, address: String, body: String): String? {
-        val tags = Classifier.classifyLocal(context, address, body).reasons
-        val priority = listOf(
-            "fraud-words", "card-number", "sheba", "brand-impersonation",
-            "brand-mismatch", "ip-link", "punycode", "domain-blocked",
-            "prefix-blocked", "sender-hostile", "callback-number",
-            "campaign", "shortener", "risky-tld", "money", "emoji-lure",
-            "link", "cta", "promo", "urgency", "late-night", "pattern"
-        )
-        val tag = priority.firstOrNull { it in tags } ?: tags.firstOrNull() ?: return null
-        val res = when (tag) {
-            "fraud-words" -> R.string.risk_fraud
-            "card-number", "sheba" -> R.string.risk_bank_details
-            "brand-impersonation", "brand-mismatch" -> R.string.risk_brand
-            "ip-link", "punycode", "shortener", "risky-tld", "link" -> R.string.risk_link
-            "domain-blocked", "prefix-blocked", "sender-hostile" -> R.string.risk_known
-            "callback-number" -> R.string.risk_callback
-            "campaign" -> R.string.risk_campaign
-            "money" -> R.string.risk_money
-            "emoji-lure" -> R.string.risk_prize
-            "cta" -> R.string.risk_cta
-            "urgency", "late-night" -> R.string.risk_urgency
-            else -> R.string.risk_promo
-        }
-        return context.getString(res)
     }
 
     private fun parseColor(hex: String): Int = try {

@@ -92,4 +92,25 @@
         <item name="android:textColor">@color/colorPrimary</item>
         <item name="android:textStyle">bold</item>
     </style>
+
+    <!-- A one-line explanation under a setting: quieter than a label -->
+    <style name="TextAppearance.SmsGuard.Hint" parent="TextAppearance.Material3.LabelSmall">
+        <item name="android:textSize">@dimen/text_label</item>
+        <item name="android:textColor">@color/text_muted</item>
+    </style>
+
+    <!-- A settings group heading that sits above its card -->
+    <style name="TextAppearance.SmsGuard.Group" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:textColor">@color/text_muted</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Dropdowns read as inputs, not as bare platform spinners -->
+    <style name="Widget.SmsGuard.Spinner" parent="Widget.AppCompat.Spinner.Underlined">
+        <item name="android:minHeight">@dimen/touch_target</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">@dimen/text_body</item>
+        <item name="android:paddingStart">0dp</item>
+        <item name="android:paddingEnd">0dp</item>
+    </style>
 </resources>

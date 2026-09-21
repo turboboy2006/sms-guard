@@ -1,5 +1,6 @@
 package ir.inod.smsguard
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.MenuItem
@@ -11,27 +12,31 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import ir.inod.smsguard.databinding.ActivitySettingsBinding
 
 /**
- * Settings. The AI connector is entirely opt-in: with the switch off the app
- * never sends a single byte off the device, and every feature still works
- * because categorisation is computed locally.
+ * Settings.
+ *
+ * The screen is grouped so each card answers one question: how messages are
+ * judged, what the app looks like, what language it speaks, and what can be
+ * managed. Everything that is purely cosmetic lives on its own screen
+ * ([AppearanceActivity]) because those controls need a live preview to be
+ * meaningful.
+ *
+ * The AI connector is entirely opt-in: with the switch off the app never sends
+ * a single byte off the device, and every feature still works because
+ * categorisation is computed locally.
  */
 class SettingsActivity : BaseActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private val settings by lazy { SettingsStore(this) }
+    private val theme by lazy { ThemePrefs(this) }
 
     private val langs = listOf("", "fa", "en")
-
-    private companion object {
-        /** Must stay in step with the labels built in onCreate. */
-        val FONT_SCALES = listOf(0.85f, 1f, 1.15f, 1.3f)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,13 +45,25 @@ class SettingsActivity : BaseActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
+        // --- offline detection ---
+        binding.sliderThreshold.value = settings.threshold.toFloat()
+        binding.textThreshold.text = settings.threshold.toString()
+        binding.sliderThreshold.addOnChangeListener { _, value, fromUser ->
+            binding.textThreshold.text = value.toInt().toString()
+            if (fromUser) settings.threshold = value.toInt()
+        }
+
         // --- AI section ---
         binding.switchAi.isChecked = settings.aiEnabled
         binding.editBase.setText(settings.aiBaseUrl)
         binding.editKey.setText(settings.aiApiKey)
         binding.editModel.setText(settings.aiModel)
         binding.editTimeout.setText(settings.aiTimeoutMs.toString())
-        binding.editThreshold.setText(settings.threshold.toString())
+
+        binding.switchAi.setOnCheckedChangeListener { _, checked ->
+            setAiFieldsEnabled(checked)
+        }
+        setAiFieldsEnabled(settings.aiEnabled)
 
         // --- language ---
         val labels = listOf(
@@ -59,33 +76,71 @@ class SettingsActivity : BaseActivity() {
         )
         binding.spinnerLanguage.setSelection(langs.indexOf(settings.language).coerceAtLeast(0))
 
-        // --- font size ---
-        val fontLabels = listOf(
-            getString(R.string.font_small),
-            getString(R.string.font_normal),
-            getString(R.string.font_large),
-            getString(R.string.font_xlarge)
-        )
-        binding.spinnerFont.adapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_dropdown_item, fontLabels
-        )
-        val current = settings.fontScale
-        val nearest = FONT_SCALES.indices.minByOrNull {
-            kotlin.math.abs(FONT_SCALES[it] - current)
-        } ?: 1
-        binding.spinnerFont.setSelection(nearest)
-
-        binding.switchAi.setOnCheckedChangeListener { _, checked ->
-            setAiFieldsEnabled(checked)
+        // --- appearance and cache ---
+        binding.rowAppearance.setOnClickListener {
+            startActivity(Intent(this, AppearanceActivity::class.java))
         }
-        setAiFieldsEnabled(settings.aiEnabled)
+        binding.rowCache.setOnClickListener { confirmClearCache() }
 
         binding.buttonSave.setOnClickListener { save() }
         binding.buttonTest.setOnClickListener { testConnection() }
         binding.buttonCategories.setOnClickListener { manageCategories() }
         binding.buttonBrands.setOnClickListener {
-            startActivity(android.content.Intent(this, ManagerActivity::class.java))
+            startActivity(Intent(this, ManagerActivity::class.java))
         }
+        binding.buttonRules.setOnClickListener {
+            startActivity(Intent(this, RulesActivity::class.java))
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Appearance is edited on another screen; the summary has to follow.
+        binding.textAppearanceSummary.text = getString(
+            R.string.appearance_summary,
+            getString(fontLabel(theme.listFontScale)),
+            getString(rowStyleLabel(theme.rowStyle))
+        )
+        binding.textCacheSummary.text = getString(
+            R.string.cache_summary,
+            ThreadCache.size(this)
+        )
+    }
+
+    private fun fontLabel(scale: Float): Int = when {
+        scale <= 0.95f -> R.string.font_small
+        scale <= 1.05f -> R.string.font_normal
+        scale <= 1.2f -> R.string.font_large
+        scale <= 1.35f -> R.string.font_xlarge
+        else -> R.string.font_huge
+    }
+
+    private fun rowStyleLabel(style: String): Int = when (style) {
+        RowStyle.CARD -> R.string.row_style_card
+        RowStyle.FLAT -> R.string.row_style_flat
+        RowStyle.ACCENT -> R.string.row_style_accent
+        RowStyle.BUBBLE -> R.string.row_style_bubble
+        RowStyle.COMPACT -> R.string.row_style_compact
+        RowStyle.SOFT -> R.string.row_style_soft
+        RowStyle.OUTLINE -> R.string.row_style_outline
+        RowStyle.STRIPED -> R.string.row_style_striped
+        RowStyle.PILL -> R.string.row_style_pill
+        else -> R.string.row_style_classic
+    }
+
+    // ------------------------------------------------------- cache handling
+
+    private fun confirmClearCache() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.inbox_cache)
+            .setMessage(R.string.confirm_clear_cache)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.confirm) { _, _ ->
+                ThreadCache.clear(this)
+                binding.textCacheSummary.text = getString(R.string.cache_summary, 0)
+                Toast.makeText(this, R.string.cleared, Toast.LENGTH_SHORT).show()
+            }
+            .show()
     }
 
     // ------------------------------------------------------- category manager
@@ -155,7 +210,7 @@ class SettingsActivity : BaseActivity() {
         binding.editModel.isEnabled = enabled
         binding.editTimeout.isEnabled = enabled
         binding.buttonTest.isEnabled = enabled
-        binding.textAiHint.visibility = if (enabled) android.view.View.GONE else android.view.View.VISIBLE
+        binding.textAiHint.visibility = if (enabled) View.GONE else View.VISIBLE
     }
 
     private fun save() {
@@ -165,15 +220,9 @@ class SettingsActivity : BaseActivity() {
         settings.aiModel = binding.editModel.text?.toString().orEmpty()
         settings.aiTimeoutMs = binding.editTimeout.text?.toString()?.toIntOrNull()
             ?.coerceIn(1000, 60000) ?: 8000
-        settings.threshold = binding.editThreshold.text?.toString()?.toIntOrNull()
+        settings.threshold = binding.textThreshold.text?.toString()?.toIntOrNull()
             ?.coerceIn(10, 95) ?: 40
         settings.language = langs[binding.spinnerLanguage.selectedItemPosition.coerceIn(0, 2)]
-
-        // Applied on the next screen build. Recreating the task is more
-        // disruptive than it is worth, so the change lands as the user navigates.
-        settings.fontScale = FONT_SCALES[
-            binding.spinnerFont.selectedItemPosition.coerceIn(0, FONT_SCALES.size - 1)
-        ]
 
         // Applies immediately and survives restart.
         val tag = settings.language

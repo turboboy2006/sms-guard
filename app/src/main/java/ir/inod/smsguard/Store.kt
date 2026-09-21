@@ -72,13 +72,197 @@ class SettingsStore(context: Context) {
     /** 0.85 small · 1.0 normal · 1.15 large · 1.3 extra large. */
     var fontScale: Float
         get() = prefs.getFloat("font_scale", 1f)
-        set(v) = prefs.edit().putFloat("font_scale", v.coerceIn(0.85f, 1.3f)).apply()
+        set(v) {
+            val clamped = v.coerceIn(0.85f, 1.5f)
+            prefs.edit().putFloat("font_scale", clamped).apply()
+            bumpRevision()
+        }
+
+    /**
+     * The system font scale cannot be swapped out of a live Activity, so a
+     * change here is applied by rebuilding the screens: each Activity remembers
+     * this counter at `onCreate` and compares it in `onResume`.
+     */
+    val revision: Int
+        get() = prefs.getInt("revision", 0)
+
+    private fun bumpRevision() {
+        prefs.edit().putInt("revision", revision + 1).apply()
+    }
 
     companion object {
         const val DEFAULT_BASE = "https://api.deepseek.com/v1"
         const val DEFAULT_MODEL = "deepseek-chat"
     }
 }
+
+/**
+ * Appearance preferences.
+ *
+ * These are kept apart from [SettingsStore] on purpose: the detection settings
+ * are about what the app *decides*, these are about what it *looks like*, and
+ * the inbox reads them on every bind.
+ *
+ * The two font scales are independent because the two screens have different
+ * jobs: the conversation is mostly reading long text, while the inbox is mostly
+ * scanning many short rows, and users want to tune them separately.
+ */
+class ThemePrefs(context: Context) {
+
+    private val prefs = context.applicationContext
+        .getSharedPreferences("sms_guard_theme", Context.MODE_PRIVATE)
+
+    /** 0.85 · 1.0 · 1.15 · 1.3 · 1.5 — scales the conversation list text. */
+    var listFontScale: Float
+        get() = prefs.getFloat("list_font", 1f)
+        set(v) = prefs.edit().putFloat("list_font", v.coerceIn(0.85f, 1.5f)).apply()
+
+    /** Same scale for message bubbles and, from there, MessageAdapter. */
+    var messageFontScale: Float
+        get() = prefs.getFloat("msg_font", 1f)
+        set(v) = prefs.edit().putFloat("msg_font", v.coerceIn(0.85f, 1.5f)).apply()
+
+    /** Vertical padding inside a conversation row. */
+    var rowPadding: Int
+        get() = prefs.getInt("row_pad", 12)
+        set(v) = prefs.edit().putInt("row_pad", v.coerceIn(4, 28)).apply()
+
+    /** Gap between consecutive conversation rows. */
+    var rowSpacing: Int
+        get() = prefs.getInt("row_gap", 0)
+        set(v) = prefs.edit().putInt("row_gap", v.coerceIn(0, 20)).apply()
+
+    /** Start/end margin of a conversation row. */
+    var rowInset: Int
+        get() = prefs.getInt("row_inset", 0)
+        set(v) = prefs.edit().putInt("row_inset", v.coerceIn(0, 16)).apply()
+
+    /** Space kept above and below the whole list, so content is not edge-bound. */
+    var listPadding: Int
+        get() = prefs.getInt("list_pad", 8)
+        set(v) = prefs.edit().putInt("list_pad", v.coerceIn(0, 40)).apply()
+
+    /** One of [RowStyle.IDS]. Unknown values fall back to the classic look. */
+    var rowStyle: String
+        get() = prefs.getString("row_style", RowStyle.CLASSIC) ?: RowStyle.CLASSIC
+        set(v) = prefs.edit()
+            .putString("row_style", if (v in RowStyle.IDS) v else RowStyle.CLASSIC)
+            .apply()
+
+    /**
+     * Banner, chips, search and the default-app card can each be hidden. A
+     * denser inbox was an explicit request, and the banner is noise once the
+     * role has been granted.
+     */
+    var showChips: Boolean
+        get() = prefs.getBoolean("show_chips", true)
+        set(v) = prefs.edit().putBoolean("show_chips", v).apply()
+
+    var showSearch: Boolean
+        get() = prefs.getBoolean("show_search", true)
+        set(v) = prefs.edit().putBoolean("show_search", v).apply()
+
+    var showDividers: Boolean
+        get() = prefs.getBoolean("show_dividers", true)
+        set(v) = prefs.edit().putBoolean("show_dividers", v).apply()
+
+    /** Current bubble corner radius; the row styles that use cards share it. */
+    var bubbleRadius: Int
+        get() = prefs.getInt("bubble_radius", 14)
+        set(v) = prefs.edit().putInt("bubble_radius", v.coerceIn(0, 24)).apply()
+
+    /** Vertical gap between two messages inside a conversation. */
+    var messageSpacing: Int
+        get() = prefs.getInt("msg_gap", 2)
+        set(v) = prefs.edit().putInt("msg_gap", v.coerceIn(0, 16)).apply()
+
+    /** Background style of the message bubbles. One of [MessageStyle.IDS]. */
+    var messageStyle: String
+        get() = prefs.getString("msg_style", MessageStyle.FILLED) ?: MessageStyle.FILLED
+        set(v) = prefs.edit()
+            .putString("msg_style", if (v in MessageStyle.IDS) v else MessageStyle.FILLED)
+            .apply()
+
+    fun snapshot(): RowLayout = RowLayout(
+        style = rowStyle,
+        padding = rowPadding,
+        spacing = rowSpacing,
+        inset = rowInset,
+        listPadding = listPadding,
+        listFont = listFontScale,
+        messageFont = messageFontScale,
+        showDividers = showDividers
+    )
+
+    /** The conversation screen's own snapshot, read once per list build. */
+    fun messageLayout(): MessageLayout = MessageLayout(
+        fontScale = messageFontScale,
+        spacing = messageSpacing,
+        radius = bubbleRadius,
+        style = messageStyle
+    )
+
+    /**
+     * Bumped on every appearance write. An Activity compares the value it saw
+     * at `onCreate` with the current one in `onResume`, so a change made on the
+     * settings screen rebuilds the screen behind it instead of waiting for the
+     * next launch.
+     */
+    var revision: Int
+        get() = prefs.getInt("revision", 0)
+        private set(v) = prefs.edit().putInt("revision", v).apply()
+
+    fun touch() = revision.also { revision = it + 1 }
+}
+
+/** Numeric ids for the ten row looks offered on the settings screen. */
+object RowStyle {    const val CLASSIC = "classic"
+    const val CARD = "card"
+    const val FLAT = "flat"
+    const val ACCENT = "accent"
+    const val BUBBLE = "bubble"
+    const val COMPACT = "compact"
+    const val SOFT = "soft"
+    const val OUTLINE = "outline"
+    const val STRIPED = "striped"
+    const val PILL = "pill"
+
+    val IDS = listOf(
+        CLASSIC, CARD, FLAT, ACCENT, BUBBLE,
+        COMPACT, SOFT, OUTLINE, STRIPED, PILL
+    )
+}
+
+/** An immutable read of [ThemePrefs], so one list build uses one consistent set. */
+data class RowLayout(
+    val style: String,
+    val padding: Int,
+    val spacing: Int,
+    val inset: Int,
+    val listPadding: Int,
+    val listFont: Float,
+    val messageFont: Float,
+    val showDividers: Boolean
+)
+
+/** Background treatments offered for the message bubbles. */
+object MessageStyle {
+    const val FILLED = "filled"
+    const val CONTRAST = "contrast"
+    const val OUTLINE = "outline"
+    const val SOFT = "soft"
+    const val CLEAN = "clean"
+
+    val IDS = listOf(FILLED, CONTRAST, OUTLINE, SOFT, CLEAN)
+}
+
+/** Everything the conversation screen needs to draw one message list. */
+data class MessageLayout(
+    val fontScale: Float,
+    val spacing: Int,
+    val radius: Int,
+    val style: String
+)
 
 /** Blocking rules (the original rule engine, still fully supported). */
 class RuleStore(context: Context) {

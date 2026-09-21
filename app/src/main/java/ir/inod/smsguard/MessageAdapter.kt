@@ -4,7 +4,6 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.LinearLayout
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import ir.inod.smsguard.databinding.ItemDayHeaderBinding
 import ir.inod.smsguard.databinding.ItemMessageBinding
@@ -29,6 +28,13 @@ class MessageAdapter(
 
     private val rows = mutableListOf<Row>()
 
+    private var layout = MessageLayout(
+        fontScale = 1f,
+        spacing = 2,
+        radius = 14,
+        style = MessageStyle.FILLED
+    )
+
     fun submit(list: List<SmsMessage>) {
         rows.clear()
         var lastDay = Int.MIN_VALUE
@@ -42,6 +48,18 @@ class MessageAdapter(
         }
         notifyDataSetChanged()
     }
+
+    /**
+     * Applies the appearance preferences. Called from the conversation screen
+     * whenever the settings change, so a font or bubble change is visible
+     * without leaving the app.
+     */
+    fun applyLayout(next: MessageLayout) {
+        layout = next
+        notifyDataSetChanged()
+    }
+
+    fun currentLayout(): MessageLayout = layout
 
     private fun dayKey(millis: Long): Int {
         val c = Calendar.getInstance().apply { timeInMillis = millis }
@@ -91,23 +109,42 @@ class MessageAdapter(
         val context = holder.itemView.context
         val row = holder.binding.root
         val bubble = holder.binding.textBubble
+        val density = context.resources.displayMetrics.density
 
         bubble.text = item.body
         holder.binding.textTime.text = Dates.full(context, item.date)
         TextDir.apply(bubble, item.body)
 
+        // Type and colour: two independent knobs, so a large font does not
+        // force a particular bubble style.
+        bubble.setTextSize(
+            android.util.TypedValue.COMPLEX_UNIT_SP,
+            15f * layout.fontScale
+        )
+        holder.binding.textTime.setTextSize(
+            android.util.TypedValue.COMPLEX_UNIT_SP,
+            10.5f * layout.fontScale.coerceAtMost(1.3f)
+        )
+        val pad = (MessageStyler.TEXT_PADDING_DP * density).toInt()
+        bubble.setPadding(pad, pad, pad, pad)
+        bubble.background = MessageStyler.background(
+            context, layout.style, layout.radius, !item.isIncoming
+        )
+        bubble.setTextColor(MessageStyler.textColor(context, !item.isIncoming))
+
         val params = bubble.layoutParams as LinearLayout.LayoutParams
+        val half = (layout.spacing * density).toInt() / 2
         if (item.isIncoming) {
             row.gravity = Gravity.START
-            bubble.setBackgroundResource(R.drawable.bubble_incoming)
-            bubble.setTextColor(ContextCompat.getColor(context, R.color.bubble_in_text))
             params.marginStart = 0
         } else {
             row.gravity = Gravity.END
-            bubble.setBackgroundResource(R.drawable.bubble_outgoing)
-            bubble.setTextColor(ContextCompat.getColor(context, R.color.bubble_out_text))
-            params.marginStart = 48
+            params.marginStart = (48 * density).toInt()
         }
+        // A minimum of one pixel keeps consecutive bubbles from touching when
+        // the spacing preference is zero.
+        val vertical = if (half < 1) 1 else half
+        row.setPadding((12 * density).toInt(), vertical, (12 * density).toInt(), vertical)
         bubble.layoutParams = params
 
         holder.itemView.setOnLongClickListener {

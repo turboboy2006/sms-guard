@@ -64,6 +64,10 @@ class SmsReceiver : BroadcastReceiver() {
         val messageId = repo.storeIncoming(address, body, timestamp)
         val threadId = repo.threadIdFor(address)
 
+        // The stored inbox is patched here, inside the receiver, so the next
+        // launch is correct even if the app itself is never opened in between.
+        repo.patchCacheForNewMessage(address, body, timestamp, messageId)
+
         // Quiet hours: promotional traffic is still stored, it just does not
         // buzz between 23:00 and 07:00. Banking, OTP and contact messages are
         // never suppressed, because those are exactly the ones that matter at

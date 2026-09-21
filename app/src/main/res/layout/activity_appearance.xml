@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Appearance. Every control here writes through to the live preview above it and
+  to the inbox behind this screen, so nothing has to be saved or guessed: what
+  the preview shows is exactly what the list will look like.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/screen_bg"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/appbar_height"
+        android:background="@color/card_bg"
+        app:navigationIcon="?attr/homeAsUpIndicator"
+        app:title="@string/appearance_section"
+        app:titleTextAppearance="@style/TextAppearance.SmsGuard.Title"
+        app:titleTextColor="@color/text_primary" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="@dimen/space_24">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/gutter">
+
+            <!-- ========================= Preview ========================= -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.SmsGuard.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingBottom="@dimen/space_8">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="@dimen/space_16"
+                        android:text="@string/preview_title"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Section" />
+
+                    <ir.inod.smsguard.AppearancePreviewView
+                        android:id="@+id/preview"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ========================== Text =========================== -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.SmsGuard.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_12">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_16">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/text_section"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Section" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_12"
+                        android:text="@string/list_font"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+
+                    <Spinner
+                        android:id="@+id/spinnerListFont"
+                        style="@style/Widget.SmsGuard.Spinner"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_12"
+                        android:text="@string/message_font"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+
+                    <Spinner
+                        android:id="@+id/spinnerMessageFont"
+                        style="@style/Widget.SmsGuard.Spinner"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ====================== Row background ===================== -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.SmsGuard.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_12">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_16">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/row_style_section"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Section" />
+
+                    <Spinner
+                        android:id="@+id/spinnerRowStyle"
+                        style="@style/Widget.SmsGuard.Spinner"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_8" />
+
+                    <TextView
+                        android:id="@+id/textRowStyleHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+
+                    <com.google.android.material.divider.MaterialDivider
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_12" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_12"
+                        android:text="@string/message_style"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+
+                    <Spinner
+                        android:id="@+id/spinnerMessageStyle"
+                        style="@style/Widget.SmsGuard.Spinner"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ======================== Spacing ========================== -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.SmsGuard.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_12">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_16">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/spacing_section"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Section" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_12"
+                        android:text="@string/row_padding"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderRowPadding"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:stepSize="2"
+                        android:valueFrom="4"
+                        android:valueTo="28" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/row_spacing"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderRowSpacing"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:stepSize="1"
+                        android:valueFrom="0"
+                        android:valueTo="20" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/row_inset"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderRowInset"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:stepSize="1"
+                        android:valueFrom="0"
+                        android:valueTo="16" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/list_padding"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderListPadding"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:stepSize="2"
+                        android:valueFrom="0"
+                        android:valueTo="40" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/message_spacing"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderMessageSpacing"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:stepSize="1"
+                        android:valueFrom="0"
+                        android:valueTo="16" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/bubble_radius"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+
+                    <com.google.android.material.slider.Slider
+                        android:id="@+id/sliderBubbleRadius"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:stepSize="2"
+                        android:valueFrom="0"
+                        android:valueTo="24" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ========================== Switch ========================= -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.SmsGuard.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_12">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_16">
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchDividers"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="@dimen/touch_target"
+                        android:text="@string/show_dividers" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchChips"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="@dimen/touch_target"
+                        android:text="@string/show_chips" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonReset"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_16"
+                android:minHeight="@dimen/touch_target"
+                android:text="@string/reset_appearance" />
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

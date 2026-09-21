@@ -4,25 +4,25 @@ import android.Manifest
 import android.app.role.RoleManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.database.ContentObserver
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.provider.Telephony
 import android.view.View
-import android.view.ViewGroup
-import android.widget.BaseAdapter
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayout
 import ir.inod.smsguard.databinding.ActivityMainBinding
+import java.util.concurrent.Executors
 
 class MainActivity : BaseActivity() {
 
@@ -31,18 +31,38 @@ class MainActivity : BaseActivity() {
         const val MENU_SEARCH = 2002
         const val MENU_RULES = 2003
         const val MENU_BLOCKED = 2004
+        const val MENU_REFRESH = 2005
+
+        /** Tab order, matching the chips built in [setUpFilterChips]. */
+        const val TAB_ALL = 0
+        const val TAB_CONTACTS = 1
+        const val TAB_SUSPICIOUS = 2
+        const val TAB_SPAM = 3
+        const val TAB_BANKING = 4
+        const val TAB_SERVICE = 5
+        const val TAB_TRASH = 6
     }
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: ThreadAdapter
 
     private val repo by lazy { SmsRepository(this) }
+    private val theme by lazy { ThemePrefs(this) }
     private val blockedStore by lazy { BlockedStore(this) }
     private val senderStore by lazy { SenderStore(this) }
     private val messageCats by lazy { MessageCategoryStore(this) }
 
     private var allThreads: List<ThreadSummary> = emptyList()
-    private var selectedTab = 0
+    private var selectedTab = TAB_ALL
+    private var query: String = ""
+    private var rendered: List<ThreadSummary> = emptyList()
+    private var drawnLayout: RowLayout? = null
+    private var firstLoadDone = false
+    private var loadedFromCache = false
+
+    private val worker = Executors.newSingleThreadExecutor()
+    private val main = Handler(Looper.getMainLooper())
+    private var skeletonPulse: android.animation.ObjectAnimator? = null
 
     private val refresh: () -> Unit = { loadThreads() }
 
@@ -53,6 +73,29 @@ class MainActivity : BaseActivity() {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { loadThreads() }
+
+    /**
+     * Watches the SMS provider so a message that arrives while the app is open
+     * appears without a manual refresh. Reloads are debounced: marking a thread
+     * read rewrites many rows at once, and each rewrite fires this callback.
+     */
+    private val smsObserver = object : ContentObserver(main) {
+        override fun onChange(selfChange: Boolean) {
+            scheduleReload()
+        }
+    }
+
+    private var reloadScheduled = false
+    private val reloadRunnable = Runnable {
+        reloadScheduled = false
+        if (!isFinishing && !isDestroyed) loadThreads()
+    }
+
+    private fun scheduleReload() {
+        if (reloadScheduled) return
+        reloadScheduled = true
+        main.postDelayed(reloadRunnable, 400)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,6 +111,7 @@ class MainActivity : BaseActivity() {
         binding.recyclerThreads.adapter = adapter
 
         setUpFilterChips()
+        applyAppearance()
 
         binding.buttonMakeDefault.setOnClickListener { requestDefaultRole() }
         binding.fabCompose.setOnClickListener {
@@ -83,6 +127,8 @@ class MainActivity : BaseActivity() {
             }
         }
 
+        // The stored inbox is on screen before the provider is even queried.
+        showCachedThreads()
         ensurePermissions()
     }
 
@@ -93,6 +139,7 @@ class MainActivity : BaseActivity() {
     private fun setUpFilterChips() {
         val labels = listOf(
             R.string.tab_all,
+            R.string.tab_contacts,
             R.string.tab_suspicious,
             R.string.tab_spam,
             R.string.tab_banking,
@@ -110,17 +157,13 @@ class MainActivity : BaseActivity() {
                 // Filled rectangle when selected, pale grey otherwise: the
                 // reference's filter strip, not the outlined default chip.
                 chipBackgroundColor =
-                    androidx.core.content.ContextCompat.getColorStateList(
-                        this@MainActivity, R.color.chip_bg
-                    )
+                    ContextCompat.getColorStateList(this@MainActivity, R.color.chip_bg)
                 setTextColor(
-                    androidx.core.content.ContextCompat.getColorStateList(
-                        this@MainActivity, R.color.chip_text
-                    )
+                    ContextCompat.getColorStateList(this@MainActivity, R.color.chip_text)
                 )
                 chipStrokeWidth = 0f
                 chipCornerRadius = 16f * density
-                chipMinHeight = 48f * density
+                chipMinHeight = 44f * density
                 // The Kotlin property is private; the public setter is not.
                 setEnsureMinTouchTargetSize(true)
             }
@@ -129,11 +172,16 @@ class MainActivity : BaseActivity() {
         }
         binding.chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             val first = checkedIds.firstOrNull() ?: return@setOnCheckedStateChangeListener
-            selectedTab = idToIndex[first] ?: 0
+            selectedTab = idToIndex[first] ?: TAB_ALL
             applyFilter()
         }
         (binding.chipGroup.getChildAt(0) as? com.google.android.material.chip.Chip)
             ?.isChecked = true
+    }
+
+    /** Hides the parts of the screen the user asked not to see. */
+    private fun applyChipVisibility() {
+        binding.chipScroll.visibility = if (theme.showChips) View.VISIBLE else View.GONE
     }
 
     // ------------------------------------------------------------- lifecycle
@@ -142,17 +190,50 @@ class MainActivity : BaseActivity() {
         super.onStart()
         // The AI stage can re-label a message after the fact; refresh when it does.
         MessageBus.register(refresh)
+        contentResolver.registerContentObserver(
+            Telephony.Sms.CONTENT_URI, true, smsObserver
+        )
     }
 
     override fun onStop() {
         MessageBus.unregister(refresh)
+        runCatching { contentResolver.unregisterContentObserver(smsObserver) }
+        main.removeCallbacks(reloadRunnable)
+        reloadScheduled = false
         super.onStop()
     }
 
     override fun onResume() {
         super.onResume()
         refreshBanner()
+        applyChipVisibility()
+
+        // Appearance may have changed on the settings screen. Applying the new
+        // layout in place means the inbox behind it is already correct when the
+        // user comes back.
+        val next = theme.snapshot()
+        if (next != drawnLayout) {
+            drawnLayout = next
+            adapter.applyLayout(next)
+            applyListPadding()
+            applyFilter()
+        }
+
         loadThreads()
+    }
+
+    private fun applyAppearance() {
+        drawnLayout = theme.snapshot()
+        adapter.applyLayout(drawnLayout!!)
+        applyChipVisibility()
+        applyListPadding()
+        if (!theme.showChips) binding.chipScroll.visibility = View.GONE
+    }
+
+    private fun applyListPadding() {
+        val layout = drawnLayout ?: return
+        val pad = (layout.listPadding * resources.displayMetrics.density).toInt()
+        binding.recyclerThreads.setPadding(0, pad, 0, pad + (72 * resources.displayMetrics.density).toInt())
     }
 
     // ------------------------------------------------------------ permissions
@@ -207,29 +288,58 @@ class MainActivity : BaseActivity() {
 
     // ------------------------------------------------------------------ data
 
-    private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
-    private var skeletonPulse: android.animation.ObjectAnimator? = null
+    /**
+     * Paints whatever the last session stored, without touching the provider.
+     * This is the step that takes the cold start from seconds to a frame.
+     */
+    private fun showCachedThreads() {
+        if (allThreads.isNotEmpty()) return
+        val cached = try {
+            repo.cachedThreads()
+        } catch (t: Throwable) {
+            emptyList()
+        }
+        if (cached.isEmpty()) return
+        loadedFromCache = true
+        allThreads = cached
+        showSkeleton(false)
+        applyFilter()
+    }
 
     /**
-     * Scanning the SMS provider and classifying every row is far too heavy for
-     * the main thread: doing it there produced
+     * Provider work: reading the mailbox and classifying senders is far too
+     * heavy for the main thread — doing it there produced
      * "ANR in ir.inod.smsguard (MainActivity)" on a real device.
      *
-     * A skeleton placeholder covers the wait, so the screen never looks frozen
-     * or empty while the work runs.
+     * The skeleton placeholder only appears when there is genuinely nothing to
+     * show, so a warm start never flashes an empty screen.
      */
     private fun loadThreads() {
         if (allThreads.isEmpty()) showSkeleton(true)
         worker.execute {
+            val started = System.currentTimeMillis()
             val threads = try {
                 repo.loadThreads()
             } catch (t: Throwable) {
                 emptyList()
             }
+            // Build the address book here, off the main thread, so the Contacts
+            // tab and every name lookup afterwards are memory reads.
+            try {
+                ContactsIndex.ensure(this)
+            } catch (t: Throwable) {
+                // no contacts permission: an empty index is fine
+            }
+            val elapsed = System.currentTimeMillis() - started
             runOnUiThread {
-                allThreads = threads
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (threads.isNotEmpty()) allThreads = threads
+                firstLoadDone = true
                 showSkeleton(false)
                 applyFilter()
+                if (BuildConfig.DEBUG) {
+                    android.util.Log.d("SmsGuard", "inbox sync finished in ${elapsed}ms")
+                }
             }
         }
     }
@@ -273,16 +383,22 @@ class MainActivity : BaseActivity() {
     override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
         menu.add(0, MENU_SEARCH, 0, R.string.search)
             .setIcon(R.drawable.ic_search)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
-        menu.add(0, MENU_RULES, 1, R.string.rules)
-        menu.add(0, MENU_BLOCKED, 2, R.string.blocked_log)
-        menu.add(0, MENU_MANAGE, 3, R.string.manage_brands)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
+        menu.add(0, MENU_REFRESH, 1, R.string.refresh)
+        menu.add(0, MENU_RULES, 2, R.string.rules)
+        menu.add(0, MENU_BLOCKED, 3, R.string.blocked_log)
+        menu.add(0, MENU_MANAGE, 4, R.string.manage_brands)
         return true
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
         when (item.itemId) {
-            MENU_SEARCH -> toast(R.string.search)
+            MENU_SEARCH -> showSearch()
+            MENU_REFRESH -> {
+                ThreadCache.clear(this)
+                toast(R.string.refreshing)
+                loadThreads()
+            }
             MENU_RULES -> startActivity(Intent(this, RulesActivity::class.java))
             MENU_BLOCKED -> showBlockedLog()
             MENU_MANAGE -> startActivity(Intent(this, ManagerActivity::class.java))
@@ -291,22 +407,67 @@ class MainActivity : BaseActivity() {
         return true
     }
 
+    /**
+     * Search filters the already-loaded rows instead of re-reading the
+     * provider, so results appear as the user types.
+     */
+    private fun showSearch() {
+        val input = android.widget.EditText(this).apply {
+            hint = getString(R.string.search_hint)
+            setText(query)
+            setSelection(text.length)
+            setPadding(48, 32, 48, 32)
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.search)
+            .setView(input)
+            .setNegativeButton(R.string.clear) { _, _ ->
+                query = ""
+                applyFilter()
+            }
+            .setPositiveButton(R.string.search) { _, _ ->
+                query = input.text?.toString()?.trim().orEmpty()
+                applyFilter()
+            }
+            .show()
+    }
+
     private fun applyFilter() {
         val spamIds = CategoryStore(this).all().filter { it.spamFolder }.map { it.id }.toSet()
-        val filtered = when (selectedTab) {
-            1 -> allThreads.filter { it.categoryId == Cat.SUSPICIOUS }
-            2 -> allThreads.filter { it.categoryId in spamIds }
-            3 -> allThreads.filter { it.categoryId == Cat.BANKING || it.categoryId == Cat.OTP }
-            4 -> allThreads.filter { it.categoryId == Cat.NOTIFICATION }
-            5 -> allThreads.filter { it.categoryId == Cat.TRASH }
+        val byTab = when (selectedTab) {
+            TAB_CONTACTS -> allThreads.filter { ContactsIndex.isContact(this, it.address) }
+            TAB_SUSPICIOUS -> allThreads.filter { it.categoryId == Cat.SUSPICIOUS }
+            TAB_SPAM -> allThreads.filter { it.categoryId in spamIds }
+            TAB_BANKING -> allThreads.filter {
+                it.categoryId == Cat.BANKING || it.categoryId == Cat.OTP
+            }
+            TAB_SERVICE -> allThreads.filter { it.categoryId == Cat.NOTIFICATION }
+            TAB_TRASH -> allThreads.filter { it.categoryId == Cat.TRASH }
             // "All" hides the spam folder and the trash alike.
             else -> allThreads.filterNot {
                 it.categoryId in spamIds || it.categoryId == Cat.TRASH
             }
         }
-        adapter.submit(filtered)
-        binding.textEmpty.setText(
-            if (selectedTab == 5) R.string.trash_empty else R.string.no_threads
+        val filtered = if (query.isBlank()) {
+            byTab
+        } else {
+            val needle = query.lowercase()
+            byTab.filter {
+                it.snippet.lowercase().contains(needle) ||
+                    it.address.lowercase().contains(needle) ||
+                    ContactNames.displayName(this, it.address).lowercase().contains(needle)
+            }
+        }
+
+        if (rendered.isEmpty()) adapter.submit(filtered) else adapter.merge(filtered)
+        rendered = filtered
+
+        binding.textEmptyLabel.setText(
+            when (selectedTab) {
+                TAB_TRASH -> R.string.trash_empty
+                TAB_CONTACTS -> R.string.no_contacts_threads
+                else -> R.string.no_threads
+            }
         )
         binding.textEmpty.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
     }
@@ -323,7 +484,7 @@ class MainActivity : BaseActivity() {
     // ------------------------------------------------- long-press: categorise
 
     private fun showOptions(thread: ThreadSummary) {
-        if (selectedTab == 5) {
+        if (selectedTab == TAB_TRASH) {
             showTrashOptions(thread)
             return
         }
@@ -392,6 +553,7 @@ class MainActivity : BaseActivity() {
     private fun deleteThreadForever(thread: ThreadSummary) {
         if (repo.deleteThread(thread.threadId)) {
             Classifier.invalidateCaches()
+            ThreadCache.clear(this)
             loadThreads()
             toast(R.string.cleared)
         } else {
@@ -403,6 +565,7 @@ class MainActivity : BaseActivity() {
         allThreads.filter { it.categoryId == Cat.TRASH }
             .forEach { repo.deleteThread(it.threadId) }
         Classifier.invalidateCaches()
+        ThreadCache.clear(this)
         loadThreads()
         toast(R.string.cleared)
     }
@@ -496,10 +659,12 @@ class MainActivity : BaseActivity() {
         val previous = senderStore.colorFor(thread.address)
         senderStore.setColor(thread.address, hex)
         Classifier.invalidateCaches()
+        ThreadCache.clear(this)
         loadThreads()
         showUndo {
             senderStore.setColor(thread.address, previous)
             Classifier.invalidateCaches()
+            ThreadCache.clear(this)
             loadThreads()
         }
     }
@@ -536,6 +701,7 @@ class MainActivity : BaseActivity() {
         }
 
         Classifier.invalidateCaches()
+        ThreadCache.clear(this)
         loadThreads()
 
         showUndo {
@@ -551,6 +717,7 @@ class MainActivity : BaseActivity() {
                 previousOverride ?: previousCat ?: Cat.OTHER
             )
             Classifier.invalidateCaches()
+            ThreadCache.clear(this)
             loadThreads()
         }
     }

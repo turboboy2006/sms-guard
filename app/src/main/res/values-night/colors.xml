@@ -15,6 +15,7 @@
     <color name="screen_bg">#0B1220</color>
     <color name="card_bg">#131C2E</color>
     <color name="surface_sunken">#0F172A</color>
+    <color name="surface_elevated">#151F33</color>
     <color name="text_primary">#E8EDF5</color>
     <color name="text_secondary">#9BA9BE</color>
     <color name="text_muted">#7B8AA0</color>

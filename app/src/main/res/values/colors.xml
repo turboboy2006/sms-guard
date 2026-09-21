@@ -21,6 +21,9 @@
     <color name="screen_bg">#F8FAFC</color>
     <color name="card_bg">#FFFFFF</color>
     <color name="surface_sunken">#F1F5F9</color>
+    <!-- Raised surface for a list row that sits on screen_bg: identical to the
+         card colour in light mode, slightly lifted in the night palette. -->
+    <color name="surface_elevated">#FFFFFF</color>
     <color name="text_primary">#172033</color>
     <color name="text_secondary">#475467</color>
     <color name="text_muted">#667085</color>
