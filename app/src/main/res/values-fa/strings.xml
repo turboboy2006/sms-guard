@@ -305,4 +305,6 @@
     <string name="filter_30_days">۳۰ روز اخیر</string>
     <string name="restore_from_trash">بازیابی</string>
     <string name="risk_score">امتیاز خطر %1$d · اطمینان %2$d٪</string>
+    <string name="notification_sound">صدای اعلان</string>
+    <string name="sender_channel">پیام‌های %1$s</string>
 </resources>

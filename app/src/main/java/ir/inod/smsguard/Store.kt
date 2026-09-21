@@ -591,6 +591,11 @@ class SenderStore(context: Context) {
         put(sender, entry(sender).apply { put("muted", muted) })
     }
 
+    fun notificationSound(sender: String): String? = entry(sender).optString("sound").ifBlank { null }
+    fun setNotificationSound(sender: String, uri: String?) {
+        val o = entry(sender); if (uri.isNullOrBlank()) o.remove("sound") else o.put("sound", uri); put(sender, o)
+    }
+
     fun bannerDismissed(sender: String): Boolean = entry(sender).optBoolean("banner_seen", false)
 
     fun setBannerDismissed(sender: String, dismissed: Boolean = true) {

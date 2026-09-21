@@ -5,6 +5,10 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.media.AudioAttributes
+import android.net.Uri
 
 /**
  * Posts "new message" notifications. A single notification per thread is
@@ -16,6 +20,7 @@ class Notifier(private val context: Context) {
 
     fun notifyIncoming(threadId: Long, address: String, body: String) {
         if (SenderStore(context).notificationsMuted(address)) return
+        val channelId = ensureSenderChannel(address)
         val intent = Intent(context, ConversationActivity::class.java).apply {
             putExtra(ConversationActivity.EXTRA_THREAD_ID, threadId)
             putExtra(ConversationActivity.EXTRA_ADDRESS, address)
@@ -60,7 +65,7 @@ class Notifier(private val context: Context) {
 
         val otp = extractOtp(body)
 
-        val builder = NotificationCompat.Builder(context, SmsApp.CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(ContactNames.displayName(context, address))
             .setContentText(body)
@@ -97,6 +102,27 @@ class Notifier(private val context: Context) {
             // POST_NOTIFICATIONS was not granted; nothing useful to do here.
         }
     }
+
+    private fun ensureSenderChannel(address: String): String {
+        val sound = SenderStore(context).notificationSound(address) ?: return SmsApp.CHANNEL_ID
+        val id = senderChannelId(address)
+        val nm = context.getSystemService(NotificationManager::class.java)
+        if (nm.getNotificationChannel(id) == null) {
+            val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build()
+            nm.createNotificationChannel(NotificationChannel(
+                id, context.getString(R.string.sender_channel, ContactNames.displayName(context, address)),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply { setSound(Uri.parse(sound), attrs); enableVibration(true) })
+        }
+        return id
+    }
+
+    fun resetSenderChannel(address: String) {
+        context.getSystemService(NotificationManager::class.java).deleteNotificationChannel(senderChannelId(address))
+        ensureSenderChannel(address)
+    }
+
+    private fun senderChannelId(address: String) = "sms_sender_${address.hashCode().toUInt().toString(16)}"
 
     private fun extractOtp(body: String): String? {
         val normalized = body

@@ -59,6 +59,21 @@ class ConversationActivity : BaseActivity() {
     private val deliveryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) { load() }
     }
+    private val ringtonePicker = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val uri: android.net.Uri? = if (android.os.Build.VERSION.SDK_INT >= 33) {
+            result.data?.getParcelableExtra(
+                android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI,
+                android.net.Uri::class.java
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            result.data?.getParcelableExtra(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        }
+        SenderStore(this).setNotificationSound(address, uri?.toString())
+        Notifier(this).resetSenderChannel(address)
+        Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
+    }
 
     /** What the current list was drawn with, so a change can be detected. */
     private var drawnLayout: MessageLayout? = null
@@ -664,6 +679,7 @@ class ConversationActivity : BaseActivity() {
         val options = arrayOf(
             getString(R.string.call_sender),
             getString(if (muted) R.string.enable_notifications else R.string.mute_notifications),
+            getString(R.string.notification_sound),
             getString(R.string.sender_reply_sim),
             getString(R.string.change_category),
             getString(R.string.block_sender)
@@ -680,11 +696,20 @@ class ConversationActivity : BaseActivity() {
                         store.setNotificationsMuted(address, !muted)
                         Toast.makeText(this, if (muted) R.string.notifications_enabled else R.string.notifications_muted, Toast.LENGTH_SHORT).show()
                     }
-                    2 -> pickSenderSim()
-                    3 -> pickSenderCategory()
-                    4 -> blockRiskySender()
+                    2 -> pickNotificationSound()
+                    3 -> pickSenderSim()
+                    4 -> pickSenderCategory()
+                    5 -> blockRiskySender()
                 }
             }.show()
+    }
+
+    private fun pickNotificationSound() {
+        ringtonePicker.launch(Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE, android.media.RingtoneManager.TYPE_NOTIFICATION)
+            putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+            putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+        })
     }
 
     private fun pickSenderSim() {

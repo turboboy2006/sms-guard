@@ -329,4 +329,6 @@
     <string name="filter_30_days">Last 30 days</string>
     <string name="restore_from_trash">Restore</string>
     <string name="risk_score">Risk score %1$d · confidence %2$d%%</string>
+    <string name="notification_sound">Notification sound</string>
+    <string name="sender_channel">Messages from %1$s</string>
 </resources>
