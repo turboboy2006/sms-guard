@@ -243,24 +243,60 @@ class SettingsActivity : BaseActivity() {
 
     private fun manageCategories() {
         val store = CategoryStore(this)
-        val custom = store.custom()
-        val labels = (
-            custom.map { getString(R.string.delete) + " · " + it.customName } +
-                listOf(getString(R.string.new_category))
-            ).toTypedArray()
+        val categories = store.all()
+        val labels = (categories.map { it.label(this) } + listOf(getString(R.string.new_category))).toTypedArray()
 
         AlertDialog.Builder(this)
             .setTitle(R.string.manage_categories)
             .setItems(labels) { _, which ->
-                if (which < custom.size) {
-                    store.delete(custom[which].id)
-                    Toast.makeText(this, R.string.cleared, Toast.LENGTH_SHORT).show()
+                if (which < categories.size) {
+                    editCategory(categories[which])
                 } else {
                     addCategory()
                 }
             }
             .setNegativeButton(R.string.close, null)
             .show()
+    }
+
+    private fun editCategory(category: Category) {
+        val options = mutableListOf(
+            getString(R.string.rename), getString(R.string.pick_color),
+            getString(R.string.choose_icon), getString(R.string.move_up), getString(R.string.move_down)
+        )
+        if (!category.isSystem) options += getString(R.string.delete)
+        AlertDialog.Builder(this).setTitle(category.label(this))
+            .setItems(options.toTypedArray()) { _, which ->
+                when (which) {
+                    0 -> {
+                        val input = EditText(this).apply { setText(category.label(this@SettingsActivity)) }
+                        AlertDialog.Builder(this).setTitle(R.string.rename).setView(input)
+                            .setPositiveButton(R.string.save) { _, _ ->
+                                CategoryStore(this).updateAny(category.copy(nameRes = 0, customName = input.text.toString().trim()))
+                            }.setNegativeButton(R.string.cancel, null).show()
+                    }
+                    1 -> pickCategoryColor(category)
+                    2 -> pickCategoryIcon(category)
+                    3 -> CategoryStore(this).move(category.id, -1)
+                    4 -> CategoryStore(this).move(category.id, 1)
+                    5 -> CategoryStore(this).delete(category.id)
+                }
+            }.show()
+    }
+
+    private fun pickCategoryColor(category: Category) {
+        val labels = Categories.PALETTE.toTypedArray()
+        AlertDialog.Builder(this).setTitle(R.string.pick_color).setItems(labels) { _, which ->
+            CategoryStore(this).updateAny(category.copy(colorHex = Categories.PALETTE[which]))
+        }.show()
+    }
+
+    private fun pickCategoryIcon(category: Category) {
+        val icons = IconCatalog.ALL
+        AlertDialog.Builder(this).setTitle(R.string.choose_icon)
+            .setItems(icons.map { it.id }.toTypedArray()) { _, which ->
+                CategoryStore(this).updateAny(category.copy(iconId = icons[which].id))
+            }.show()
     }
 
     private fun addCategory() {
@@ -291,7 +327,8 @@ class SettingsActivity : BaseActivity() {
                 AlertDialog.Builder(this)
                     .setTitle(R.string.pick_color)
                     .setAdapter(listAdapter) { _, which ->
-                        CategoryStore(this).add(name, palette[which])
+                        val created = CategoryStore(this).add(name, palette[which])
+                        pickCategoryIcon(created)
                         Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
                     }
                     .show()

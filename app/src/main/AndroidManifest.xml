@@ -37,6 +37,7 @@
         <activity
             android:name=".SearchActivity"
             android:exported="false" />
+        <activity android:name=".CampaignsActivity" android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">

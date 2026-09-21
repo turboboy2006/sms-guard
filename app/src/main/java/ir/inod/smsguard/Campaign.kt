@@ -217,6 +217,10 @@ class CampaignStore(context: Context) {
         cache = null
     }
 
+    fun allCampaigns(): List<Campaign> = snapshot().campaigns
+        .filter { it.members >= 2 }
+        .sortedByDescending { it.lastSeen }
+
     /** Bounded: keep the campaigns seen most recently. */
     private fun trim(s: Snapshot) {
         if (s.campaigns.size > MAX_CAMPAIGNS) {

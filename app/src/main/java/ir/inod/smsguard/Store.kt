@@ -416,6 +416,21 @@ class CategoryStore(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences("sms_guard_categories", Context.MODE_PRIVATE)
 
+    private fun systemCategories(): List<Category> {
+        val overrides = runCatching { JSONObject(prefs.getString(SYSTEM_KEY, "{}") ?: "{}") }
+            .getOrDefault(JSONObject())
+        return Categories.system().map { base ->
+            val o = overrides.optJSONObject(base.id)
+            if (o == null) base else base.copy(
+                customName = o.optString("name").ifBlank { base.customName },
+                nameRes = if (o.optString("name").isNotBlank()) 0 else base.nameRes,
+                colorHex = o.optString("color", base.colorHex),
+                order = o.optInt("order", base.order),
+                iconId = o.optString("icon").ifBlank { base.iconId }
+            )
+        }
+    }
+
     fun custom(): MutableList<Category> {
         val raw = prefs.getString(KEY, null) ?: return mutableListOf()
         val out = mutableListOf<Category>()
@@ -432,7 +447,8 @@ class CategoryStore(context: Context) {
                         spamFolder = o.optBoolean("spam", false),
                         skipAi = o.optBoolean("skipAi", false),
                         protectedCat = o.optBoolean("protected", false),
-                        order = 100 + i
+                        order = o.optInt("order", 100 + i),
+                        iconId = o.optString("icon").ifBlank { null }
                     )
                 )
             }
@@ -449,6 +465,7 @@ class CategoryStore(context: Context) {
                 JSONObject().apply {
                     put("id", c.id); put("name", c.customName); put("color", c.colorHex)
                     put("spam", c.spamFolder); put("skipAi", c.skipAi); put("protected", c.protectedCat)
+                    put("order", c.order); put("icon", c.iconId ?: "")
                 }
             )
         }
@@ -461,7 +478,9 @@ class CategoryStore(context: Context) {
             id = "user_" + System.currentTimeMillis(),
             customName = name.trim(),
             colorHex = colorHex,
-            isSystem = false
+            isSystem = false,
+            order = (all().maxOfOrNull { it.order } ?: 0) + 1,
+            iconId = "unknown"
         )
         list.add(c)
         save(list)
@@ -472,11 +491,33 @@ class CategoryStore(context: Context) {
 
     fun update(category: Category) = save(custom().map { if (it.id == category.id) category else it })
 
-    fun all(): List<Category> = Categories.system() + custom()
+    fun all(): List<Category> = (systemCategories() + custom()).sortedBy { it.order }
 
     fun byId(id: String): Category? = all().firstOrNull { it.id == id }
 
-    private companion object { const val KEY = "custom" }
+    fun updateAny(category: Category) {
+        if (!category.isSystem) { update(category); return }
+        val root = runCatching { JSONObject(prefs.getString(SYSTEM_KEY, "{}") ?: "{}") }
+            .getOrDefault(JSONObject())
+        root.put(category.id, JSONObject().apply {
+            put("name", if (category.nameRes == 0) category.customName else "")
+            put("color", category.colorHex)
+            put("order", category.order)
+            put("icon", category.iconId ?: "")
+        })
+        prefs.edit().putString(SYSTEM_KEY, root.toString()).apply()
+    }
+
+    fun move(id: String, delta: Int) {
+        val list = all().toMutableList()
+        val from = list.indexOfFirst { it.id == id }
+        val to = (from + delta).coerceIn(0, list.lastIndex)
+        if (from < 0 || from == to) return
+        val moved = list.removeAt(from); list.add(to, moved)
+        list.forEachIndexed { index, category -> updateAny(category.copy(order = index)) }
+    }
+
+    private companion object { const val KEY = "custom"; const val SYSTEM_KEY = "system_overrides" }
 }
 
 /** A user-defined appearance override for one sender or pattern. */

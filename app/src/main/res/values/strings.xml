@@ -307,4 +307,12 @@
     <string name="archive">Archive</string>
     <string name="archived">Archived conversations</string>
     <string name="no_archived">No archived conversations</string>
+    <string name="rename">Rename</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
+    <string name="campaigns">Message campaigns</string>
+    <string name="no_campaigns">No repeated campaigns detected yet.</string>
+    <string name="campaign_spam">marked spam</string>
+    <string name="campaign_detected">under observation</string>
+    <string name="campaign_summary">%1$d similar messages · %2$d senders · %3$s</string>
 </resources>

@@ -283,4 +283,12 @@
     <string name="archive">بایگانی</string>
     <string name="archived">گفتگوهای بایگانی‌شده</string>
     <string name="no_archived">گفتگوی بایگانی‌شده‌ای نیست</string>
+    <string name="rename">تغییر نام</string>
+    <string name="move_up">انتقال به بالا</string>
+    <string name="move_down">انتقال به پایین</string>
+    <string name="campaigns">کمپین‌های پیامکی</string>
+    <string name="no_campaigns">هنوز کمپین تکراری شناسایی نشده است.</string>
+    <string name="campaign_spam">اسپم شناخته‌شده</string>
+    <string name="campaign_detected">در حال بررسی</string>
+    <string name="campaign_summary">%1$d پیام مشابه · %2$d فرستنده · %3$s</string>
 </resources>

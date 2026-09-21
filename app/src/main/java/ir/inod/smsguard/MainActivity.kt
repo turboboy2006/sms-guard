@@ -42,6 +42,7 @@ class MainActivity : BaseActivity() {
         const val MENU_BULK_SPAM = 2102
         const val MENU_BULK_TRASH = 2103
         const val MENU_ARCHIVED = 2007
+        const val MENU_CAMPAIGNS = 2008
 
         /** Tab order, matching the chips built in [setUpFilterChips]. */
         const val TAB_ALL = 0
@@ -65,10 +66,12 @@ class MainActivity : BaseActivity() {
     @Volatile
     private var allThreads: List<ThreadSummary> = emptyList()
     private var selectedTab = TAB_ALL
+    private var selectedCategoryId: String? = null
     private var query: String = ""
     private var rendered: List<ThreadSummary> = emptyList()
     private var drawnLayout: RowLayout? = null
     private var loadedFromCache = false
+    private var categorySignature = ""
 
     /**
      * The bottom navigation's Contacts destination.
@@ -187,36 +190,35 @@ class MainActivity : BaseActivity() {
      * an icon on every chip turns the strip into noise.
      */
     private fun setUpFilterChips() {
-        val labels = listOf(
-            R.string.tab_all,
-            R.string.tab_suspicious,
-            R.string.tab_spam,
-            R.string.tab_banking,
-            R.string.tab_notifications,
-            R.string.tab_trash
-        )
-        val icons = listOf(
-            0, R.drawable.ic_tab_suspicious, 0, R.drawable.ic_tab_banking,
-            R.drawable.ic_tab_service, R.drawable.ic_tab_trash
-        )
-        val pastelBg = listOf("#E0F2FE", "#FFEDD5", "#FEE2E2", "#DBEAFE", "#EDE9FE", "#F1F5F9")
-        val pastelInk = listOf("#075985", "#9A3412", "#991B1B", "#1E40AF", "#5B21B6", "#334155")
-        val idToIndex = HashMap<Int, Int>()
+        binding.chipGroup.removeAllViews()
+        val entries = listOf<Pair<String?, String>>(null to getString(R.string.tab_all)) +
+            CategoryStore(this).all().map { it.id to it.label(this) }
+        val idToCategory = HashMap<Int, String?>()
         val density = resources.displayMetrics.density
-        labels.forEachIndexed { index, res ->
+        entries.forEachIndexed { index, entry ->
+            val category = entry.first?.let { CategoryStore(this).byId(it) }
+            val baseColor = runCatching { Color.parseColor(category?.colorHex ?: "#0F766E") }
+                .getOrDefault(Color.parseColor("#0F766E"))
+            val soft = Color.rgb(
+                (Color.red(baseColor) * .18 + 255 * .82).toInt(),
+                (Color.green(baseColor) * .18 + 255 * .82).toInt(),
+                (Color.blue(baseColor) * .18 + 255 * .82).toInt()
+            )
             val chip = com.google.android.material.chip.Chip(this).apply {
-                text = getString(res)
+                text = entry.second
                 isCheckable = true
                 isClickable = true
                 id = View.generateViewId()
                 chipBackgroundColor = ColorStateList(
                     arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
-                    intArrayOf(Color.parseColor(pastelBg[index]), ContextCompat.getColor(this@MainActivity, R.color.chip_inactive_bg))
+                    intArrayOf(soft, ContextCompat.getColor(this@MainActivity, R.color.chip_inactive_bg))
                 )
-                val ink = Color.parseColor(pastelInk[index])
+                val ink = baseColor
                 setTextColor(ColorStateList(arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()), intArrayOf(ink, ink)))
-                if (icons[index] != 0) {
-                    chipIcon = ContextCompat.getDrawable(this@MainActivity, icons[index])
+                val icon = if (entry.first == null) R.drawable.ic_tab_all else
+                    (IconCatalog.byId(category?.iconId) ?: IconCatalog.forCategory(entry.first!!)).drawable
+                if (icon != 0) {
+                    chipIcon = ContextCompat.getDrawable(this@MainActivity, icon)
                     chipIconTint = ColorStateList.valueOf(ink)
                     chipIconSize = 16f * density
                 }
@@ -228,16 +230,19 @@ class MainActivity : BaseActivity() {
                 // The Kotlin property is private; the public setter is not.
                 setEnsureMinTouchTargetSize(false)
             }
-            idToIndex[chip.id] = index
+            idToCategory[chip.id] = entry.first
             binding.chipGroup.addView(chip)
         }
         binding.chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             val first = checkedIds.firstOrNull() ?: return@setOnCheckedStateChangeListener
-            selectedTab = idToIndex[first] ?: TAB_ALL
+            selectedCategoryId = idToCategory[first]
             applyFilter()
         }
         (binding.chipGroup.getChildAt(0) as? com.google.android.material.chip.Chip)
             ?.isChecked = true
+        categorySignature = CategoryStore(this).all().joinToString("|") {
+            "${it.id}:${it.label(this)}:${it.colorHex}:${it.iconId}:${it.order}"
+        }
     }
 
     /** Hides the parts of the screen the user asked not to see. */
@@ -269,6 +274,13 @@ class MainActivity : BaseActivity() {
         super.onResume()
         refreshBanner()
         applyChipVisibility()
+        val nextCategorySignature = CategoryStore(this).all().joinToString("|") {
+            "${it.id}:${it.label(this)}:${it.colorHex}:${it.iconId}:${it.order}"
+        }
+        if (nextCategorySignature != categorySignature) {
+            selectedCategoryId = null
+            setUpFilterChips()
+        }
 
         // Appearance may have changed on the settings screen. Applying the new
         // layout in place means the inbox behind it is already correct when the
@@ -486,6 +498,7 @@ class MainActivity : BaseActivity() {
         menu.add(0, MENU_TRASH, 4, R.string.tab_trash)
         menu.add(0, MENU_MANAGE, 5, R.string.manage_brands)
         menu.add(0, MENU_ARCHIVED, 6, R.string.archived)
+        menu.add(0, MENU_CAMPAIGNS, 7, R.string.campaigns)
         menu.add(0, MENU_MARK_READ, 0, R.string.mark_read)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_BULK_SPAM, 1, R.string.mark_spam)
@@ -500,7 +513,7 @@ class MainActivity : BaseActivity() {
         listOf(MENU_MARK_READ, MENU_BULK_SPAM, MENU_BULK_TRASH).forEach {
             menu.findItem(it)?.isVisible = selecting
         }
-        listOf(MENU_SEARCH, MENU_REFRESH, MENU_RULES, MENU_BLOCKED, MENU_TRASH, MENU_MANAGE, MENU_ARCHIVED).forEach {
+        listOf(MENU_SEARCH, MENU_REFRESH, MENU_RULES, MENU_BLOCKED, MENU_TRASH, MENU_MANAGE, MENU_ARCHIVED, MENU_CAMPAIGNS).forEach {
             menu.findItem(it)?.isVisible = !selecting
         }
         return super.onPrepareOptionsMenu(menu)
@@ -518,12 +531,17 @@ class MainActivity : BaseActivity() {
             MENU_BLOCKED -> showBlockedLog()
             MENU_TRASH -> {
                 contactsOnly = false
-                selectedTab = TAB_TRASH
+                selectedCategoryId = Cat.TRASH
                 binding.bottomNav.selectedItemId = R.id.nav_messages
+                for (i in 0 until binding.chipGroup.childCount) {
+                    val chip = binding.chipGroup.getChildAt(i) as? com.google.android.material.chip.Chip
+                    if (chip?.text == CategoryStore(this).byId(Cat.TRASH)?.label(this)) chip.isChecked = true
+                }
                 applyFilter()
             }
             MENU_MANAGE -> startActivity(Intent(this, ManagerActivity::class.java))
             MENU_ARCHIVED -> showArchived()
+            MENU_CAMPAIGNS -> startActivity(Intent(this, CampaignsActivity::class.java))
             MENU_MARK_READ -> bulkMarkRead()
             MENU_BULK_SPAM -> bulkCategory(Cat.SPAM)
             MENU_BULK_TRASH -> bulkCategory(Cat.TRASH)
@@ -676,13 +694,7 @@ class MainActivity : BaseActivity() {
         val spamIds = CategoryStore(this).all().filter { it.spamFolder }.map { it.id }.toSet()
         val byTab = when {
             contactsOnly -> allThreads.filter { ContactsIndex.isKnownContact(it.address) }
-            selectedTab == TAB_SUSPICIOUS -> allThreads.filter { it.categoryId == Cat.SUSPICIOUS }
-            selectedTab == TAB_SPAM -> allThreads.filter { it.categoryId in spamIds }
-            selectedTab == TAB_BANKING -> allThreads.filter {
-                it.categoryId == Cat.BANKING || it.categoryId == Cat.OTP
-            }
-            selectedTab == TAB_SERVICE -> allThreads.filter { it.categoryId == Cat.NOTIFICATION }
-            selectedTab == TAB_TRASH -> allThreads.filter { it.categoryId == Cat.TRASH }
+            selectedCategoryId != null -> allThreads.filter { it.categoryId == selectedCategoryId }
             // "All" hides the spam folder and the trash alike.
             else -> allThreads.filterNot {
                 it.categoryId in spamIds || it.categoryId == Cat.TRASH
