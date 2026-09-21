@@ -73,6 +73,12 @@
     <string name="testing">در حال تست…</string>
     <string name="local_section">تشخیص آفلاین</string>
     <string name="threshold_hint">آستانه مشکوک‌شدن (۱۰ تا ۹۵)</string>
+
+    <string name="quiet_enable">ساعات سکوت</string>
+    <string name="quiet_hint">پیش‌فرض خاموش است. وقتی روشن باشد، پیام‌های تبلیغاتی، مشکوک و اسپم که داخل این بازه برسند بی‌صدا ذخیره می‌شوند و بدون اعلان در صندوق پیام دیده می‌شوند. رمز پویا، پیام‌های بانکی و مخاطبین خودت در هر ساعتی اعلان می‌گیرند.</string>
+    <string name="quiet_from">شروع سکوت</string>
+    <string name="quiet_to">پایان سکوت</string>
+    <string name="quiet_window">سکوت از %1$s تا %2$s</string>
     <string name="language">زبان برنامه</string>
     <string name="lang_system">زبان گوشی</string>
     <string name="lang_fa">فارسی</string>

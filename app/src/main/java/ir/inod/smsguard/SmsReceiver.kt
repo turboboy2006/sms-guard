@@ -68,17 +68,13 @@ class SmsReceiver : BroadcastReceiver() {
         // launch is correct even if the app itself is never opened in between.
         repo.patchCacheForNewMessage(address, body, timestamp, messageId)
 
-        // Quiet hours: promotional traffic is still stored, it just does not
-        // buzz between 23:00 and 07:00. Banking, OTP and contact messages are
-        // never suppressed, because those are exactly the ones that matter at
-        // night.
-        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-        val quiet = hour >= QUIET_FROM || hour < QUIET_TO
-        val suppressible = localCategory == Cat.PROMOTION ||
-            localCategory == Cat.SUSPICIOUS ||
-            localCategory == Cat.SPAM
+        // Quiet hours. Off unless the user turned it on, and even then it can
+        // only ever silence promotional, suspicious or spam traffic — banking,
+        // OTP and contact messages always notify, because those are exactly the
+        // ones that matter at night. See [QuietHours].
+        val suppressed = QuietHours.shouldSuppress(context, localCategory)
 
-        if (messageId >= 0 && threadId >= 0 && !(quiet && suppressible)) {
+        if (messageId >= 0 && threadId >= 0 && !suppressed) {
             Notifier(context).notifyIncoming(threadId, address, body)
         }
 
@@ -112,9 +108,5 @@ class SmsReceiver : BroadcastReceiver() {
 
     private companion object {
         const val TAG = "SmsReceiver"
-
-        /** Quiet window, inclusive of the start hour and exclusive of the end. */
-        const val QUIET_FROM = 23
-        const val QUIET_TO = 7
     }
 }

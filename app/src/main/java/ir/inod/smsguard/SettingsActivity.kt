@@ -65,6 +65,9 @@ class SettingsActivity : BaseActivity() {
         }
         setAiFieldsEnabled(settings.aiEnabled)
 
+        // --- quiet hours ---
+        setUpQuietHours()
+
         // --- language ---
         val labels = listOf(
             getString(R.string.lang_system),
@@ -127,6 +130,64 @@ class SettingsActivity : BaseActivity() {
         RowStyle.PILL -> R.string.row_style_pill
         else -> R.string.row_style_classic
     }
+
+    // ------------------------------------------------------- quiet hours
+
+    /**
+     * Quiet hours are off until asked for, so the hour pickers only appear once
+     * the switch is on — an explanation of what will be silenced, and then the
+     * window, in that order.
+     */
+    private fun setUpQuietHours() {
+        val labels = (0..23).map { QuietHours.hourLabel(this, it) }
+        binding.spinnerQuietFrom.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item, labels
+        )
+        binding.spinnerQuietTo.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item, labels
+        )
+        binding.spinnerQuietFrom.setSelection(settings.quietFrom)
+        binding.spinnerQuietTo.setSelection(settings.quietTo)
+
+        binding.switchQuiet.isChecked = settings.quietHoursEnabled
+        binding.switchQuiet.setOnCheckedChangeListener { _, checked ->
+            settings.quietHoursEnabled = checked
+            applyQuietVisibility()
+        }
+
+        binding.spinnerQuietFrom.onItemSelectedListener = onHourChosen { hour ->
+            settings.quietFrom = hour
+            applyQuietVisibility()
+        }
+        binding.spinnerQuietTo.onItemSelectedListener = onHourChosen { hour ->
+            settings.quietTo = hour
+            applyQuietVisibility()
+        }
+        applyQuietVisibility()
+    }
+
+    private fun applyQuietVisibility() {
+        binding.groupQuietHours.visibility =
+            if (settings.quietHoursEnabled) View.VISIBLE else View.GONE
+        binding.textQuietWindow.text = getString(
+            R.string.quiet_window,
+            QuietHours.hourLabel(this, settings.quietFrom),
+            QuietHours.hourLabel(this, settings.quietTo)
+        )
+    }
+
+    /** Plain spinner listener; the pickers are applied as they change. */
+    private fun onHourChosen(chosen: (Int) -> Unit) =
+        object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: android.widget.AdapterView<*>?,
+                view: View?,
+                position: Int,
+                id: Long
+            ) = chosen(position)
+
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+        }
 
     // ------------------------------------------------------- cache handling
 

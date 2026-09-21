@@ -69,6 +69,25 @@ class SettingsStore(context: Context) {
         get() = prefs.getString("language", "") ?: ""
         set(v) = prefs.edit().putString("language", v).apply()
 
+    /**
+     * Quiet hours. Off by default: silently withholding a notification is a
+     * surprising thing for a messaging app to do on its own, so the user has to
+     * ask for it. See [QuietHours] for what is and is not suppressed.
+     */
+    var quietHoursEnabled: Boolean
+        get() = prefs.getBoolean("quiet_enabled", false)
+        set(v) = prefs.edit().putBoolean("quiet_enabled", v).apply()
+
+    /** Hour the quiet window starts, inclusive. */
+    var quietFrom: Int
+        get() = prefs.getInt("quiet_from", 23)
+        set(v) = prefs.edit().putInt("quiet_from", v.coerceIn(0, 23)).apply()
+
+    /** Hour the quiet window ends, exclusive. */
+    var quietTo: Int
+        get() = prefs.getInt("quiet_to", 7)
+        set(v) = prefs.edit().putInt("quiet_to", v.coerceIn(0, 23)).apply()
+
     /** 0.85 small · 1.0 normal · 1.15 large · 1.3 extra large. */
     var fontScale: Float
         get() = prefs.getFloat("font_scale", 1f)

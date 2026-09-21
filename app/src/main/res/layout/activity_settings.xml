@@ -212,6 +212,76 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- ====================== Quiet hours ======================== -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.SmsGuard.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_12">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_16">
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchQuiet"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="@dimen/touch_target"
+                        android:text="@string/quiet_enable" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_4"
+                        android:text="@string/quiet_hint"
+                        android:textAppearance="@style/TextAppearance.SmsGuard.Hint" />
+
+                    <LinearLayout
+                        android:id="@+id/groupQuietHours"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/textQuietWindow"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_12"
+                            android:textAppearance="@style/TextAppearance.SmsGuard.Section" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_8"
+                            android:text="@string/quiet_from"
+                            android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+
+                        <Spinner
+                            android:id="@+id/spinnerQuietFrom"
+                            style="@style/Widget.SmsGuard.Spinner"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="@dimen/space_8"
+                            android:text="@string/quiet_to"
+                            android:textAppearance="@style/TextAppearance.SmsGuard.Label" />
+
+                        <Spinner
+                            android:id="@+id/spinnerQuietTo"
+                            style="@style/Widget.SmsGuard.Spinner"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- ======================= Appearance ======================== -->
             <TextView
                 android:layout_width="match_parent"

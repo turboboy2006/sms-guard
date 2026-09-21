@@ -82,6 +82,14 @@
     <string name="testing">Testing…</string>
     <string name="local_section">Offline detection</string>
     <string name="threshold_hint">Suspicion threshold (10 to 95)</string>
+
+    <!-- Quiet hours. Off by default: withholding a notification is a surprising
+         thing for a messaging app to do unless it was asked for. -->
+    <string name="quiet_enable">Quiet hours</string>
+    <string name="quiet_hint">Off by default. When it is on, promotional, suspicious and spam messages that arrive inside the window are saved silently and appear in the inbox without a notification. One-time codes, bank messages and your own contacts always notify, at any hour.</string>
+    <string name="quiet_from">Quiet from</string>
+    <string name="quiet_to">Quiet until</string>
+    <string name="quiet_window">Silent from %1$s to %2$s</string>
     <string name="language">App language</string>
     <string name="lang_system">Device language</string>
     <string name="lang_fa">فارسی</string>
