@@ -8,9 +8,10 @@
 |---|---|
 | مسیر پروژه | `C:\xamp\htdocs\inod\sms-guard` |
 | مخزن | https://github.com/turboboy2006/sms-guard (**عمومی**) |
-| آخرین کامیت | `0aac8a0` — «instant load from a stored inbox, live appearance settings, contacts tab» |
-| بیلد | هر پوش → GitHub Actions → `app-debug.apk` |
-| زبان‌ها | کلیدهای `values/` و `values-fa/` باید همیشه یکسان باشند |
+| آخرین کامیت | `7a3f6f0` — «fix(inbox): remove the icon-padding call that broke the build…» |
+| آخرین بیلد | **سبز** (`run 35579111927`) |
+| APK | `dist\app-debug.apk` (~۵٫۹۷ MB، از همان بیلد سبز) |
+| زبان‌ها | ۱۸۰ کلید در `values/` و `values-fa/`، تطابق کامل |
 
 **اپ بومی اندروید است: Kotlin + Views + Material 3.** Flutter نیست.
 دسترسی به مسیر پروژه: سیاست فایل این نشست `danger-full-access` است و پوشه پروژه بیرون از
@@ -44,7 +45,7 @@ app/src/main/java/ir/inod/smsguard/
 └── ThreadAdapter · MessageAdapter · RuleAdapter
 ```
 
-## چه چیزی در نشست قبل انجام شد (کامیت `0aac8a0`)
+## چه چیزی در نشست قبل انجام شد (کامیت‌های `0aac8a0` … `7a3f6f0`)
 
 **۱) سرعت لود صندوق**
 - `ThreadCache`: فهرست گفتگوها در `filesDir/inbox-cache.tsv` ذخیره می‌شود (یک خط برای هر
@@ -85,8 +86,20 @@ app/src/main/java/ir/inod/smsguard/
 - ردیف‌ها: آواتار ۴۸dp، نام ۱۵sp بولد، پیش‌نمایش ۱۴sp دو خط، زمان ۱۱٫۵sp، جداکننده‌ی مویی
   با تورفتگی ۷۶dp (تراز با ستون متن)، ارتفاع طبیعی ردیف (قبلاً `row_min_height=112dp` بود
   که ردیف‌ها را بی‌دلیل بلند می‌کرد).
+- فرستنده‌های شخصی: دایره‌ی پاستلی با حرف اول به رنگ تیره (قابل تشخیص و آرام)، برندها با
+  آیکون و رنگ خودشان.
+- چیپ‌های فیلتر آیکون‌دار شدند.
 - گفتگو: نوار بالا سفید با تیتر تیره، دکمه‌ی ارسال دایره‌ای، حباب‌های ۱۴dp گرد.
 - حالت خالی: آیکون + متن به‌جای یک TextView خالی.
+
+**۶) سخت‌سازی پس از بازبینی (کامیت `7a3f6f0`)**
+- `ThreadCache.update` عملیات read-modify-write را اتمیک کرد؛ قبلاً پیامی که وسط یک sync
+  می‌رسید می‌توانست از کش بیفتد.
+- خواندن کش از `onCreate` به worker منتقل شد؛ به‌علاوه حذف گفتگو، read کردن thread،
+  resolve کردن threadId و ارسال پیام همه از ترد اصلی خارج شدند.
+- نام مخاطب در مسیر UI هرگز دفترچه را نمی‌سازد (`ContactsIndex.readyEntryFor`)، پس
+  ویرایش یک مخاطب باعث فریز فریم نمی‌شود.
+- `Math.floorMod` جای `abs()` در هش پالت (باگ `Int.MIN_VALUE`)، و `jobFinished(false)`.
 
 ## کارهای باقی‌مانده
 
@@ -126,6 +139,18 @@ app/src/main/java/ir/inod/smsguard/
     بی‌اثر است؛ در `activity_settings.xml` اسلایدر و مقدارش در یک `LinearLayout` افقی‌اند.
 12. **پیش‌نمایش ظاهر باید از همان کد لیست بیاید** (`RowStyler`)، وگرنه بعد از هر تغییر
     ظاهر، پیش‌نمایش دروغ می‌گوید و کاربر فکر می‌کند تنظیمات کار نمی‌کند.
+13. **`Chip` عضو `chipIconStartPadding` ندارد** (نه پراپرتی، نه attr). اگر پدینگ آیکون
+    لازم شد: `chipStartPadding` / `iconStartPadding`. این یک خط، یک بیلد کامل را سوزاند.
+14. **`Slider.setValue` استثنا می‌اندازد** اگر مقدار روی `valueFrom + k*stepSize` نباشد.
+    هر مقداری که از prefs خوانده می‌شود باید در همان setter روی step گرد شود.
+15. **`abs(hashCode())` غلط است**: برای `Int.MIN_VALUE` سرریز می‌کند و پالت را از محدوده
+    بیرون می‌زند. `Math.floorMod(hash, size)`.
+16. **کش را با `ThreadCache.update {}` تغییر بده، نه `read` + `write`.** الگوی دستی،
+    آپدیت هم‌زمانِ receiver و sync را گم می‌کند (پیام بی‌صدا ناپدید می‌شود).
+17. **در نوشتن فایل با `Set-Content`/`Out-File` متن فارسی و کاراکترهای یونیکد خراب می‌شوند.**
+    برای فایل‌های این پروژه از `[System.IO.File]::WriteAllText($p, $t, (New-Object System.Text.UTF8Encoding($false)))`
+    استفاده کن و بعدش با اسکن کاراکترهای بالای U+007E مطمئن شو چیزی خراب نشده. یک بار
+    `—` به `â€"` تبدیل شد و اگر در رشته‌ی کد بود، بیلد می‌شکست.
 
 ## ابزار بیلد و دیباگ
 
@@ -142,17 +167,26 @@ curl.exe -s -H "Accept: application/vnd.github+json" "https://api.github.com/rep
 
 **گرفتن job id و لاگ:**
 ```powershell
-$run = (curl.exe -s -H "Accept: application/vnd.github+json" "https://api.github.com/repos/turboboy2006/sms-guard/actions/runs?per_page=1" | ConvertFrom-Json).workflow_runs[0]
-$jobs = (curl.exe -s -H "Accept: application/vnd.github+json" "https://api.github.com/repos/turboboy2006/sms-guard/actions/runs/$($run.id)/jobs") | ConvertFrom-Json
-$jobs.jobs | Select-Object name,status,conclusion
-```
-
-**لاگ کامل خطای کامپایل** — اندپوینت `/logs` بدون توکن ۴۰۳ می‌دهد؛ راهی که کار می‌کند،
-توکن ذخیره‌شده‌ی GCM با redirect فایل است:
-```powershell
+# بدون توکن، API بعد از چند درخواست ۴۰۳ می‌دهد: از همان توکن GCM استفاده کن
 $in = "$env:TEMP\cred-in.txt"
 [System.IO.File]::WriteAllText($in, "protocol=https`nhost=github.com`n`n", (New-Object System.Text.ASCIIEncoding))
 $tok = ((cmd /c "git credential fill < `"$in`"" 2>&1) | Where-Object { $_ -like 'password=*' }) -replace '^password=',''
+$run = (curl.exe -s -H "Authorization: Bearer $tok" -H "Accept: application/vnd.github+json" `
+  "https://api.github.com/repos/turboboy2006/sms-guard/actions/runs?per_page=1" | ConvertFrom-Json).workflow_runs[0]
+$jobs = (curl.exe -s -H "Authorization: Bearer $tok" -H "Accept: application/vnd.github+json" `
+  "https://api.github.com/repos/turboboy2006/sms-guard/actions/runs/$($run.id)/jobs") | ConvertFrom-Json
+$jobs.jobs | Select-Object id,name,conclusion
+# دانلود خودِ APK (بدون توکن ۴۰۳ می‌دهد)
+$arts = (curl.exe -s -H "Authorization: Bearer $tok" -H "Accept: application/vnd.github+json" `
+  "https://api.github.com/repos/turboboy2006/sms-guard/actions/runs/$($run.id)/artifacts" | ConvertFrom-Json)
+curl.exe -sL -H "Authorization: Bearer $tok" -o apk.zip `
+  "https://api.github.com/repos/turboboy2006/sms-guard/actions/artifacts/$($arts.artifacts[0].id)/zip"
+Expand-Archive apk.zip -DestinationPath out -Force
+Copy-Item out\app-debug.apk dist\app-debug.apk -Force
+```
+
+**لاگ کامل خطای کامپایل** — همان توکن بالا:
+```powershell
 curl.exe -sL -H "Authorization: Bearer $tok" -o log.txt `
   "https://api.github.com/repos/turboboy2006/sms-guard/actions/jobs/<jobId>/logs"
 Select-String -Path log.txt -Pattern 'e: file:///'
