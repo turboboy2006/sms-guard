@@ -291,4 +291,12 @@
     <string name="campaign_spam">اسپم شناخته‌شده</string>
     <string name="campaign_detected">در حال بررسی</string>
     <string name="campaign_summary">%1$d پیام مشابه · %2$d فرستنده · %3$s</string>
+    <string name="scheduled_messages">پیام‌های زمان‌بندی‌شده</string>
+    <string name="no_scheduled">پیام زمان‌بندی‌شده‌ای نیست</string>
+    <string name="cancel_scheduled">لغو پیام زمان‌بندی‌شده</string>
+    <string name="message_scheduled">پیام زمان‌بندی شد</string>
+    <string name="add_recipient">افزودن گیرنده</string>
+    <string name="recipient_count">%1$d گیرنده</string>
+    <string name="group_sent_report">برای %1$d از %2$d گیرنده ارسال شد</string>
+    <string name="sender_with_count">%1$s · %2$d پیام</string>
 </resources>

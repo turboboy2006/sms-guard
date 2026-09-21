@@ -38,6 +38,7 @@
             android:name=".SearchActivity"
             android:exported="false" />
         <activity android:name=".CampaignsActivity" android:exported="false" />
+        <activity android:name=".ScheduledMessagesActivity" android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -139,6 +140,10 @@
         -->
         <service
             android:name=".InboxSyncJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service
+            android:name=".ScheduledSmsJob"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 

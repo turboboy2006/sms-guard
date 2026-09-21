@@ -40,6 +40,7 @@ class ConversationActivity : BaseActivity() {
         private const val MENU_TRASH_THREAD = 1010
         private const val MENU_DELETE_THREAD = 1011
         private const val MENU_SEARCH_THREAD = 1012
+        private const val MENU_ADD_RECIPIENT = 1013
     }
 
     private lateinit var binding: ActivityConversationBinding
@@ -53,6 +54,7 @@ class ConversationActivity : BaseActivity() {
     private var messageLimit = 500
     private var loadingMessages = false
     private var lastMessages: List<SmsMessage> = emptyList()
+    private val additionalRecipients = linkedSetOf<String>()
     private val drafts by lazy { getSharedPreferences("conversation_drafts", MODE_PRIVATE) }
     private val deliveryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) { load() }
@@ -108,6 +110,7 @@ class ConversationActivity : BaseActivity() {
         })
 
         binding.buttonSend.setOnClickListener { sendCurrent() }
+        binding.buttonSend.setOnLongClickListener { scheduleCurrent(); true }
         binding.buttonPickRecipient.setOnClickListener { pickRecipient() }
         binding.buttonNotSpam.setOnClickListener { markConversationSafe() }
         binding.buttonRiskBlock.setOnClickListener { showSenderMenu() }
@@ -283,20 +286,38 @@ class ConversationActivity : BaseActivity() {
         // Sending writes to the provider (and to the stored inbox) before
         // returning, so it belongs on the same worker as everything else.
         worker.execute {
-            val sent = try {
-                repo.send(address, text)
+            val targets = listOf(address) + additionalRecipients
+            val sentCount = try {
+                targets.count { repo.send(it, text) }
             } catch (t: Throwable) {
-                false
+                0
             }
-            if (!sent) {
+            if (sentCount != targets.size) {
                 runOnUiThread {
                     if (!isFinishing && !isDestroyed) {
                         Toast.makeText(this, R.string.send_failed, Toast.LENGTH_SHORT).show()
                     }
                 }
+            } else if (targets.size > 1) runOnUiThread {
+                Toast.makeText(this, getString(R.string.group_sent_report, sentCount, targets.size), Toast.LENGTH_SHORT).show()
             }
             load()
         }
+    }
+
+    private fun scheduleCurrent() {
+        val text = binding.editMessage.text?.toString()?.trim().orEmpty()
+        if (text.isBlank() || address.isBlank()) return
+        val calendar = java.util.Calendar.getInstance().apply { add(java.util.Calendar.HOUR_OF_DAY, 1) }
+        android.app.DatePickerDialog(this, { _, year, month, day ->
+            android.app.TimePickerDialog(this, { _, hour, minute ->
+                calendar.set(year, month, day, hour, minute, 0)
+                val targets = listOf(address) + additionalRecipients
+                val ok = targets.all { ScheduledSmsStore(this).schedule(it, text, calendar.timeInMillis) }
+                if (ok) { binding.editMessage.setText(""); drafts.edit().remove(address).apply() }
+                Toast.makeText(this, if (ok) R.string.message_scheduled else R.string.send_failed, Toast.LENGTH_SHORT).show()
+            }, calendar.get(java.util.Calendar.HOUR_OF_DAY), calendar.get(java.util.Calendar.MINUTE), true).show()
+        }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH)).show()
     }
 
     /**
@@ -349,6 +370,7 @@ class ConversationActivity : BaseActivity() {
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_DELETE_THREAD, 8, R.string.delete_forever)
         menu.add(0, MENU_SEARCH_THREAD, 9, R.string.search_conversation)
+        menu.add(0, MENU_ADD_RECIPIENT, 10, R.string.add_recipient)
         return true
     }
 
@@ -366,6 +388,7 @@ class ConversationActivity : BaseActivity() {
         menu.findItem(MENU_TRASH_THREAD)?.isVisible = !selecting && threadId >= 0
         menu.findItem(MENU_DELETE_THREAD)?.isVisible = !selecting && threadId >= 0
         menu.findItem(MENU_SEARCH_THREAD)?.isVisible = !selecting && threadId >= 0
+        menu.findItem(MENU_ADD_RECIPIENT)?.isVisible = !selecting && address.isNotBlank()
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -410,6 +433,7 @@ class ConversationActivity : BaseActivity() {
             MENU_TRASH_THREAD -> { moveConversationToTrash(); return true }
             MENU_DELETE_THREAD -> { confirmDeleteConversation(); return true }
             MENU_SEARCH_THREAD -> { searchConversation(); return true }
+            MENU_ADD_RECIPIENT -> { addGroupRecipient(); return true }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -606,6 +630,13 @@ class ConversationActivity : BaseActivity() {
 
     /** Sender controls live behind the tappable conversation title. */
     private fun showSenderMenu() {
+        worker.execute {
+            val count = if (threadId >= 0) repo.messageCount(threadId) else 0
+            runOnUiThread { if (!isFinishing && !isDestroyed) showSenderMenuNow(count) }
+        }
+    }
+
+    private fun showSenderMenuNow(messageCount: Int) {
         val store = SenderStore(this)
         val muted = store.notificationsMuted(address)
         val options = arrayOf(
@@ -616,10 +647,13 @@ class ConversationActivity : BaseActivity() {
             getString(R.string.block_sender)
         )
         MaterialAlertDialogBuilder(this)
-            .setTitle(ContactNames.displayNameUi(address))
+            .setTitle(getString(R.string.sender_with_count, ContactNames.displayNameUi(address), messageCount))
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:${android.net.Uri.encode(address)}")))
+                    0 -> {
+                        SenderProfileStore(this).recordFeedback(address, false)
+                        startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:${android.net.Uri.encode(address)}")))
+                    }
                     1 -> {
                         store.setNotificationsMuted(address, !muted)
                         Toast.makeText(this, if (muted) R.string.notifications_enabled else R.string.notifications_muted, Toast.LENGTH_SHORT).show()
@@ -698,6 +732,14 @@ class ConversationActivity : BaseActivity() {
                 if (position >= 0) binding.recyclerMessages.smoothScrollToPosition(position)
                 else Toast.makeText(this, R.string.search_no_results, Toast.LENGTH_SHORT).show()
             }.show()
+    }
+
+    private fun addGroupRecipient() {
+        RecipientPicker(this).show(this) { recipient ->
+            if (recipient != address) additionalRecipients += recipient
+            supportActionBar?.subtitle = if (additionalRecipients.isEmpty()) null
+            else getString(R.string.recipient_count, additionalRecipients.size + 1)
+        }
     }
 
     @Deprecated("Handled for selection mode")

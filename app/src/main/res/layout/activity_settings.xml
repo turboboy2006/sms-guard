@@ -478,6 +478,15 @@
                         android:text="@string/rules" />
 
                     <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonScheduled"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="start|center_vertical"
+                        android:minHeight="@dimen/touch_target"
+                        android:text="@string/scheduled_messages" />
+
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonExportBackup"
                         style="@style/Widget.Material3.Button.TextButton"
                         android:layout_width="match_parent"

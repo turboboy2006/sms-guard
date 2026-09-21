@@ -315,4 +315,12 @@
     <string name="campaign_spam">marked spam</string>
     <string name="campaign_detected">under observation</string>
     <string name="campaign_summary">%1$d similar messages · %2$d senders · %3$s</string>
+    <string name="scheduled_messages">Scheduled messages</string>
+    <string name="no_scheduled">No scheduled messages</string>
+    <string name="cancel_scheduled">Cancel scheduled message</string>
+    <string name="message_scheduled">Message scheduled</string>
+    <string name="add_recipient">Add recipient</string>
+    <string name="recipient_count">%1$d recipients</string>
+    <string name="group_sent_report">Sent to %1$d of %2$d recipients</string>
+    <string name="sender_with_count">%1$s · %2$d messages</string>
 </resources>

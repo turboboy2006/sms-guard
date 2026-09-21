@@ -123,6 +123,9 @@ class SettingsActivity : BaseActivity() {
         binding.buttonRules.setOnClickListener {
             startActivity(Intent(this, RulesActivity::class.java))
         }
+        binding.buttonScheduled.setOnClickListener {
+            startActivity(Intent(this, ScheduledMessagesActivity::class.java))
+        }
         binding.buttonExportBackup.setOnClickListener {
             exportBackup.launch("sms-guard-backup.json")
         }

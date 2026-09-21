@@ -250,6 +250,13 @@ class SmsRepository(private val context: Context) {
         return if (out.size > limit) out.takeLast(limit) else out
     }
 
+    fun messageCount(threadId: Long): Int = try {
+        resolver.query(
+            Telephony.Sms.CONTENT_URI, arrayOf(Telephony.Sms._ID),
+            "${Telephony.Sms.THREAD_ID} = ?", arrayOf(threadId.toString()), null
+        )?.use { it.count } ?: 0
+    } catch (_: Exception) { 0 }
+
     /**
      * Called from the SMS receiver for a single new message, so the stored inbox
      * is already correct the next time the app is opened — even if the app
