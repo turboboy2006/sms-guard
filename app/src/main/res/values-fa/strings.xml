@@ -331,6 +331,16 @@
     <string name="note_optional">یادداشت (اختیاری)</string>
     <string name="message_saved">پیام به‌صورت محلی ذخیره شد</string>
     <string name="text_size_saved">اندازه متن ذخیره شد</string>
+    <string name="background_style">پس‌زمینه</string>
+    <string name="chat_background">پس‌زمینه گفتگو</string>
+    <string name="background_follow_global">استفاده از پس‌زمینه کلی</string>
+    <string name="background_clean">ساده</string>
+    <string name="background_mist">مه صبحگاهی</string>
+    <string name="background_aurora">شفق</string>
+    <string name="background_dusk">غروب آرام</string>
+    <string name="background_bloom">شکوفه</string>
+    <string name="background_photo">انتخاب عکس</string>
+    <string name="background_remove_photo">حذف عکس</string>
     <string name="trash_retention">پاک‌سازی خودکار سطل زباله</string>
     <string name="trash_keep_forever">برای همیشه نگه‌دار</string>
     <string name="trash_days">حذف پس از %1$d روز</string>

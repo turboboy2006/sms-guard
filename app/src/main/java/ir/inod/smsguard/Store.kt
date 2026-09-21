@@ -272,6 +272,15 @@ class ThemePrefs(context: Context) {
             "color_scheme", if (v in ThemePalette.IDS) v else ThemePalette.OCEAN
         ).apply()
 
+    var backgroundStyle: String
+        get() = prefs.getString("background_style", BackgroundStyle.CLEAN) ?: BackgroundStyle.CLEAN
+        set(v) = prefs.edit().putString("background_style", BackgroundStyle.valid(v)).apply()
+
+    /** Persisted document URI chosen by the user for the global chat backdrop. */
+    var backgroundImageUri: String?
+        get() = prefs.getString("background_image_uri", null)
+        set(v) = prefs.edit().putString("background_image_uri", v).apply()
+
     fun accentColor(): Int = android.graphics.Color.parseColor(ThemePalette.hex(colorScheme))
 
     fun snapshot(): RowLayout = RowLayout(
@@ -307,6 +316,16 @@ class ThemePrefs(context: Context) {
         private set(v) = prefs.edit().putInt("revision", v).apply()
 
     fun touch() = revision.also { revision = it + 1 }
+}
+
+object BackgroundStyle {
+    const val CLEAN = "clean"
+    const val MIST = "mist"
+    const val AURORA = "aurora"
+    const val DUSK = "dusk"
+    const val BLOOM = "bloom"
+    val IDS = listOf(CLEAN, MIST, AURORA, DUSK, BLOOM)
+    fun valid(value: String) = value.takeIf { it in IDS } ?: CLEAN
 }
 
 /** Numeric ids for the ten row looks offered on the settings screen. */
@@ -558,7 +577,9 @@ class CategoryStore(context: Context) {
 
     fun all(): List<Category> = (systemCategories() + custom()).sortedBy { it.order }
 
-    fun active(): List<Category> = all().filter { it.enabled }
+    // "Uncategorized" is the safe landing place for a disabled category, so it
+    // must always remain reachable even if somebody toggled it off previously.
+    fun active(): List<Category> = all().filter { it.enabled || it.id == Cat.OTHER }
 
     fun byId(id: String): Category? = all().firstOrNull { it.id == id }
 
@@ -657,6 +678,19 @@ class SenderStore(context: Context) {
 
     fun setNotificationsMuted(sender: String, muted: Boolean) {
         put(sender, entry(sender).apply { put("muted", muted) })
+    }
+
+    fun backgroundFor(sender: String): String? = entry(sender).optString("background").ifBlank { null }
+    fun setBackground(sender: String, style: String?) {
+        val o = entry(sender)
+        if (style.isNullOrBlank()) o.remove("background") else o.put("background", style)
+        put(sender, o)
+    }
+    fun backgroundImageFor(sender: String): String? = entry(sender).optString("background_image").ifBlank { null }
+    fun setBackgroundImage(sender: String, uri: String?) {
+        val o = entry(sender)
+        if (uri.isNullOrBlank()) o.remove("background_image") else o.put("background_image", uri)
+        put(sender, o)
     }
 
     fun notificationSound(sender: String): String? = entry(sender).optString("sound").ifBlank { null }

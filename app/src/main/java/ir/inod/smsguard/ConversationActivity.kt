@@ -76,6 +76,12 @@ class ConversationActivity : BaseActivity() {
         Notifier(this).resetSenderChannel(address)
         Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
     }
+    private val chatPhotoPicker = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        uri ?: return@registerForActivityResult
+        runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        SenderStore(this).setBackgroundImage(address, uri.toString())
+        applyAppearance()
+    }
 
     /** What the current list was drawn with, so a change can be detected. */
     private var drawnLayout: MessageLayout? = null
@@ -239,6 +245,9 @@ class ConversationActivity : BaseActivity() {
         binding.buttonSend.background?.mutate()?.let {
             DrawableCompat.setTint(it, theme.accentColor())
         }
+        val sender = SenderStore(this)
+        BackgroundRenderer.apply(binding.root, this, sender.backgroundFor(address) ?: theme.backgroundStyle,
+            sender.backgroundImageFor(address) ?: theme.backgroundImageUri)
     }
 
     private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
@@ -731,6 +740,7 @@ class ConversationActivity : BaseActivity() {
             getString(R.string.call_sender),
             getString(if (muted) R.string.enable_notifications else R.string.mute_notifications),
             getString(R.string.notification_sound),
+            getString(R.string.chat_background),
             getString(R.string.sender_reply_sim),
             getString(R.string.change_category),
             getString(R.string.block_sender)
@@ -748,9 +758,27 @@ class ConversationActivity : BaseActivity() {
                         Toast.makeText(this, if (muted) R.string.notifications_enabled else R.string.notifications_muted, Toast.LENGTH_SHORT).show()
                     }
                     2 -> pickNotificationSound()
-                    3 -> pickSenderSim()
-                    4 -> pickSenderCategory()
-                    5 -> blockRiskySender()
+                    3 -> pickChatBackground()
+                    4 -> pickSenderSim()
+                    5 -> pickSenderCategory()
+                    6 -> blockRiskySender()
+                }
+            }.show()
+    }
+
+    private fun pickChatBackground() {
+        val labels = listOf(
+            R.string.background_clean, R.string.background_mist, R.string.background_aurora,
+            R.string.background_dusk, R.string.background_bloom, R.string.background_photo,
+            R.string.background_follow_global, R.string.background_remove_photo
+        ).map { getString(it) }.toTypedArray()
+        MaterialAlertDialogBuilder(this).setTitle(R.string.chat_background)
+            .setItems(labels) { _, which ->
+                when (which) {
+                    BackgroundStyle.IDS.size -> chatPhotoPicker.launch(arrayOf("image/*"))
+                    BackgroundStyle.IDS.size + 1 -> { SenderStore(this).setBackground(address, null); SenderStore(this).setBackgroundImage(address, null); applyAppearance() }
+                    BackgroundStyle.IDS.size + 2 -> { SenderStore(this).setBackgroundImage(address, null); applyAppearance() }
+                    else -> { SenderStore(this).setBackground(address, BackgroundStyle.IDS[which]); applyAppearance() }
                 }
             }.show()
     }

@@ -1,6 +1,7 @@
 package ir.inod.smsguard
 
 import android.os.Bundle
+import android.content.Intent
 import android.view.MenuItem
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
@@ -22,6 +23,13 @@ class AppearanceActivity : BaseActivity() {
 
     /** Guard so programmatic spinner updates do not write back. */
     private var bindingUi = false
+    private val backgroundPhotoPicker = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        uri ?: return@registerForActivityResult
+        runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        theme.backgroundImageUri = uri.toString()
+        theme.touch()
+        BackgroundRenderer.apply(binding.preview, this, theme.backgroundStyle, theme.backgroundImageUri)
+    }
 
     private val listFontScales = listOf(0.9f, 1f, 1.1f, 1.25f, 1.4f)
     private val messageFontScales = listOf(0.9f, 1f, 1.15f, 1.3f, 1.5f)
@@ -57,6 +65,7 @@ class AppearanceActivity : BaseActivity() {
         setUpSwitches()
         setUpPresets()
         setUpPalettes()
+        binding.buttonBackground.setOnClickListener { chooseGlobalBackground() }
         binding.buttonReset.setOnClickListener { reset() }
         refresh()
     }
@@ -181,6 +190,22 @@ class AppearanceActivity : BaseActivity() {
             theme.touch()
             refresh()
         }
+    }
+
+    private fun chooseGlobalBackground() {
+        val labels = listOf(
+            R.string.background_clean, R.string.background_mist, R.string.background_aurora,
+            R.string.background_dusk, R.string.background_bloom
+        ).map { getString(it) }.toTypedArray()
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.background_style)
+            .setSingleChoiceItems(labels, BackgroundStyle.IDS.indexOf(theme.backgroundStyle).coerceAtLeast(0)) { dialog, which ->
+                theme.backgroundStyle = BackgroundStyle.IDS[which]
+                theme.touch()
+                BackgroundRenderer.apply(binding.preview, this, theme.backgroundStyle, theme.backgroundImageUri)
+                dialog.dismiss()
+            }.setNeutralButton(R.string.background_photo) { _, _ -> backgroundPhotoPicker.launch(arrayOf("image/*")) }
+            .setNegativeButton(R.string.background_remove_photo) { _, _ -> theme.backgroundImageUri = null; theme.touch(); refresh() }.show()
     }
 
     // ------------------------------------------------------------- helpers

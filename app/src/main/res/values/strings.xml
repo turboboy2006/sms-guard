@@ -355,6 +355,16 @@
     <string name="note_optional">Note (optional)</string>
     <string name="message_saved">Message saved locally</string>
     <string name="text_size_saved">Text size saved</string>
+    <string name="background_style">Background</string>
+    <string name="chat_background">Chat background</string>
+    <string name="background_follow_global">Use global background</string>
+    <string name="background_clean">Clean</string>
+    <string name="background_mist">Morning mist</string>
+    <string name="background_aurora">Aurora</string>
+    <string name="background_dusk">Dusk</string>
+    <string name="background_bloom">Bloom</string>
+    <string name="background_photo">Choose photo</string>
+    <string name="background_remove_photo">Remove photo</string>
     <string name="trash_retention">Automatic trash cleanup</string>
     <string name="trash_keep_forever">Keep forever</string>
     <string name="trash_days">Delete after %1$d days</string>

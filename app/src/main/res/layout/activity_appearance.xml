@@ -179,6 +179,14 @@
             </com.google.android.material.card.MaterialCardView>
 
             <!-- ========================== Text =========================== -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonBackground"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_12"
+                android:text="@string/background_style" />
+
             <com.google.android.material.card.MaterialCardView
                 style="@style/Widget.SmsGuard.Card"
                 android:layout_width="match_parent"

@@ -307,6 +307,7 @@ class MainActivity : BaseActivity() {
         applyChipVisibility()
         applyListPadding()
         applyPalette()
+        BackgroundRenderer.apply(binding.root, this, theme.backgroundStyle, theme.backgroundImageUri)
     }
 
     private fun applyPalette() {
