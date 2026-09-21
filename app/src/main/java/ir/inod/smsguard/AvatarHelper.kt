@@ -56,17 +56,21 @@ object AvatarHelper {
     )
 
     fun softPair(key: String): Pair<Int, Int> {
-        val hash = key.hashCode().let { if (it < 0) -it else it }
-        val entry = MONOGRAM_PASTELS[hash % MONOGRAM_PASTELS.size]
+        val entry = MONOGRAM_PASTELS[indexFor(key, MONOGRAM_PASTELS.size)]
         return Color.parseColor(entry.first) to Color.parseColor(entry.second)
     }
 
+    /**
+     * A non-negative bucket for a key.
+     *
+     * `abs(hashCode())` is wrong: for `Int.MIN_VALUE` the negation overflows and
+     * stays negative, which indexes the palette out of bounds. `floorMod` cannot.
+     */
+    private fun indexFor(key: String, size: Int): Int = Math.floorMod(key.hashCode(), size)
+
     fun isUnknown(name: String): Boolean = name.trim().isEmpty() || monogram(name) == null
 
-    fun colorFor(key: String): Int {
-        val hash = key.hashCode().let { if (it < 0) -it else it }
-        return Color.parseColor(COLORS[hash % COLORS.size])
-    }
+    fun colorFor(key: String): Int = Color.parseColor(COLORS[indexFor(key, COLORS.size)])
 
     fun placeholderColor(): Int = Color.parseColor(GRAY)
 

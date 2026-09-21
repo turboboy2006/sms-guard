@@ -52,12 +52,13 @@ class MainActivity : BaseActivity() {
     private val senderStore by lazy { SenderStore(this) }
     private val messageCats by lazy { MessageCategoryStore(this) }
 
+    /** Volatile: written on the main thread, read from the worker to size the skeleton. */
+    @Volatile
     private var allThreads: List<ThreadSummary> = emptyList()
     private var selectedTab = TAB_ALL
     private var query: String = ""
     private var rendered: List<ThreadSummary> = emptyList()
     private var drawnLayout: RowLayout? = null
-    private var firstLoadDone = false
     private var loadedFromCache = false
 
     private val worker = Executors.newSingleThreadExecutor()
@@ -127,9 +128,11 @@ class MainActivity : BaseActivity() {
             }
         }
 
-        // The stored inbox is on screen before the provider is even queried.
-        showCachedThreads()
+        // The stored inbox is on screen before the provider is even queried —
+        // but it is read off the main thread, because at this point the cache
+        // file can be at its largest.
         ensurePermissions()
+        loadCachedThreads()
     }
 
     /**
@@ -180,7 +183,6 @@ class MainActivity : BaseActivity() {
                 chipStrokeWidth = 0f
                 chipStartPadding = 10f * density
                 chipEndPadding = 12f * density
-                chipIconStartPadding = 0f
                 chipCornerRadius = 16f * density
                 chipMinHeight = 44f * density
                 // The Kotlin property is private; the public setter is not.
@@ -310,19 +312,29 @@ class MainActivity : BaseActivity() {
     /**
      * Paints whatever the last session stored, without touching the provider.
      * This is the step that takes the cold start from seconds to a frame.
+     *
+     * Reading the cache is a file read plus a parse, so it runs on the worker
+     * and the rows are handed to the main thread in one go. The skeleton is
+     * already on screen, so this only has to be quick, not instant.
      */
-    private fun showCachedThreads() {
-        if (allThreads.isNotEmpty()) return
-        val cached = try {
-            repo.cachedThreads()
-        } catch (t: Throwable) {
-            emptyList()
+    private fun loadCachedThreads() {
+        if (allThreads.isNotEmpty() || loadedFromCache) return
+        worker.execute {
+            val cached = try {
+                repo.cachedThreads()
+            } catch (t: Throwable) {
+                emptyList()
+            }
+            if (cached.isEmpty()) return@execute
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (allThreads.isNotEmpty()) return@runOnUiThread
+                loadedFromCache = true
+                allThreads = cached
+                showSkeleton(false)
+                applyFilter()
+            }
         }
-        if (cached.isEmpty()) return
-        loadedFromCache = true
-        allThreads = cached
-        showSkeleton(false)
-        applyFilter()
     }
 
     /**
@@ -353,7 +365,6 @@ class MainActivity : BaseActivity() {
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 if (threads.isNotEmpty()) allThreads = threads
-                firstLoadDone = true
                 showSkeleton(false)
                 applyFilter()
                 if (BuildConfig.DEBUG) {
@@ -474,7 +485,7 @@ class MainActivity : BaseActivity() {
             byTab.filter {
                 it.snippet.lowercase().contains(needle) ||
                     it.address.lowercase().contains(needle) ||
-                    ContactNames.displayName(this, it.address).lowercase().contains(needle)
+                    ContactNames.displayNameUi(it.address).lowercase().contains(needle)
             }
         }
 
@@ -516,7 +527,7 @@ class MainActivity : BaseActivity() {
             getString(R.string.block_sender)
         )
         MaterialAlertDialogBuilder(this)
-            .setTitle(ContactNames.displayName(this, thread.address))
+            .setTitle(ContactNames.displayNameUi(thread.address))
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> pickCategory(thread)
@@ -547,7 +558,7 @@ class MainActivity : BaseActivity() {
      * app and has no undo, so the sender is named back in the confirmation.
      */
     private fun showTrashOptions(thread: ThreadSummary) {
-        val label = ContactNames.displayName(this, thread.address)
+        val label = ContactNames.displayNameUi(thread.address)
         val options = arrayOf(
             getString(R.string.delete_forever),
             getString(R.string.delete_all)
@@ -569,24 +580,43 @@ class MainActivity : BaseActivity() {
             .show()
     }
 
+    /**
+     * Deletion is a provider write plus a cache invalidation, so it runs on the
+     * worker and reloads the list when it is done.
+     */
     private fun deleteThreadForever(thread: ThreadSummary) {
-        if (repo.deleteThread(thread.threadId)) {
+        worker.execute {
+            val deleted = try {
+                repo.deleteThread(thread.threadId)
+            } catch (t: Throwable) {
+                false
+            }
             Classifier.invalidateCaches()
-            ThreadCache.clear(this)
-            loadThreads()
-            toast(R.string.cleared)
-        } else {
-            toast(R.string.send_failed)
+            if (deleted) ThreadCache.clear(this)
+            main.post {
+                if (isFinishing || isDestroyed) return@post
+                toast(if (deleted) R.string.cleared else R.string.send_failed)
+                loadThreads()
+            }
         }
     }
 
     private fun emptyTrash() {
-        allThreads.filter { it.categoryId == Cat.TRASH }
-            .forEach { repo.deleteThread(it.threadId) }
-        Classifier.invalidateCaches()
-        ThreadCache.clear(this)
-        loadThreads()
-        toast(R.string.cleared)
+        val victims = allThreads.filter { it.categoryId == Cat.TRASH }.map { it.threadId }
+        worker.execute {
+            try {
+                victims.forEach { repo.deleteThread(it) }
+            } catch (t: Throwable) {
+                // Whatever was deleted stays deleted; the reload shows the rest.
+            }
+            Classifier.invalidateCaches()
+            ThreadCache.clear(this)
+            main.post {
+                if (isFinishing || isDestroyed) return@post
+                toast(R.string.cleared)
+                loadThreads()
+            }
+        }
     }
 
     /** Every state-changing choice passes through here, so nothing is one-tap. */

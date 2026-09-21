@@ -180,37 +180,39 @@ class SmsRepository(private val context: Context) {
             val threadId = threadIdFor(address)
             if (threadId < 0) return
             val categoryId = categoryFor(address, body, messageId)
-            val updated = ThreadCache.read(context).toMutableList()
-            val index = updated.indexOfFirst { it.threadId == threadId }
-            val previous = if (index >= 0) updated[index] else null
-            val row = CachedThread(
-                threadId = threadId,
-                messageId = messageId,
-                address = address,
-                snippet = body,
-                date = date,
-                unreadCount = 1,
-                categoryId = categoryId,
-                colorHex = colorFor(address, categoryId),
-                riskLabel = if (categoryId == Cat.SUSPICIOUS) {
-                    Classifier.riskLabel(context, address, body)
-                } else {
-                    null
-                },
-                // keyed on the real row id when the provider gave us one
-                known = messageId >= 0
-            )
-            if (index >= 0) updated[index] = row else updated.add(0, row)
-            // A sender can be promoted into a category that remembers it, in
-            // which case the rest of its rows belong in the new place too.
-            if (previous != null && previous.categoryId != categoryId) {
-                for (i in updated.indices) {
-                    if (updated[i].threadId == threadId) {
-                        updated[i] = updated[i].copy(categoryId = categoryId)
+            ThreadCache.update(context) { current ->
+                val updated = current.toMutableList()
+                val index = updated.indexOfFirst { it.threadId == threadId }
+                val previous = if (index >= 0) updated[index] else null
+                val row = CachedThread(
+                    threadId = threadId,
+                    messageId = messageId,
+                    address = address,
+                    snippet = body,
+                    date = date,
+                    unreadCount = 1,
+                    categoryId = categoryId,
+                    colorHex = colorFor(address, categoryId),
+                    riskLabel = if (categoryId == Cat.SUSPICIOUS) {
+                        Classifier.riskLabel(context, address, body)
+                    } else {
+                        null
+                    },
+                    // keyed on the real row id when the provider gave us one
+                    known = messageId >= 0
+                )
+                if (index >= 0) updated[index] = row else updated.add(0, row)
+                // A sender can be promoted into a category that remembers it,
+                // in which case the rest of its rows belong in the new place too.
+                if (previous != null && previous.categoryId != categoryId) {
+                    for (i in updated.indices) {
+                        if (updated[i].threadId == threadId) {
+                            updated[i] = updated[i].copy(categoryId = categoryId)
+                        }
                     }
                 }
+                updated
             }
-            ThreadCache.write(context, updated)
         } catch (e: Exception) {
             // A cache miss is never worth crashing a receiver over.
         }
@@ -221,17 +223,19 @@ class SmsRepository(private val context: Context) {
         try {
             val threadId = threadIdFor(address)
             if (threadId < 0) return
-            val updated = ThreadCache.read(context).toMutableList()
-            val index = updated.indexOfFirst { it.threadId == threadId }
-            if (index < 0) return
-            updated[index] = updated[index].copy(
-                snippet = body,
-                date = date,
-                unreadCount = 0
-            )
-            val row = updated.removeAt(index)
-            updated.add(0, row)
-            ThreadCache.write(context, updated)
+            ThreadCache.update(context) { current ->
+                val updated = current.toMutableList()
+                val index = updated.indexOfFirst { it.threadId == threadId }
+                if (index < 0) return@update current
+                updated[index] = updated[index].copy(
+                    snippet = body,
+                    date = date,
+                    unreadCount = 0
+                )
+                val row = updated.removeAt(index)
+                updated.add(0, row)
+                updated
+            }
         } catch (e: Exception) {
             // ignore
         }

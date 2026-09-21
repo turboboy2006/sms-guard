@@ -65,12 +65,15 @@ object ThreadCache {
     private var memory: List<CachedThread>? = null
     private var memoryNewestId: Long = -1L
 
-    fun read(context: Context): List<CachedThread> = synchronized(lock) {
+    fun read(context: Context): List<CachedThread> = synchronized(lock) { readLocked(context) }
+
+    /** Caller must already hold [lock]. */
+    private fun readLocked(context: Context): List<CachedThread> {
         memory?.let { return it }
         val loaded = runCatching { parse(file(context).readText()) }.getOrDefault(emptyList())
         memory = loaded
         memoryNewestId = loaded.firstOrNull()?.messageId ?: -1L
-        loaded
+        return loaded
     }
 
     /**
@@ -88,15 +91,27 @@ object ThreadCache {
             memory = threads
             memoryNewestId = threads.firstOrNull()?.messageId ?: -1L
         }
-        runCatching {
-            val target = file(context)
-            // Write beside the real file and swap: a crash mid-write then leaves
-            // the previous cache intact instead of a truncated one.
-            val temp = File(target.parentFile, "$FILE_NAME.tmp")
-            temp.writeText(serialize(threads))
-            if (target.exists()) target.delete()
-            temp.renameTo(target)
+        persist(context, threads)
+    }
+
+    /**
+     * Read-modify-write under one lock.
+     *
+     * The SMS receiver patches the cache from its own thread while a sync or a
+     * background job may be writing the whole list. Doing `read`, mutate, then
+     * `write` at the call site loses whichever update landed in between — which
+     * shows up as a message that quietly is not in the inbox until the next
+     * provider pass. This closes that window.
+     */
+    fun update(context: Context, transform: (List<CachedThread>) -> List<CachedThread>) {
+        val updated = synchronized(lock) {
+            val current = readLocked(context)
+            val next = transform(current)
+            memory = next
+            memoryNewestId = next.firstOrNull()?.messageId ?: -1L
+            next
         }
+        persist(context, updated)
     }
 
     fun clear(context: Context) {
@@ -110,6 +125,21 @@ object ThreadCache {
     fun size(context: Context): Int = read(context).size
 
     private fun file(context: Context) = File(context.applicationContext.filesDir, FILE_NAME)
+
+    /**
+     * Writes the file, outside the lock so a slow disk cannot stall the SMS
+     * receiver. Write beside the real file and swap, so a crash mid-write
+     * leaves the previous cache intact instead of a truncated one.
+     */
+    private fun persist(context: Context, threads: List<CachedThread>) {
+        runCatching {
+            val target = file(context)
+            val temp = File(target.parentFile, "$FILE_NAME.tmp")
+            temp.writeText(serialize(threads))
+            if (target.exists()) target.delete()
+            temp.renameTo(target)
+        }
+    }
 
     // ------------------------------------------------------------- serialising
 

@@ -87,15 +87,15 @@ object ContactsIndex {
     }
 
     /**
-     * True only when the address book is already in memory.
+     * True only when the address book is already in memory and still fresh.
      *
-     * Used by the inbox filter, which runs on the main thread: reading the
-     * address book is a background job here, and if it has not finished yet the
-     * right answer is "not yet", not a frozen frame.
+     * Used by anything that runs on the main thread: reading the address book is
+     * a background job here, and if it has not finished yet the right answer is
+     * "not yet", not a frozen frame.
      */
     fun isReady(): Boolean {
         val current = index ?: return false
-        return !current.isEmpty || System.currentTimeMillis() - builtAt < TTL_MS
+        return !current.isEmpty && System.currentTimeMillis() - builtAt < TTL_MS
     }
 
     /** The matching entry without ever building the index. */

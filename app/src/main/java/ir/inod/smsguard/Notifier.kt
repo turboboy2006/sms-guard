@@ -67,4 +67,18 @@ object ContactNames {
         if (address.isBlank()) return address
         return ContactsIndex.nameFor(context, address) ?: address
     }
+
+    /**
+     * The same, but never reads the provider itself.
+     *
+     * Used by anything that runs while the user is looking at a frame — a row
+     * bind, a filter pass. If the index is not in memory yet the address is
+     * shown as-is for this frame, and the next build after the background index
+     * finishes shows the name. A brief phone number is a much better outcome
+     * than a frozen list.
+     */
+    fun displayNameUi(address: String): String {
+        if (address.isBlank()) return address
+        return ContactsIndex.readyEntryFor(address)?.name ?: address
+    }
 }

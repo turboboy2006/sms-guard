@@ -155,7 +155,7 @@ class ThreadAdapter(
      */
     private fun displayName(context: Context, address: String): String =
         nameCache.getOrPut(address) {
-            val contact = ContactNames.displayName(context, address)
+            val contact = ContactNames.displayNameUi(address)
             if (contact == address) {
                 // No contact: let the brand catalogue name a known sender ID.
                 BrandCatalog.find(address, "")?.displayName ?: address

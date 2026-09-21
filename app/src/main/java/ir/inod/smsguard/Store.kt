@@ -96,6 +96,9 @@ class SettingsStore(context: Context) {
     }
 }
 
+/** Rounds a length down to the nearest multiple of [step], never below it. */
+private fun snap(value: Int, step: Int): Int = (value / step) * step
+
 /**
  * Appearance preferences.
  *
@@ -125,7 +128,9 @@ class ThemePrefs(context: Context) {
     /** Vertical padding inside a conversation row. */
     var rowPadding: Int
         get() = prefs.getInt("row_pad", 12)
-        set(v) = prefs.edit().putInt("row_pad", v.coerceIn(4, 28)).apply()
+        // Snapped to the slider's step: Slider.setValue throws when a restored
+        // value does not sit on valueFrom + k*stepSize.
+        set(v) = prefs.edit().putInt("row_pad", snap(v.coerceIn(4, 28), 2)).apply()
 
     /** Gap between consecutive conversation rows. */
     var rowSpacing: Int
@@ -140,7 +145,7 @@ class ThemePrefs(context: Context) {
     /** Space kept above and below the whole list, so content is not edge-bound. */
     var listPadding: Int
         get() = prefs.getInt("list_pad", 8)
-        set(v) = prefs.edit().putInt("list_pad", v.coerceIn(0, 40)).apply()
+        set(v) = prefs.edit().putInt("list_pad", snap(v.coerceIn(0, 40), 2)).apply()
 
     /** One of [RowStyle.IDS]. Unknown values fall back to the classic look. */
     var rowStyle: String
@@ -169,7 +174,7 @@ class ThemePrefs(context: Context) {
     /** Current bubble corner radius; the row styles that use cards share it. */
     var bubbleRadius: Int
         get() = prefs.getInt("bubble_radius", 14)
-        set(v) = prefs.edit().putInt("bubble_radius", v.coerceIn(0, 24)).apply()
+        set(v) = prefs.edit().putInt("bubble_radius", snap(v.coerceIn(0, 24), 2)).apply()
 
     /** Vertical gap between two messages inside a conversation. */
     var messageSpacing: Int

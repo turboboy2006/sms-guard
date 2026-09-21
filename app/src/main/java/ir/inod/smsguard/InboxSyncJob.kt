@@ -27,18 +27,16 @@ class InboxSyncJob : JobService() {
     override fun onStartJob(params: JobParameters?): Boolean {
         val appContext = applicationContext
         Thread {
-            var ok = false
             try {
-                val repo = SmsRepository(appContext)
-                val threads = repo.loadThreads()
-                ok = threads.isNotEmpty()
-                // A phone with no messages at all is not a failure, it is an
-                // empty inbox; the cache is simply left alone.
+                val threads = SmsRepository(appContext).loadThreads()
                 Log.d(TAG, "background sync finished with ${threads.size} conversations")
             } catch (t: Throwable) {
                 Log.w(TAG, "background sync failed", t)
             } finally {
-                jobFinished(params, !ok)
+                // A periodic job reschedules itself; asking for a retry here
+                // would only re-run the same pass sooner. An empty mailbox is a
+                // valid result, not a failure.
+                jobFinished(params, false)
             }
         }.start()
         // Work is happening on our own thread, so the job stays alive.

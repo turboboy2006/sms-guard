@@ -43,15 +43,12 @@ class ConversationActivity : BaseActivity() {
         address = when {
             extraAddress.isNotBlank() -> extraAddress
             linkAddress.isNotBlank() -> linkAddress
-            threadId >= 0 -> repo.addressForThread(threadId)
+            // Both of these are provider round trips, so they are resolved on
+            // the worker below rather than here.
             else -> ""
         }
 
-        if (threadId < 0 && address.isNotBlank()) {
-            threadId = repo.threadIdFor(address)
-        }
-
-        supportActionBar?.title = ContactNames.displayName(this, address)
+        supportActionBar?.title = ContactNames.displayNameUi(address)
 
         adapter = MessageAdapter { message -> confirmDeleteMessage(message) }
         binding.recyclerMessages.layoutManager =
@@ -63,10 +60,6 @@ class ConversationActivity : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (threadId >= 0) {
-            repo.markThreadRead(threadId)
-            Notifier(this).cancel(threadId)
-        }
         applyAppearance()
         load()
     }
@@ -90,15 +83,40 @@ class ConversationActivity : BaseActivity() {
      * Reading and classifying a thread is real work (provider query plus one
      * classification per sender). Running it on the main thread produced
      * "ANR in ir.inod.smsguard" on a real device, so it is dispatched.
+     *
+     * Resolving the thread id from an address, and marking the thread read, are
+     * provider writes; they happen here too, one step before the read, so the
+     * list the user sees already reflects the read state.
      */
     private fun load() {
         worker.execute {
+            if (address.isBlank() && threadId >= 0) {
+                address = try {
+                    repo.addressForThread(threadId)
+                } catch (t: Throwable) {
+                    ""
+                }
+            }
+            if (threadId < 0 && address.isNotBlank()) {
+                threadId = try {
+                    repo.threadIdFor(address)
+                } catch (t: Throwable) {
+                    -1L
+                }
+            }
+            if (threadId >= 0) {
+                repo.markThreadRead(threadId)
+                Notifier(this).cancel(threadId)
+            }
+
             val messages = try {
                 if (threadId >= 0) repo.loadMessages(threadId) else emptyList()
             } catch (t: Throwable) {
                 emptyList()
             }
             runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                supportActionBar?.title = ContactNames.displayNameUi(address)
                 adapter.submit(messages)
                 // The adapter also emits day dividers, so scroll to its own
                 // last row rather than to messages.size.
@@ -114,6 +132,10 @@ class ConversationActivity : BaseActivity() {
         super.onDestroy()
     }
 
+    /**
+     * Dispatching is asynchronous, so the field is cleared and the reply
+     * arrives through [load] like any other message.
+     */
     private fun sendCurrent() {
         val text = binding.editMessage.text?.toString()?.trim().orEmpty()
         if (text.isEmpty()) return
@@ -122,11 +144,23 @@ class ConversationActivity : BaseActivity() {
             return
         }
         binding.editMessage.setText("")
-        if (!repo.send(address, text)) {
-            Toast.makeText(this, R.string.send_failed, Toast.LENGTH_SHORT).show()
+        // Sending writes to the provider (and to the stored inbox) before
+        // returning, so it belongs on the same worker as everything else.
+        worker.execute {
+            val sent = try {
+                repo.send(address, text)
+            } catch (t: Throwable) {
+                false
+            }
+            if (!sent) {
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        Toast.makeText(this, R.string.send_failed, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            load()
         }
-        if (threadId < 0) threadId = repo.threadIdFor(address)
-        load()
     }
 
     /**
