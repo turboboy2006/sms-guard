@@ -326,7 +326,7 @@ class MainActivity : BaseActivity() {
 
     private fun applyGlassSurfaces() {
         val alpha = if (theme.hasWallpaper()) (theme.surfaceOpacity * 255 / 100) else 255
-        val surface = (alpha shl 24) or 0x00FFFFFF
+        val surface = (alpha shl 24) or (ContextCompat.getColor(this, R.color.card_bg) and 0x00FFFFFF)
         binding.toolbar.setBackgroundColor(surface)
         binding.bottomNav.backgroundTintList = ColorStateList.valueOf(surface)
     }

@@ -268,7 +268,7 @@ class ConversationActivity : BaseActivity() {
         val hasPhoto = senderImage != null || senderPreset != null ||
             (senderStyle == null && theme.hasWallpaper())
         val alpha = if (hasPhoto) theme.surfaceOpacity * 255 / 100 else 255
-        val surface = (alpha shl 24) or 0x00FFFFFF
+        val surface = (alpha shl 24) or (androidx.core.content.ContextCompat.getColor(this, R.color.card_bg) and 0x00FFFFFF)
         binding.toolbar.setBackgroundColor(surface)
         binding.composer.setBackgroundColor(surface)
     }
@@ -761,34 +761,42 @@ class ConversationActivity : BaseActivity() {
     private fun showSenderMenuNow(messageCount: Int) {
         val store = SenderStore(this)
         val muted = store.notificationsMuted(address)
-        val options = arrayOf(
-            getString(R.string.call_sender),
-            getString(if (muted) R.string.enable_notifications else R.string.mute_notifications),
-            getString(R.string.notification_sound),
-            getString(R.string.chat_background),
-            getString(R.string.sender_reply_sim),
-            getString(R.string.change_category),
-            getString(R.string.block_sender)
-        )
-        MaterialAlertDialogBuilder(this)
+        val panel = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            val p = (16 * resources.displayMetrics.density).toInt()
+            setPadding(p, 0, p, p)
+        }
+        val scroll = android.widget.ScrollView(this).apply { addView(panel) }
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(getString(R.string.sender_with_count, ContactNames.displayNameUi(address), messageCount))
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> {
-                        SenderProfileStore(this).recordFeedback(address, false)
-                        startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:${android.net.Uri.encode(address)}")))
-                    }
-                    1 -> {
-                        store.setNotificationsMuted(address, !muted)
-                        Toast.makeText(this, if (muted) R.string.notifications_enabled else R.string.notifications_muted, Toast.LENGTH_SHORT).show()
-                    }
-                    2 -> pickNotificationSound()
-                    3 -> pickChatBackground()
-                    4 -> pickSenderSim()
-                    5 -> pickSenderCategory()
-                    6 -> blockRiskySender()
-                }
-            }.show()
+            .setView(scroll).setNegativeButton(R.string.close, null).create()
+        fun action(label: String, icon: Int, selected: Boolean = false, run: () -> Unit) {
+            panel.addView(com.google.android.material.button.MaterialButton(this).apply {
+                text = label
+                setIconResource(icon)
+                iconGravity = com.google.android.material.button.MaterialButton.ICON_GRAVITY_TEXT_START
+                iconPadding = (12 * resources.displayMetrics.density).toInt()
+                val accent = ThemePrefs(this@ConversationActivity).accentColor()
+                iconTint = android.content.res.ColorStateList.valueOf(accent)
+                if (selected) strokeColor = android.content.res.ColorStateList.valueOf(accent)
+                setOnClickListener { dialog.dismiss(); run() }
+            }, android.widget.LinearLayout.LayoutParams(-1, -2))
+        }
+        action(getString(R.string.call_sender), R.drawable.ic_person) {
+            SenderProfileStore(this).recordFeedback(address, false)
+            startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:${android.net.Uri.encode(address)}")))
+        }
+        action(getString(if (muted) R.string.enable_notifications else R.string.mute_notifications),
+            R.drawable.ic_tab_service, muted) {
+            store.setNotificationsMuted(address, !muted)
+            Toast.makeText(this, if (muted) R.string.notifications_enabled else R.string.notifications_muted, Toast.LENGTH_SHORT).show()
+        }
+        action(getString(R.string.notification_sound), R.drawable.ic_tab_service) { pickNotificationSound() }
+        action(getString(R.string.sender_reply_sim), R.drawable.ic_send) { pickSenderSim() }
+        action(getString(R.string.change_category), R.drawable.ic_tab_all) { pickSenderCategory() }
+        action(getString(R.string.chat_background), R.drawable.ic_cat_shop) { pickChatBackground() }
+        action(getString(R.string.block_sender), R.drawable.ic_cat_security) { blockRiskySender() }
+        dialog.show()
     }
 
     private fun pickChatBackground() {

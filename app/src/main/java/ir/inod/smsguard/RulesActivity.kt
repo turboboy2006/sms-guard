@@ -139,7 +139,7 @@ class RulesActivity : BaseActivity() {
                 Triple("قرعه‌کشی،دریافت جایزه", RuleJoin.ALL, RuleAction.SPAM)
             )
             AlertDialog.Builder(this).setTitle(R.string.sample_rules)
-                .setItems(samples.map { it.first.replace('،', ' + ') }.toTypedArray()) { _, index ->
+                .setItems(samples.map { it.first.replace("،", " + ") }.toTypedArray()) { _, index ->
                     val sample = samples[index]
                     store.addSimple(sample.first.replace('،', ','), "", sample.second, RuleTarget.BODY, sample.third)
                     reload()
