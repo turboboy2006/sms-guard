@@ -143,6 +143,8 @@
     <string name="category_name_hint">نام دسته</string>
     <string name="add">افزودن</string>
     <string name="tab_messages">پیام‌ها</string>
+    <string name="tab_contacts">مخاطبین</string>
+    <string name="no_contacts_threads">هنوز گفتگویی با مخاطبین گوشی نداری.</string>
     <string name="search">جستجو</string>
     <string name="search_hint">جستجوی فرستنده یا متن پیام</string>
     <string name="refresh">تازه‌سازی از گوشی</string>

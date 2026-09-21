@@ -55,14 +55,17 @@
         android:id="@+id/chipScroll"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp"
         android:scrollbars="none">
 
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/chipGroup"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingStart="@dimen/space_12"
-            android:paddingEnd="@dimen/space_12"
+            android:paddingStart="@dimen/gutter"
+            android:paddingEnd="@dimen/gutter"
             android:paddingBottom="@dimen/space_8"
             app:chipSpacingHorizontal="@dimen/space_8"
             app:selectionRequired="true"
@@ -80,7 +83,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingBottom="88dp" />
+            android:paddingBottom="96dp" />
 
         <LinearLayout
             android:id="@+id/skeleton"

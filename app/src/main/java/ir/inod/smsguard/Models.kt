@@ -71,25 +71,74 @@ data class Category(
     val spamFolder: Boolean = false,
     val skipAi: Boolean = false,
     val protectedCat: Boolean = false,
-    val order: Int = 0
+    val order: Int = 0,
+    /**
+     * Whether a conversation in this category wears a pill in the inbox.
+     *
+     * Every category can print a label; only some are worth the ink. A promo is
+     * a promo because the text already reads like one, so a grey "تبلیغاتی" pill
+     * on each of them is noise — while "بانکی" or a risk reason is a real
+     * summary. This mirrors the reference, which badges the categories a reader
+     * actually scans for.
+     */
+    val showBadge: Boolean = true,
+    /** Pill colours; -1 means "use the shared neutral/badge palette". */
+    val badgeBgColor: Int = -1,
+    val badgeTextColor: Int = -1
 ) {
     fun label(context: Context): String =
         if (nameRes != 0) context.getString(nameRes) else customName
+
+    companion object {
+        /** Sentinel for "no opinion"; the adapter substitutes the neutral pair. */
+        const val NO_COLOR = -1
+    }
 }
 
 object Categories {
 
+    /**
+     * Built-in categories.
+     *
+     * The badge decision is part of the data rather than the adapter, because
+     * it is a product judgement about each category:
+     *
+     *   banking / one-time codes  a tinted pill — the reader scans for these;
+     *   service / contacts        a neutral grey pill;
+     *   promotional / other       no pill, the message already reads as one;
+     *   spam / trash              never seen in the list in the first place.
+     *
+     * Suspicious is handled separately by the adapter, which prints the risk
+     * *reason* there instead of the word "suspicious".
+     */
     fun system(): List<Category> = listOf(
-        Category(Cat.PERSONAL, R.string.cat_personal, "", "#15803D", true, false, true, true, 0),
-        Category(Cat.BANKING, R.string.cat_banking, "", "#1D4ED8", true, false, true, true, 1),
-        Category(Cat.OTP, R.string.cat_otp, "", "#0F766E", true, false, true, true, 2),
-        Category(Cat.NOTIFICATION, R.string.cat_notification, "", "#7C3AED", true, false, true, true, 3),
-        Category(Cat.PROMOTION, R.string.cat_promotion, "", "#EA580C", true, false, false, false, 4),
-        Category(Cat.SUSPICIOUS, R.string.cat_suspicious, "", "#D97706", true, false, false, false, 5),
-        Category(Cat.SPAM, R.string.cat_spam, "", "#B91C1C", true, true, true, false, 6),
+        Category(
+            Cat.PERSONAL, R.string.cat_personal, "", "#15803D", true, false, true, true, 0,
+            showBadge = true
+        ),
+        Category(
+            Cat.BANKING, R.string.cat_banking, "", "#1D4ED8", true, false, true, true, 1,
+            badgeBgColor = 0xFFDBEAFE.toInt(), badgeTextColor = 0xFF1E40AF.toInt()
+        ),
+        Category(
+            Cat.OTP, R.string.cat_otp, "", "#0F766E", true, false, true, true, 2,
+            badgeBgColor = 0xFFCCFBF1.toInt(), badgeTextColor = 0xFF115E59.toInt()
+        ),
+        Category(
+            Cat.NOTIFICATION, R.string.cat_notification, "", "#7C3AED", true, false, true, true, 3,
+            showBadge = true
+        ),
+        // A promotional pill said nothing the message did not: gone from the
+        // list, which is exactly what the reference does.
+        Category(
+            Cat.PROMOTION, R.string.cat_promotion, "", "#EA580C", true, false, false, false, 4,
+            showBadge = false
+        ),
+        Category(Cat.SUSPICIOUS, R.string.cat_suspicious, "", "#E11D48", true, false, false, false, 5),
+        Category(Cat.SPAM, R.string.cat_spam, "", "#B91C1C", true, true, true, false, 6, showBadge = false),
         // Trash is its own place: hidden from Every, but not counted as spam.
-        Category(Cat.TRASH, R.string.tab_trash, "", "#475467", true, false, true, false, 7),
-        Category(Cat.OTHER, R.string.cat_other, "", "#667085", true, false, false, false, 8)
+        Category(Cat.TRASH, R.string.tab_trash, "", "#475467", true, false, true, false, 7, showBadge = false),
+        Category(Cat.OTHER, R.string.cat_other, "", "#667085", true, false, false, false, 8, showBadge = false)
     )
 
     /** Palette offered by the long-press colour picker. */

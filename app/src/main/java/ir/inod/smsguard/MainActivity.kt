@@ -59,6 +59,16 @@ class MainActivity : BaseActivity() {
     private var drawnLayout: RowLayout? = null
     private var loadedFromCache = false
 
+    /**
+     * The bottom navigation's Contacts destination.
+     *
+     * It is a *destination*, not a filter chip: it replaces the category strip
+     * with a single question — which conversations are with people in my
+     * address book — so it does not belong in the same row as "بانکی" and
+     * "اسپم", which narrow a list of everything.
+     */
+    private var contactsOnly = false
+
     private val worker = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private var skeletonPulse: android.animation.ObjectAnimator? = null
@@ -120,7 +130,16 @@ class MainActivity : BaseActivity() {
                     startActivity(Intent(this, SettingsActivity::class.java))
                     false
                 }
-                else -> true
+                R.id.nav_contacts -> {
+                    contactsOnly = true
+                    applyFilter()
+                    true
+                }
+                else -> {
+                    contactsOnly = false
+                    applyFilter()
+                    true
+                }
             }
         }
 
@@ -189,7 +208,8 @@ class MainActivity : BaseActivity() {
 
     /** Hides the parts of the screen the user asked not to see. */
     private fun applyChipVisibility() {
-        binding.chipScroll.visibility = if (theme.showChips) View.VISIBLE else View.GONE
+        binding.chipScroll.visibility =
+            if (theme.showChips && !contactsOnly) View.VISIBLE else View.GONE
     }
 
     // ------------------------------------------------------------- lifecycle
@@ -235,7 +255,6 @@ class MainActivity : BaseActivity() {
         adapter.applyLayout(drawnLayout!!)
         applyChipVisibility()
         applyListPadding()
-        if (!theme.showChips) binding.chipScroll.visibility = View.GONE
     }
 
     private fun applyListPadding() {
@@ -453,13 +472,14 @@ class MainActivity : BaseActivity() {
 
     private fun applyFilter() {
         val spamIds = CategoryStore(this).all().filter { it.spamFolder }.map { it.id }.toSet()
-        val byTab = when (selectedTab) {
-            TAB_SUSPICIOUS -> allThreads.filter { it.categoryId == Cat.SUSPICIOUS }
-            TAB_SPAM -> allThreads.filter { it.categoryId in spamIds }
-            TAB_BANKING -> allThreads.filter {
+        val byTab = when {
+            contactsOnly -> allThreads.filter { ContactsIndex.isKnownContact(it.address) }
+            selectedTab == TAB_SUSPICIOUS -> allThreads.filter { it.categoryId == Cat.SUSPICIOUS }
+            selectedTab == TAB_SPAM -> allThreads.filter { it.categoryId in spamIds }
+            selectedTab == TAB_BANKING -> allThreads.filter {
                 it.categoryId == Cat.BANKING || it.categoryId == Cat.OTP
             }
-            TAB_SERVICE -> allThreads.filter { it.categoryId == Cat.NOTIFICATION }
+            selectedTab == TAB_SERVICE -> allThreads.filter { it.categoryId == Cat.NOTIFICATION }
             // "All" hides the spam folder and the trash alike.
             else -> allThreads.filterNot {
                 it.categoryId in spamIds || it.categoryId == Cat.TRASH
@@ -479,8 +499,17 @@ class MainActivity : BaseActivity() {
         if (rendered.isEmpty()) adapter.submit(filtered) else adapter.merge(filtered)
         rendered = filtered
 
-        binding.textEmptyLabel.setText(R.string.no_threads)
+        binding.textEmptyLabel.setText(
+            if (contactsOnly) R.string.no_contacts_threads else R.string.no_threads
+        )
         binding.textEmpty.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
+
+        // The category strip belongs to the message list; the Contacts
+        // destination answers a different question.
+        binding.chipScroll.visibility =
+            if (theme.showChips && !contactsOnly) View.VISIBLE else View.GONE
+        supportActionBar?.title =
+            getString(if (contactsOnly) R.string.tab_contacts else R.string.tab_messages)
     }
 
     private fun openThread(thread: ThreadSummary) {

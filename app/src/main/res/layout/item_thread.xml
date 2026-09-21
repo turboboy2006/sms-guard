@@ -29,17 +29,18 @@
             android:id="@+id/rowTime"
             android:layout_width="@dimen/time_column"
             android:layout_height="match_parent"
-            android:gravity="top|center_horizontal"
+            android:layout_marginStart="12dp"
+            android:gravity="top|start"
+            android:minHeight="@dimen/row_min_height"
             android:orientation="vertical"
-            android:paddingTop="14dp"
-            android:paddingEnd="2dp">
+            android:paddingTop="16dp">
 
             <TextView
                 android:id="@+id/textDate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="center"
                 android:maxLines="1"
+                android:textAlignment="viewStart"
                 android:textColor="@color/text_muted"
                 android:textSize="11sp" />
 

@@ -337,18 +337,16 @@ class ThreadAdapter(
     /**
      * The category pill.
      *
-     * An ordinary row states what it is in grey, because "بانکی" or
-     * "اطلاع‌رسانی" is genuinely useful at a glance. A suspicious row is the
-     * exception: its red pill carries the *reason* instead of the word, since
-     * "why" is the only useful thing left to say about a message the app has
-     * already flagged — the row's warning icon and its red tint already say
-     * "suspicious".
+     * An ordinary row states what it is, and only for the categories a reader
+     * actually scans for — [Category.showBadge] decides which. A suspicious row
+     * always badges, and prints the *reason* rather than the word, because
+     * "why" is the useful thing to say about a message already flagged.
      *
-     * The label is never truncated to an ellipsis — "عبارت تبلیغا…" tells the
-     * reader nothing — so it wraps inside the row instead, and the row's 108dp
-     * ceiling leaves room for two lines.
+     * Two failure modes this avoids, both of which were visible on a real
+     * phone: a pill drawn with no text (an empty grey lozenge) and a label cut
+     * off mid-word.
      *
-     * @return true when a badge was drawn
+     * @return true when a badge should be shown
      */
     private fun bindBadge(
         context: Context,
@@ -362,19 +360,30 @@ class ThreadAdapter(
 
         if (item.categoryId == Cat.SUSPICIOUS) {
             label = risk ?: context.getString(R.string.cat_suspicious)
-            background = R.color.badge_danger_bg
-            foreground = R.color.badge_danger_text
+            background = ContextCompat.getColor(context, R.color.badge_danger_bg)
+            foreground = ContextCompat.getColor(context, R.color.badge_danger_text)
         } else {
-            val category = categories(context)[item.categoryId]
-            if (category == null || item.categoryId == Cat.OTHER) return false
+            val category = categories(context)[item.categoryId] ?: return false
+            if (!category.showBadge) return false
             label = category.label(context)
-            background = R.color.badge_bg
-            foreground = R.color.badge_text
+            background = if (category.badgeBgColor != Category.NO_COLOR) {
+                category.badgeBgColor
+            } else {
+                ContextCompat.getColor(context, R.color.badge_bg)
+            }
+            foreground = if (category.badgeTextColor != Category.NO_COLOR) {
+                category.badgeTextColor
+            } else {
+                ContextCompat.getColor(context, R.color.badge_text)
+            }
         }
 
+        // An empty label means an empty pill; that is never worth drawing.
+        if (label.isBlank()) return false
+
         b.textCategory.text = label
-        b.textCategory.background = badge(ContextCompat.getColor(context, background))
-        b.textCategory.setTextColor(ContextCompat.getColor(context, foreground))
+        b.textCategory.background = badge(background)
+        b.textCategory.setTextColor(foreground)
         b.textCategory.maxLines = 2
         b.textCategory.ellipsize = null
         b.textCategory.maxWidth = (200 * context.resources.displayMetrics.density).toInt()
@@ -411,6 +420,14 @@ class ThreadAdapter(
         b.avatarImage.clearColorFilter()
         b.avatarLetter.setTextColor(android.graphics.Color.WHITE)
 
+        // Nothing to draw a person from: a calm grey circle with a silhouette.
+        // This has to be checked before anything else, otherwise the row falls
+        // through to a branch that leaves the avatar square and empty.
+        if (AvatarHelper.isUnknown(display)) {
+            showPersonGlyph(context, b, pad)
+            return
+        }
+
         val photo = AvatarHelper.photo(context, item.address)
         if (photo != null) {
             val rounded = androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
@@ -444,7 +461,11 @@ class ThreadAdapter(
             return
         }
 
-        // A sender ID with no name: a calm grey person, never a warning.
+        showPersonGlyph(context, b, pad)
+    }
+
+    /** Grey circle, muted person silhouette: an unnamed sender, stated calmly. */
+    private fun showPersonGlyph(context: Context, b: ItemThreadBinding, pad: Int) {
         b.avatar.background = AvatarHelper.circle(
             ContextCompat.getColor(context, R.color.surface_sunken)
         )
