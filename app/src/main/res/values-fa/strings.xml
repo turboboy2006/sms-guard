@@ -273,4 +273,14 @@
     <string name="notifications_enabled">اعلان‌های این فرستنده روشن شد</string>
     <string name="sender_reply_sim">سیم‌کارت همیشگی پاسخ</string>
     <string name="confirm_delete_conversation">این گفتگو برای همیشه حذف شود؟</string>
+    <string name="otp_code">رمز یک‌بار مصرف</string>
+    <string name="copy_otp">کپی %1$s</string>
+    <string name="message_sim_line">سیم‌کارت: %1$s</string>
+    <string name="sim_unknown">سیم‌کارت نامشخص</string>
+    <string name="search_conversation">جست‌وجو در این گفتگو</string>
+    <string name="pin">سنجاق کردن گفتگو</string>
+    <string name="unpin">برداشتن سنجاق</string>
+    <string name="archive">بایگانی</string>
+    <string name="archived">گفتگوهای بایگانی‌شده</string>
+    <string name="no_archived">گفتگوی بایگانی‌شده‌ای نیست</string>
 </resources>

@@ -39,6 +39,7 @@ class ConversationActivity : BaseActivity() {
         private const val MENU_DETAILS = 1009
         private const val MENU_TRASH_THREAD = 1010
         private const val MENU_DELETE_THREAD = 1011
+        private const val MENU_SEARCH_THREAD = 1012
     }
 
     private lateinit var binding: ActivityConversationBinding
@@ -49,6 +50,9 @@ class ConversationActivity : BaseActivity() {
     private var threadId: Long = -1L
     private var address: String = ""
     private var riskyMessageId: Long = -1L
+    private var messageLimit = 500
+    private var loadingMessages = false
+    private var lastMessages: List<SmsMessage> = emptyList()
     private val drafts by lazy { getSharedPreferences("conversation_drafts", MODE_PRIVATE) }
     private val deliveryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) { load() }
@@ -92,6 +96,16 @@ class ConversationActivity : BaseActivity() {
         binding.recyclerMessages.layoutManager =
             LinearLayoutManager(this).apply { stackFromEnd = true }
         binding.recyclerMessages.adapter = adapter
+        binding.recyclerMessages.addOnScrollListener(object : androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: androidx.recyclerview.widget.RecyclerView, dx: Int, dy: Int) {
+                val lm = recyclerView.layoutManager as? LinearLayoutManager ?: return
+                if (lm.findFirstVisibleItemPosition() <= 2 && !loadingMessages && lastMessages.size >= messageLimit) {
+                    val oldCount = adapter.itemCount
+                    messageLimit += 500
+                    load(scrollToEnd = false, preserveFromEnd = oldCount)
+                }
+            }
+        })
 
         binding.buttonSend.setOnClickListener { sendCurrent() }
         binding.buttonPickRecipient.setOnClickListener { pickRecipient() }
@@ -191,7 +205,9 @@ class ConversationActivity : BaseActivity() {
      * provider writes; they happen here too, one step before the read, so the
      * list the user sees already reflects the read state.
      */
-    private fun load() {
+    private fun load(scrollToEnd: Boolean = true, preserveFromEnd: Int = 0) {
+        if (loadingMessages) return
+        loadingMessages = true
         worker.execute {
             if (address.isBlank() && threadId >= 0) {
                 address = try {
@@ -213,12 +229,13 @@ class ConversationActivity : BaseActivity() {
             }
 
             val messages = try {
-                if (threadId >= 0) repo.loadMessages(threadId) else emptyList()
+                if (threadId >= 0) repo.loadMessages(threadId, messageLimit) else emptyList()
             } catch (t: Throwable) {
                 emptyList()
             }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
+                loadingMessages = false
                 supportActionBar?.title = if (address.isBlank()) {
                     getString(R.string.compose)
                 } else {
@@ -230,11 +247,16 @@ class ConversationActivity : BaseActivity() {
                     binding.editMessage.setSelection(binding.editMessage.length())
                 }
                 adapter.submit(messages)
+                lastMessages = messages
                 bindRiskBanner(messages)
                 // The adapter also emits day dividers, so scroll to its own
                 // last row rather than to messages.size.
-                if (adapter.itemCount > 0) {
+                if (scrollToEnd && adapter.itemCount > 0) {
                     binding.recyclerMessages.scrollToPosition(adapter.itemCount - 1)
+                } else if (preserveFromEnd > 0) {
+                    val added = (adapter.itemCount - preserveFromEnd).coerceAtLeast(0)
+                    (binding.recyclerMessages.layoutManager as? LinearLayoutManager)
+                        ?.scrollToPositionWithOffset(added + 2, 0)
                 }
             }
         }
@@ -326,6 +348,7 @@ class ConversationActivity : BaseActivity() {
             .setIcon(R.drawable.ic_tab_trash)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_DELETE_THREAD, 8, R.string.delete_forever)
+        menu.add(0, MENU_SEARCH_THREAD, 9, R.string.search_conversation)
         return true
     }
 
@@ -342,6 +365,7 @@ class ConversationActivity : BaseActivity() {
         menu.findItem(MENU_DETAILS)?.isVisible = selecting && adapter.selectionCount == 1
         menu.findItem(MENU_TRASH_THREAD)?.isVisible = !selecting && threadId >= 0
         menu.findItem(MENU_DELETE_THREAD)?.isVisible = !selecting && threadId >= 0
+        menu.findItem(MENU_SEARCH_THREAD)?.isVisible = !selecting && threadId >= 0
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -385,6 +409,7 @@ class ConversationActivity : BaseActivity() {
             MENU_DETAILS -> { showSelectedDetails(); return true }
             MENU_TRASH_THREAD -> { moveConversationToTrash(); return true }
             MENU_DELETE_THREAD -> { confirmDeleteConversation(); return true }
+            MENU_SEARCH_THREAD -> { searchConversation(); return true }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -520,12 +545,25 @@ class ConversationActivity : BaseActivity() {
                 append("\n")
                 append(getString(R.string.message_error_line, message.errorCode))
             }
+            if (message.subscriptionId >= 0) {
+                append("\n")
+                append(getString(R.string.message_sim_line, simLabel(message.subscriptionId)))
+            }
         }
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle(R.string.message_details)
             .setMessage(details)
             .setPositiveButton(android.R.string.ok, null)
             .show()
+    }
+
+    private fun simLabel(subscriptionId: Int): String {
+        return try {
+            val info = getSystemService(android.telephony.SubscriptionManager::class.java)
+                ?.activeSubscriptionInfoList.orEmpty().firstOrNull { it.subscriptionId == subscriptionId }
+            if (info == null) getString(R.string.sim_unknown)
+            else getString(R.string.sim_label, info.simSlotIndex + 1, info.carrierName?.toString().orEmpty())
+        } catch (_: SecurityException) { getString(R.string.sim_unknown) }
     }
 
     private fun showMessageOptions(message: SmsMessage) {
@@ -641,6 +679,24 @@ class ConversationActivity : BaseActivity() {
                     if (deleted) ThreadCache.clear(this)
                     runOnUiThread { if (deleted) finish() else Toast.makeText(this, R.string.send_failed, Toast.LENGTH_SHORT).show() }
                 }
+            }.show()
+    }
+
+    private fun searchConversation() {
+        val input = android.widget.EditText(this).apply {
+            hint = getString(R.string.search_hint)
+            setSingleLine(true)
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.search_conversation)
+            .setView(input)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.search) { _, _ ->
+                val needle = input.text?.toString()?.trim().orEmpty()
+                val match = lastMessages.lastOrNull { it.body.contains(needle, ignoreCase = true) }
+                val position = match?.let { adapter.positionOf(it.id) } ?: -1
+                if (position >= 0) binding.recyclerMessages.smoothScrollToPosition(position)
+                else Toast.makeText(this, R.string.search_no_results, Toast.LENGTH_SHORT).show()
             }.show()
     }
 

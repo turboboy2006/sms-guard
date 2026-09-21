@@ -297,4 +297,14 @@
     <string name="notifications_enabled">Notifications enabled</string>
     <string name="sender_reply_sim">Always reply using SIM</string>
     <string name="confirm_delete_conversation">Permanently delete this entire conversation?</string>
+    <string name="otp_code">One-time code</string>
+    <string name="copy_otp">Copy %1$s</string>
+    <string name="message_sim_line">SIM: %1$s</string>
+    <string name="sim_unknown">Unknown SIM</string>
+    <string name="search_conversation">Search this conversation</string>
+    <string name="pin">Pin conversation</string>
+    <string name="unpin">Unpin conversation</string>
+    <string name="archive">Archive</string>
+    <string name="archived">Archived conversations</string>
+    <string name="no_archived">No archived conversations</string>
 </resources>

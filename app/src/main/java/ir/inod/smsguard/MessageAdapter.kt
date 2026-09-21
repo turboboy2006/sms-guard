@@ -42,6 +42,10 @@ class MessageAdapter(
 
     fun allMessages(): List<SmsMessage> = rows.mapNotNull { (it as? Row.Msg)?.message }
 
+    fun positionOf(messageId: Long): Int = rows.indexOfFirst {
+        it is Row.Msg && it.message.id == messageId
+    }
+
     fun toggleSelection(message: SmsMessage) {
         if (!selectedIds.add(message.id)) selectedIds.remove(message.id)
         val index = rows.indexOfFirst { it is Row.Msg && it.message.id == message.id }

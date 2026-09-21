@@ -41,6 +41,7 @@ class MainActivity : BaseActivity() {
         const val MENU_MARK_READ = 2101
         const val MENU_BULK_SPAM = 2102
         const val MENU_BULK_TRASH = 2103
+        const val MENU_ARCHIVED = 2007
 
         /** Tab order, matching the chips built in [setUpFilterChips]. */
         const val TAB_ALL = 0
@@ -484,6 +485,7 @@ class MainActivity : BaseActivity() {
         menu.add(0, MENU_BLOCKED, 3, R.string.blocked_log)
         menu.add(0, MENU_TRASH, 4, R.string.tab_trash)
         menu.add(0, MENU_MANAGE, 5, R.string.manage_brands)
+        menu.add(0, MENU_ARCHIVED, 6, R.string.archived)
         menu.add(0, MENU_MARK_READ, 0, R.string.mark_read)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_BULK_SPAM, 1, R.string.mark_spam)
@@ -498,7 +500,7 @@ class MainActivity : BaseActivity() {
         listOf(MENU_MARK_READ, MENU_BULK_SPAM, MENU_BULK_TRASH).forEach {
             menu.findItem(it)?.isVisible = selecting
         }
-        listOf(MENU_SEARCH, MENU_REFRESH, MENU_RULES, MENU_BLOCKED, MENU_TRASH, MENU_MANAGE).forEach {
+        listOf(MENU_SEARCH, MENU_REFRESH, MENU_RULES, MENU_BLOCKED, MENU_TRASH, MENU_MANAGE, MENU_ARCHIVED).forEach {
             menu.findItem(it)?.isVisible = !selecting
         }
         return super.onPrepareOptionsMenu(menu)
@@ -521,6 +523,7 @@ class MainActivity : BaseActivity() {
                 applyFilter()
             }
             MENU_MANAGE -> startActivity(Intent(this, ManagerActivity::class.java))
+            MENU_ARCHIVED -> showArchived()
             MENU_MARK_READ -> bulkMarkRead()
             MENU_BULK_SPAM -> bulkCategory(Cat.SPAM)
             MENU_BULK_TRASH -> bulkCategory(Cat.TRASH)
@@ -685,11 +688,13 @@ class MainActivity : BaseActivity() {
                 it.categoryId in spamIds || it.categoryId == Cat.TRASH
             }
         }
+        val visibleRows = byTab.filterNot { senderStore.isArchived(it.address) }
+            .sortedWith(compareByDescending<ThreadSummary> { senderStore.isPinned(it.address) }.thenByDescending { it.date })
         val filtered = if (query.isBlank()) {
-            byTab
+            visibleRows
         } else {
             val needle = query.lowercase()
-            byTab.filter {
+            visibleRows.filter {
                 it.snippet.lowercase().contains(needle) ||
                     it.address.lowercase().contains(needle) ||
                     ContactNames.displayNameUi(it.address).lowercase().contains(needle)
@@ -749,6 +754,9 @@ class MainActivity : BaseActivity() {
             )
         } else {
             arrayOf(
+                getString(if (senderStore.isPinned(thread.address)) R.string.unpin else R.string.pin),
+                getString(R.string.archive),
+                getString(if (senderStore.notificationsMuted(thread.address)) R.string.enable_notifications else R.string.mute_notifications),
                 getString(R.string.change_category),
                 getString(R.string.pick_color),
                 getString(R.string.mark_spam),
@@ -777,26 +785,42 @@ class MainActivity : BaseActivity() {
                     return@setItems
                 }
                 when (which) {
-                    0 -> pickCategory(thread)
-                    1 -> pickColor(thread)
-                    2 -> confirm(R.string.mark_spam, getString(R.string.confirm_spam_msg)) {
+                    0 -> { senderStore.setPinned(thread.address, !senderStore.isPinned(thread.address)); applyFilter() }
+                    1 -> { senderStore.setArchived(thread.address, true); applyFilter() }
+                    2 -> { senderStore.setNotificationsMuted(thread.address, !senderStore.notificationsMuted(thread.address)); toast(R.string.saved) }
+                    3 -> pickCategory(thread)
+                    4 -> pickColor(thread)
+                    5 -> confirm(R.string.mark_spam, getString(R.string.confirm_spam_msg)) {
                         changeCategory(thread, Cat.SPAM)
                     }
-                    3 -> confirm(R.string.mark_not_spam, getString(R.string.confirm_ham_msg)) {
+                    6 -> confirm(R.string.mark_not_spam, getString(R.string.confirm_ham_msg)) {
                         // Negative feedback: stop flagging this sender and tell
                         // the AI stage to leave it alone from now on.
                         senderStore.setPolicy(thread.address, SenderPolicy.NEVER_ANALYZE)
                         changeCategory(thread, Cat.OTHER)
                     }
-                    4 -> confirm(R.string.move_to_trash, getString(R.string.confirm_trash_msg)) {
+                    7 -> confirm(R.string.move_to_trash, getString(R.string.confirm_trash_msg)) {
                         changeCategory(thread, Cat.TRASH)
                     }
-                    5 -> confirm(R.string.block_sender, getString(R.string.confirm_block_msg)) {
+                    8 -> confirm(R.string.block_sender, getString(R.string.confirm_block_msg)) {
                         RuleStore(this).add(thread.address, RuleTarget.SENDER, false)
                         toast(R.string.sender_blocked)
                     }
                 }
             }
+            .show()
+    }
+
+    private fun showArchived() {
+        val rows = allThreads.filter { senderStore.isArchived(it.address) }
+        if (rows.isEmpty()) { toast(R.string.no_archived); return }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.archived)
+            .setItems(rows.map { ContactNames.displayNameUi(it.address) }.toTypedArray()) { _, which ->
+                senderStore.setArchived(rows[which].address, false)
+                applyFilter()
+            }
+            .setNegativeButton(R.string.close, null)
             .show()
     }
 

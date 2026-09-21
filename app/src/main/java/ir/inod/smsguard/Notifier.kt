@@ -46,7 +46,21 @@ class Notifier(private val context: Context) {
             replyPi
         ).addRemoteInput(remoteInput).build()
 
-        val notification = NotificationCompat.Builder(context, SmsApp.CHANNEL_ID)
+        val readIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = NotificationActionReceiver.ACTION_MARK_READ
+            putExtra(NotificationActionReceiver.EXTRA_THREAD_ID, threadId)
+        }
+        val readPi = android.app.PendingIntent.getBroadcast(
+            context, (threadId xor 0x52454144L).toInt(), readIntent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+        val readAction = NotificationCompat.Action.Builder(
+            R.drawable.ic_notification, context.getString(R.string.mark_read), readPi
+        ).build()
+
+        val otp = extractOtp(body)
+
+        val builder = NotificationCompat.Builder(context, SmsApp.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(ContactNames.displayName(context, address))
             .setContentText(body)
@@ -54,14 +68,44 @@ class Notifier(private val context: Context) {
             .setAutoCancel(true)
             .setContentIntent(pi)
             .addAction(replyAction)
+            .addAction(readAction)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .build()
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+        if (otp != null) {
+            val copyIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+                action = NotificationActionReceiver.ACTION_COPY
+                putExtra(NotificationActionReceiver.EXTRA_TEXT, otp)
+            }
+            val copyPi = android.app.PendingIntent.getBroadcast(
+                context, (threadId xor otp.hashCode().toLong()).toInt(), copyIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(
+                NotificationCompat.Action.Builder(
+                    R.drawable.ic_notification,
+                    context.getString(R.string.copy_otp, otp),
+                    copyPi
+                ).build()
+            )
+        }
+        val notification = builder.build()
 
         try {
             nm.notify(threadId.toInt(), notification)
         } catch (e: SecurityException) {
             // POST_NOTIFICATIONS was not granted; nothing useful to do here.
         }
+    }
+
+    private fun extractOtp(body: String): String? {
+        val normalized = body
+            .replace('۰', '0').replace('۱', '1').replace('۲', '2').replace('۳', '3')
+            .replace('۴', '4').replace('۵', '5').replace('۶', '6').replace('۷', '7')
+            .replace('۸', '8').replace('۹', '9')
+        val hasHint = Regex("(?i)(otp|code|verification|password|رمز|کد|تایید|تأیید)").containsMatchIn(body)
+        if (!hasHint) return null
+        return Regex("(?<!\\d)\\d{4,8}(?!\\d)").find(normalized)?.value
     }
 
     fun cancel(threadId: Long) {

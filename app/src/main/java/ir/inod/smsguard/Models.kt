@@ -218,7 +218,8 @@ data class SmsMessage(
     val isIncoming: Boolean,
     val categoryId: String,
     val delivery: DeliveryState = DeliveryState.RECEIVED,
-    val errorCode: Int = 0
+    val errorCode: Int = 0,
+    val subscriptionId: Int = -1
 )
 
 /** Delivery lifecycle for outgoing SMS rows. */

@@ -205,7 +205,8 @@ class SmsRepository(private val context: Context) {
             Telephony.Sms.DATE,
             Telephony.Sms.TYPE,
             Telephony.Sms.STATUS,
-            Telephony.Sms.ERROR_CODE
+            Telephony.Sms.ERROR_CODE,
+            "sub_id"
         )
         try {
             resolver.query(
@@ -220,6 +221,7 @@ class SmsRepository(private val context: Context) {
                 val iType = c.getColumnIndexOrThrow(Telephony.Sms.TYPE)
                 val iStatus = c.getColumnIndex(Telephony.Sms.STATUS)
                 val iError = c.getColumnIndex(Telephony.Sms.ERROR_CODE)
+                val iSub = c.getColumnIndex("sub_id")
 
                 while (c.moveToNext()) {
                     val id = c.getLong(iId)
@@ -236,7 +238,8 @@ class SmsRepository(private val context: Context) {
                             isIncoming = type == Telephony.Sms.MESSAGE_TYPE_INBOX,
                             categoryId = categoryFor(address, body, id),
                             delivery = deliveryState(type, providerStatus),
-                            errorCode = if (iError >= 0) c.getInt(iError) else 0
+                            errorCode = if (iError >= 0) c.getInt(iError) else 0,
+                            subscriptionId = if (iSub >= 0) c.getInt(iSub) else -1
                         )
                     )
                 }
@@ -433,7 +436,7 @@ class SmsRepository(private val context: Context) {
     }
 
     /** Stores an incoming message and returns its row id, or -1 on failure. */
-    fun storeIncoming(address: String, body: String, timestamp: Long): Long {
+    fun storeIncoming(address: String, body: String, timestamp: Long, subscriptionId: Int = -1): Long {
         return try {
             val values = ContentValues().apply {
                 put(Telephony.Sms.ADDRESS, address)
@@ -444,6 +447,7 @@ class SmsRepository(private val context: Context) {
                 put(Telephony.Sms.SEEN, 0)
                 put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_INBOX)
                 put(Telephony.Sms.THREAD_ID, threadIdFor(address))
+                if (subscriptionId >= 0) put("sub_id", subscriptionId)
             }
             resolver.insert(Telephony.Sms.CONTENT_URI, values)?.lastPathSegment?.toLongOrNull() ?: -1L
         } catch (e: Exception) {
@@ -451,7 +455,7 @@ class SmsRepository(private val context: Context) {
         }
     }
 
-    private fun storePending(address: String, body: String, timestamp: Long): Long {
+    private fun storePending(address: String, body: String, timestamp: Long, subscriptionId: Int): Long {
         return try {
             val values = ContentValues().apply {
                 put(Telephony.Sms.ADDRESS, address)
@@ -462,6 +466,7 @@ class SmsRepository(private val context: Context) {
                 put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_OUTBOX)
                 put(Telephony.Sms.STATUS, Telephony.Sms.STATUS_PENDING)
                 put(Telephony.Sms.THREAD_ID, threadIdFor(address))
+                if (subscriptionId >= 0) put("sub_id", subscriptionId)
             }
             resolver.insert(Telephony.Sms.CONTENT_URI, values)?.lastPathSegment?.toLongOrNull() ?: -1L
         } catch (e: Exception) {
@@ -474,7 +479,9 @@ class SmsRepository(private val context: Context) {
         var pendingId = -1L
         return try {
             val now = System.currentTimeMillis()
-            val messageId = storePending(address, body, now)
+            val chosenSub = SenderStore(context).simFor(address).takeIf { it >= 0 }
+                ?: SettingsStore(context).defaultSimId
+            val messageId = storePending(address, body, now, chosenSub)
             if (messageId < 0) return false
             pendingId = messageId
             val sm = smsManager(address)

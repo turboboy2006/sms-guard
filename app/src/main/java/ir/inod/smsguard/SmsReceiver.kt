@@ -33,7 +33,10 @@ class SmsReceiver : BroadcastReceiver() {
         val pending = goAsync()
         Thread {
             try {
-                handle(context, address, body, timestamp)
+                val subscriptionId = intent.getIntExtra(
+                    android.telephony.SubscriptionManager.EXTRA_SUBSCRIPTION_INDEX, -1
+                )
+                handle(context, address, body, timestamp, subscriptionId)
             } catch (t: Throwable) {
                 Log.e(TAG, "Failed to handle incoming SMS", t)
             } finally {
@@ -42,7 +45,7 @@ class SmsReceiver : BroadcastReceiver() {
         }.start()
     }
 
-    private fun handle(context: Context, address: String, body: String, timestamp: Long) {
+    private fun handle(context: Context, address: String, body: String, timestamp: Long, subscriptionId: Int) {
         // 1. User rules come first. Only an explicit Block rule stops delivery;
         // Spam and promotional rules keep the message accessible and merely
         // file it in the requested category.
@@ -63,7 +66,7 @@ class SmsReceiver : BroadcastReceiver() {
 
         // 3. Persist and notify: this is the point the user sees the message.
         val repo = SmsRepository(context)
-        val messageId = repo.storeIncoming(address, body, timestamp)
+        val messageId = repo.storeIncoming(address, body, timestamp, subscriptionId)
         val threadId = repo.threadIdFor(address)
 
         rule?.action?.categoryId?.let { category ->

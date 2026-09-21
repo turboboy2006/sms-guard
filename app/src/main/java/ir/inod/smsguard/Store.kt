@@ -556,6 +556,12 @@ class SenderStore(context: Context) {
         put(sender, entry(sender).apply { put("banner_seen", dismissed) })
     }
 
+    fun isPinned(sender: String): Boolean = entry(sender).optBoolean("pinned", false)
+    fun setPinned(sender: String, value: Boolean) = put(sender, entry(sender).apply { put("pinned", value) })
+
+    fun isArchived(sender: String): Boolean = entry(sender).optBoolean("archived", false)
+    fun setArchived(sender: String, value: Boolean) = put(sender, entry(sender).apply { put("archived", value) })
+
     fun colorFor(sender: String): String? =
         entry(sender).optString("color").ifBlank { null }
 
