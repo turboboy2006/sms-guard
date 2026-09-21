@@ -38,6 +38,7 @@ class SettingsActivity : BaseActivity() {
     private val theme by lazy { ThemePrefs(this) }
 
     private val langs = listOf("", "fa", "en")
+    private var simIds: List<Int> = listOf(-1)
 
     private val exportBackup = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -105,6 +106,7 @@ class SettingsActivity : BaseActivity() {
             this, android.R.layout.simple_spinner_dropdown_item, labels
         )
         binding.spinnerLanguage.setSelection(langs.indexOf(settings.language).coerceAtLeast(0))
+        setUpSimPicker()
 
         // --- appearance and cache ---
         binding.rowAppearance.setOnClickListener {
@@ -317,6 +319,7 @@ class SettingsActivity : BaseActivity() {
         settings.threshold = binding.textThreshold.text?.toString()?.toIntOrNull()
             ?.coerceIn(10, 95) ?: 40
         settings.language = langs[binding.spinnerLanguage.selectedItemPosition.coerceIn(0, 2)]
+        settings.defaultSimId = simIds.getOrElse(binding.spinnerDefaultSim.selectedItemPosition) { -1 }
 
         // Applies immediately and survives restart.
         val tag = settings.language
@@ -327,6 +330,27 @@ class SettingsActivity : BaseActivity() {
 
         Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
         finish()
+    }
+
+    private fun setUpSimPicker() {
+        val labels = mutableListOf(getString(R.string.sim_system_default))
+        val ids = mutableListOf(-1)
+        try {
+            val manager = getSystemService(android.telephony.SubscriptionManager::class.java)
+            manager?.activeSubscriptionInfoList.orEmpty().forEach { info ->
+                ids += info.subscriptionId
+                labels += getString(
+                    R.string.sim_label,
+                    info.simSlotIndex + 1,
+                    info.carrierName?.toString().orEmpty()
+                )
+            }
+        } catch (_: SecurityException) { }
+        simIds = ids
+        binding.spinnerDefaultSim.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item, labels
+        )
+        binding.spinnerDefaultSim.setSelection(ids.indexOf(settings.defaultSimId).coerceAtLeast(0))
     }
 
     private fun testConnection() {

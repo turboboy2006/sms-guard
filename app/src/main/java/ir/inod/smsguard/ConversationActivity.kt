@@ -13,6 +13,7 @@ import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.content.ContextCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import ir.inod.smsguard.databinding.ActivityConversationBinding
 
 class ConversationActivity : BaseActivity() {
@@ -36,6 +37,8 @@ class ConversationActivity : BaseActivity() {
         private const val MENU_SELECT_ALL = 1007
         private const val MENU_FORWARD_SELECTED = 1008
         private const val MENU_DETAILS = 1009
+        private const val MENU_TRASH_THREAD = 1010
+        private const val MENU_DELETE_THREAD = 1011
     }
 
     private lateinit var binding: ActivityConversationBinding
@@ -78,7 +81,8 @@ class ConversationActivity : BaseActivity() {
         supportActionBar?.title = ContactNames.displayNameUi(address)
 
         adapter = MessageAdapter(
-            onLongClick = { message -> adapter.toggleSelection(message) },
+            context = this,
+            onLongClick = { message -> showMessageOptions(message) },
             onClick = { message ->
                 if (adapter.selectionCount > 0) adapter.toggleSelection(message)
             },
@@ -92,7 +96,11 @@ class ConversationActivity : BaseActivity() {
         binding.buttonSend.setOnClickListener { sendCurrent() }
         binding.buttonPickRecipient.setOnClickListener { pickRecipient() }
         binding.buttonNotSpam.setOnClickListener { markConversationSafe() }
-        binding.buttonRiskBlock.setOnClickListener { blockRiskySender() }
+        binding.buttonRiskBlock.setOnClickListener { showSenderMenu() }
+        binding.buttonRiskCall.setOnClickListener {
+            startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:${android.net.Uri.encode(address)}")))
+        }
+        binding.toolbar.setOnClickListener { if (address.isNotBlank()) showSenderMenu() }
         binding.editMessage.doAfterTextChanged { editable ->
             if (address.isNotBlank()) drafts.edit().putString(address, editable?.toString().orEmpty()).apply()
             val count = editable?.length ?: 0
@@ -314,6 +322,10 @@ class ConversationActivity : BaseActivity() {
         menu.add(0, MENU_SELECT_ALL, 4, R.string.select_all)
         menu.add(0, MENU_FORWARD_SELECTED, 5, R.string.forward)
         menu.add(0, MENU_DETAILS, 6, R.string.message_details)
+        menu.add(0, MENU_TRASH_THREAD, 7, R.string.move_to_trash)
+            .setIcon(R.drawable.ic_tab_trash)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        menu.add(0, MENU_DELETE_THREAD, 8, R.string.delete_forever)
         return true
     }
 
@@ -328,6 +340,8 @@ class ConversationActivity : BaseActivity() {
         menu.findItem(MENU_SELECT_ALL)?.isVisible = selecting
         menu.findItem(MENU_FORWARD_SELECTED)?.isVisible = selecting
         menu.findItem(MENU_DETAILS)?.isVisible = selecting && adapter.selectionCount == 1
+        menu.findItem(MENU_TRASH_THREAD)?.isVisible = !selecting && threadId >= 0
+        menu.findItem(MENU_DELETE_THREAD)?.isVisible = !selecting && threadId >= 0
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -369,6 +383,8 @@ class ConversationActivity : BaseActivity() {
             MENU_SELECT_ALL -> { adapter.selectAll(); return true }
             MENU_FORWARD_SELECTED -> { forwardSelected(); return true }
             MENU_DETAILS -> { showSelectedDetails(); return true }
+            MENU_TRASH_THREAD -> { moveConversationToTrash(); return true }
+            MENU_DELETE_THREAD -> { confirmDeleteConversation(); return true }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -384,7 +400,8 @@ class ConversationActivity : BaseActivity() {
             it.isIncoming && (it.categoryId == Cat.SUSPICIOUS || it.categoryId == Cat.SPAM)
         }
         riskyMessageId = risky?.id ?: -1L
-        binding.cardRisk.visibility = if (risky == null) View.GONE else View.VISIBLE
+        val hidden = SenderStore(this).bannerDismissed(address)
+        binding.cardRisk.visibility = if (risky == null || hidden) View.GONE else View.VISIBLE
         if (risky != null) {
             binding.textRisk.text = Classifier.riskLabel(this, address, risky.body)
                 ?: getString(R.string.risk_banner_default)
@@ -394,7 +411,10 @@ class ConversationActivity : BaseActivity() {
     private fun markConversationSafe() {
         SenderStore(this).setPolicy(address, SenderPolicy.NEVER_ANALYZE)
         SenderStore(this).setCategory(address, Cat.OTHER)
-        if (riskyMessageId >= 0) MessageCategoryStore(this).set(riskyMessageId, Cat.OTHER)
+        adapter.allMessages().filter { it.isIncoming }.forEach {
+            MessageCategoryStore(this).set(it.id, Cat.OTHER)
+        }
+        SenderStore(this).setBannerDismissed(address)
         SenderProfileStore(this).recordFeedback(address, false)
         Classifier.invalidateCaches()
         ThreadCache.clear(this)
@@ -405,6 +425,7 @@ class ConversationActivity : BaseActivity() {
     private fun blockRiskySender() {
         if (address.isBlank()) return
         RuleStore(this).add(address, RuleTarget.SENDER, false)
+        SenderStore(this).setBannerDismissed(address)
         binding.cardRisk.visibility = View.GONE
         Toast.makeText(this, R.string.sender_blocked, Toast.LENGTH_SHORT).show()
     }
@@ -505,6 +526,122 @@ class ConversationActivity : BaseActivity() {
             .setMessage(details)
             .setPositiveButton(android.R.string.ok, null)
             .show()
+    }
+
+    private fun showMessageOptions(message: SmsMessage) {
+        val options = mutableListOf(
+            getString(R.string.select_message),
+            getString(R.string.copy),
+            getString(R.string.forward),
+            getString(R.string.message_details),
+            getString(R.string.delete_message)
+        )
+        if (!message.isIncoming && message.delivery == DeliveryState.FAILED) {
+            options.add(0, getString(R.string.retry_started))
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(Dates.full(this, message.date))
+            .setItems(options.toTypedArray()) { _, index ->
+                val selected = options[index]
+                when (selected) {
+                    getString(R.string.retry_started) -> retry(message)
+                    getString(R.string.select_message) -> adapter.toggleSelection(message)
+                    getString(R.string.copy) -> {
+                        getSystemService(android.content.ClipboardManager::class.java)
+                            .setPrimaryClip(android.content.ClipData.newPlainText(getString(R.string.app_name), message.body))
+                        Toast.makeText(this, R.string.copied, Toast.LENGTH_SHORT).show()
+                    }
+                    getString(R.string.forward) -> {
+                        RecipientPicker(this).show(this) { recipient ->
+                            worker.execute { repo.send(recipient, message.body) }
+                        }
+                    }
+                    getString(R.string.message_details) -> {
+                        adapter.clearSelection()
+                        adapter.toggleSelection(message)
+                        showSelectedDetails()
+                    }
+                    getString(R.string.delete_message) -> confirmDeleteMessage(message)
+                }
+            }.show()
+    }
+
+    /** Sender controls live behind the tappable conversation title. */
+    private fun showSenderMenu() {
+        val store = SenderStore(this)
+        val muted = store.notificationsMuted(address)
+        val options = arrayOf(
+            getString(R.string.call_sender),
+            getString(if (muted) R.string.enable_notifications else R.string.mute_notifications),
+            getString(R.string.sender_reply_sim),
+            getString(R.string.change_category),
+            getString(R.string.block_sender)
+        )
+        MaterialAlertDialogBuilder(this)
+            .setTitle(ContactNames.displayNameUi(address))
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:${android.net.Uri.encode(address)}")))
+                    1 -> {
+                        store.setNotificationsMuted(address, !muted)
+                        Toast.makeText(this, if (muted) R.string.notifications_enabled else R.string.notifications_muted, Toast.LENGTH_SHORT).show()
+                    }
+                    2 -> pickSenderSim()
+                    3 -> pickSenderCategory()
+                    4 -> blockRiskySender()
+                }
+            }.show()
+    }
+
+    private fun pickSenderSim() {
+        val labels = mutableListOf(getString(R.string.sim_system_default))
+        val ids = mutableListOf(-1)
+        try {
+            getSystemService(android.telephony.SubscriptionManager::class.java)
+                ?.activeSubscriptionInfoList.orEmpty().forEach { info ->
+                    ids += info.subscriptionId
+                    labels += getString(R.string.sim_label, info.simSlotIndex + 1, info.carrierName?.toString().orEmpty())
+                }
+        } catch (_: SecurityException) { }
+        MaterialAlertDialogBuilder(this).setTitle(R.string.sender_reply_sim)
+            .setItems(labels.toTypedArray()) { _, which ->
+                SenderStore(this).setSim(address, ids[which])
+                Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
+            }.show()
+    }
+
+    private fun pickSenderCategory() {
+        val categories = CategoryStore(this).all()
+        MaterialAlertDialogBuilder(this).setTitle(R.string.change_category)
+            .setItems(categories.map { it.label(this) }.toTypedArray()) { _, which ->
+                SenderStore(this).setCategory(address, categories[which].id)
+                SenderStore(this).setBannerDismissed(address)
+                Classifier.invalidateCaches()
+                ThreadCache.clear(this)
+                load()
+            }.show()
+    }
+
+    private fun moveConversationToTrash() {
+        SenderStore(this).setCategory(address, Cat.TRASH)
+        Classifier.invalidateCaches()
+        ThreadCache.clear(this)
+        Toast.makeText(this, R.string.moved_to_trash, Toast.LENGTH_SHORT).show()
+        finish()
+    }
+
+    private fun confirmDeleteConversation() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.delete_forever)
+            .setMessage(R.string.confirm_delete_conversation)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.confirm) { _, _ ->
+                worker.execute {
+                    val deleted = repo.deleteThread(threadId)
+                    if (deleted) ThreadCache.clear(this)
+                    runOnUiThread { if (deleted) finish() else Toast.makeText(this, R.string.send_failed, Toast.LENGTH_SHORT).show() }
+                }
+            }.show()
     }
 
     @Deprecated("Handled for selection mode")

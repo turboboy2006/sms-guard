@@ -139,7 +139,7 @@ class MainActivity : BaseActivity() {
             onClick = { thread ->
                 if (adapter.selectionCount > 0) adapter.toggleSelection(thread) else openThread(thread)
             },
-            onLongClick = { thread -> adapter.toggleSelection(thread) },
+            onLongClick = { thread -> showOptions(thread) },
             onSelectionChanged = { count -> updateSelectionUi(count) }
         )
         binding.recyclerThreads.layoutManager = LinearLayoutManager(this)
@@ -198,6 +198,8 @@ class MainActivity : BaseActivity() {
             0, R.drawable.ic_tab_suspicious, 0, R.drawable.ic_tab_banking,
             R.drawable.ic_tab_service, R.drawable.ic_tab_trash
         )
+        val pastelBg = listOf("#E0F2FE", "#FFEDD5", "#FEE2E2", "#DBEAFE", "#EDE9FE", "#F1F5F9")
+        val pastelInk = listOf("#075985", "#9A3412", "#991B1B", "#1E40AF", "#5B21B6", "#334155")
         val idToIndex = HashMap<Int, Int>()
         val density = resources.displayMetrics.density
         labels.forEachIndexed { index, res ->
@@ -206,18 +208,15 @@ class MainActivity : BaseActivity() {
                 isCheckable = true
                 isClickable = true
                 id = View.generateViewId()
-                chipBackgroundColor =
-                    ColorStateList(
-                        arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
-                        intArrayOf(theme.accentColor(), ContextCompat.getColor(this@MainActivity, R.color.chip_inactive_bg))
-                    )
-                setTextColor(
-                    ContextCompat.getColorStateList(this@MainActivity, R.color.chip_text)
+                chipBackgroundColor = ColorStateList(
+                    arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+                    intArrayOf(Color.parseColor(pastelBg[index]), ContextCompat.getColor(this@MainActivity, R.color.chip_inactive_bg))
                 )
+                val ink = Color.parseColor(pastelInk[index])
+                setTextColor(ColorStateList(arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()), intArrayOf(ink, ink)))
                 if (icons[index] != 0) {
                     chipIcon = ContextCompat.getDrawable(this@MainActivity, icons[index])
-                    chipIconTint =
-                        ContextCompat.getColorStateList(this@MainActivity, R.color.chip_text)
+                    chipIconTint = ColorStateList.valueOf(ink)
                     chipIconSize = 16f * density
                 }
                 chipStrokeWidth = 0f
@@ -303,13 +302,8 @@ class MainActivity : BaseActivity() {
         binding.bottomNav.itemTextColor = ColorStateList(
             states, intArrayOf(accent, ContextCompat.getColor(this, R.color.nav_icon_inactive))
         )
-        for (index in 0 until binding.chipGroup.childCount) {
-            (binding.chipGroup.getChildAt(index) as? com.google.android.material.chip.Chip)
-                ?.chipBackgroundColor = ColorStateList(
-                    states,
-                    intArrayOf(accent, ContextCompat.getColor(this, R.color.chip_inactive_bg))
-                )
-        }
+        // Category chips keep their semantic pastel colours; the global accent
+        // still controls navigation and the compose action.
     }
 
     private fun applyListPadding() {
@@ -325,7 +319,8 @@ class MainActivity : BaseActivity() {
             Manifest.permission.READ_SMS,
             Manifest.permission.RECEIVE_SMS,
             Manifest.permission.SEND_SMS,
-            Manifest.permission.READ_CONTACTS
+            Manifest.permission.READ_CONTACTS,
+            Manifest.permission.READ_PHONE_STATE
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             needed.add(Manifest.permission.POST_NOTIFICATIONS)

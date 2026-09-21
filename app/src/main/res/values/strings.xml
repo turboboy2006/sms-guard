@@ -286,4 +286,16 @@
     <string name="message_date_line">Time: %1$s</string>
     <string name="message_error_line">Network error code: %1$d</string>
     <string name="sms_counter">%1$d · %2$d SMS</string>
+    <string name="default_sending_sim">Default SIM for sending</string>
+    <string name="sim_system_default">System default SIM</string>
+    <string name="sim_label">SIM %1$d · %2$s</string>
+    <string name="select_message">Select message</string>
+    <string name="call_sender">Call</string>
+    <string name="mute_notifications">Mute notifications</string>
+    <string name="enable_notifications">Enable notifications</string>
+    <string name="notifications_muted">Notifications muted for this sender</string>
+    <string name="notifications_enabled">Notifications enabled</string>
+    <string name="sender_reply_sim">Always reply using SIM</string>
+    <string name="moved_to_trash">Conversation moved to trash</string>
+    <string name="confirm_delete_conversation">Permanently delete this entire conversation?</string>
 </resources>

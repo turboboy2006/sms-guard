@@ -477,7 +477,7 @@ class SmsRepository(private val context: Context) {
             val messageId = storePending(address, body, now)
             if (messageId < 0) return false
             pendingId = messageId
-            val sm = smsManager()
+            val sm = smsManager(address)
             val parts = sm.divideMessage(body)
             val sent = ArrayList<PendingIntent>(parts.size)
             val delivered = ArrayList<PendingIntent>(parts.size)
@@ -532,13 +532,23 @@ class SmsRepository(private val context: Context) {
         else -> DeliveryState.SENT
     }
 
-    private fun smsManager(): SmsManager =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    private fun smsManager(address: String): SmsManager {
+        val senderSim = SenderStore(context).simFor(address)
+        val chosen = if (senderSim >= 0) senderSim else SettingsStore(context).defaultSimId
+        val base = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             context.getSystemService(SmsManager::class.java)
         } else {
             @Suppress("DEPRECATION")
             SmsManager.getDefault()
         }
+        if (chosen < 0) return base
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            base.createForSubscriptionId(chosen)
+        } else {
+            @Suppress("DEPRECATION")
+            SmsManager.getSmsManagerForSubscriptionId(chosen)
+        }
+    }
 
     fun threadIdFor(address: String): Long = try {
         Telephony.Threads.getOrCreateThreadId(context, address)

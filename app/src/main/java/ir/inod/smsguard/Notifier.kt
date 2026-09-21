@@ -15,6 +15,7 @@ class Notifier(private val context: Context) {
     private val nm = NotificationManagerCompat.from(context)
 
     fun notifyIncoming(threadId: Long, address: String, body: String) {
+        if (SenderStore(context).notificationsMuted(address)) return
         val intent = Intent(context, ConversationActivity::class.java).apply {
             putExtra(ConversationActivity.EXTRA_THREAD_ID, threadId)
             putExtra(ConversationActivity.EXTRA_ADDRESS, address)

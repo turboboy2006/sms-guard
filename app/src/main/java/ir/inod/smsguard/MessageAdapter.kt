@@ -19,6 +19,7 @@ import java.util.Calendar
  * background are switched in code.
  */
 class MessageAdapter(
+    private val context: android.content.Context,
     private val onLongClick: (SmsMessage) -> Unit,
     private val onClick: (SmsMessage) -> Unit = {},
     private val onRetry: (SmsMessage) -> Unit = {},
@@ -26,7 +27,7 @@ class MessageAdapter(
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private sealed interface Row {
-        data class Day(val millis: Long) : Row
+        data class Day(val millis: Long, val yearHeader: Boolean = false) : Row
         data class Msg(val message: SmsMessage) : Row
     }
 
@@ -38,6 +39,8 @@ class MessageAdapter(
     fun selectedMessages(): List<SmsMessage> = rows.mapNotNull {
         (it as? Row.Msg)?.message?.takeIf { message -> message.id in selectedIds }
     }
+
+    fun allMessages(): List<SmsMessage> = rows.mapNotNull { (it as? Row.Msg)?.message }
 
     fun toggleSelection(message: SmsMessage) {
         if (!selectedIds.add(message.id)) selectedIds.remove(message.id)
@@ -70,7 +73,13 @@ class MessageAdapter(
     fun submit(list: List<SmsMessage>) {
         rows.clear()
         var lastDay = Int.MIN_VALUE
+        var lastYear = Int.MIN_VALUE
         for (message in list) {
+            val year = Dates.year(context, message.date)
+            if (lastYear != Int.MIN_VALUE && year != lastYear) {
+                rows.add(Row.Day(message.date, yearHeader = true))
+            }
+            lastYear = year
             val day = dayKey(message.date)
             if (day != lastDay) {
                 rows.add(Row.Day(message.date))
@@ -105,7 +114,7 @@ class MessageAdapter(
         return when (day) {
             today -> context.getString(R.string.today)
             today - 1 -> context.getString(R.string.yesterday)
-            else -> Dates.listLabel(context, millis)
+            else -> Dates.conversationDay(context, millis)
         }
     }
 
@@ -131,7 +140,9 @@ class MessageAdapter(
         when (val row = rows[position]) {
             is Row.Day -> {
                 val h = holder as DayVH
-                h.binding.textDayHeader.text = dayLabel(h.itemView.context, row.millis)
+                h.binding.textDayHeader.text = if (row.yearHeader) {
+                    "────  ${Dates.yearLabel(h.itemView.context, row.millis)}  ────"
+                } else dayLabel(h.itemView.context, row.millis)
             }
             is Row.Msg -> bindMessage(holder as MsgVH, row.message)
         }

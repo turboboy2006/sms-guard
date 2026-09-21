@@ -262,4 +262,16 @@
     <string name="message_date_line">زمان: %1$s</string>
     <string name="message_error_line">کد خطای شبکه: %1$d</string>
     <string name="sms_counter">%1$d نویسه · %2$d پیامک</string>
+    <string name="default_sending_sim">سیم‌کارت پیش‌فرض ارسال</string>
+    <string name="sim_system_default">پیش‌فرض سیستم</string>
+    <string name="sim_label">سیم‌کارت %1$d · %2$s</string>
+    <string name="select_message">انتخاب پیام</string>
+    <string name="call_sender">تماس</string>
+    <string name="mute_notifications">خاموش کردن اعلان‌ها</string>
+    <string name="enable_notifications">روشن کردن اعلان‌ها</string>
+    <string name="notifications_muted">اعلان‌های این فرستنده خاموش شد</string>
+    <string name="notifications_enabled">اعلان‌های این فرستنده روشن شد</string>
+    <string name="sender_reply_sim">سیم‌کارت همیشگی پاسخ</string>
+    <string name="moved_to_trash">گفتگو به سطل زباله منتقل شد</string>
+    <string name="confirm_delete_conversation">این گفتگو برای همیشه حذف شود؟</string>
 </resources>

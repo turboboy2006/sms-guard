@@ -42,38 +42,48 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
             android:padding="@dimen/space_12">
+
+            <ImageButton
+                android:id="@+id/buttonRiskCall"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/call_sender"
+                android:padding="9dp"
+                android:src="@android:drawable/ic_menu_call"
+                app:tint="@color/danger_deep" />
 
             <TextView
                 android:id="@+id/textRisk"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:textColor="@color/danger_deep"
                 android:textStyle="bold" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonNotSpam"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/space_8"
-                android:gravity="end"
-                android:orientation="horizontal">
+                android:minWidth="0dp"
+                android:text="@string/mark_not_spam" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/buttonNotSpam"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/mark_not_spam" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/buttonRiskBlock"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/block_sender"
-                    android:textColor="@color/danger" />
-            </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonRiskBlock"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:minWidth="0dp"
+                android:text="⋮"
+                android:textColor="@color/danger"
+                android:textSize="22sp" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

@@ -13,6 +13,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
 import ir.inod.smsguard.databinding.ItemThreadBinding
 
 /**
@@ -117,47 +118,18 @@ class ThreadAdapter(
      * refresh for no visible gain.
      */
     fun merge(list: List<ThreadSummary>) {
-        if (items.isEmpty()) {
-            submit(list)
-            return
-        }
         val old = items.toList()
-        val nextIds = HashSet<Long>(list.size * 2)
-        for (row in list) nextIds.add(row.threadId)
-
-        // 1. Conversations the provider no longer has, removed from the tail
-        //    backwards so the reported positions stay valid.
-        for (i in old.indices.reversed()) {
-            if (old[i].threadId !in nextIds) {
-                items.removeAt(i)
-                notifyItemRemoved(i)
-            }
-        }
-
-        // 2. Conversations that arrived since the last build, inserted from the
-        //    top down because the inbox is newest-first.
-        for (i in list.indices) {
-            val row = list[i]
-            if (items.none { it.threadId == row.threadId }) {
-                items.add(i, row)
-                notifyItemInserted(i)
-            }
-        }
-
-        // 3. Rows whose content moved on: a new message, a new unread count, a
-        //    different category. Only these are rebound.
-        for (i in items.indices) {
-            val incoming = list.getOrNull(i) ?: break
-            if (items[i].threadId != incoming.threadId) continue
-            if (items[i] != incoming) {
-                items[i] = incoming
-                notifyItemChanged(i)
-            }
-        }
-
-        // Anything the steps above could not express — a re-sorted list, for
-        // instance — is worth a full rebind rather than a wrong screen.
-        if (items.size != list.size || items != list) submit(list)
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = old.size
+            override fun getNewListSize() = list.size
+            override fun areItemsTheSame(oldPos: Int, newPos: Int) =
+                old[oldPos].threadId == list[newPos].threadId
+            override fun areContentsTheSame(oldPos: Int, newPos: Int) = old[oldPos] == list[newPos]
+        }, true)
+        items.clear()
+        items.addAll(list)
+        selectedIds.retainAll(items.mapTo(HashSet()) { it.threadId })
+        diff.dispatchUpdatesTo(this)
     }
 
     /**
@@ -236,6 +208,11 @@ class ThreadAdapter(
         b.textAddress.text = display
         b.textSnippet.text = item.snippet
         b.textDate.text = Dates.listLabel(context, item.date)
+        val persianUi = Dates.isPersian(context)
+        b.textAddress.gravity = if (persianUi) Gravity.END else Gravity.START
+        b.textSnippet.gravity = if (persianUi) Gravity.END else Gravity.START
+        b.textAddress.textAlignment = if (persianUi) View.TEXT_ALIGNMENT_VIEW_END else View.TEXT_ALIGNMENT_VIEW_START
+        b.textSnippet.textAlignment = if (persianUi) View.TEXT_ALIGNMENT_VIEW_END else View.TEXT_ALIGNMENT_VIEW_START
 
         // Names and bodies follow the ambient (RTL) direction; a preview that is
         // really a code, a link or an amount is pinned to LTR so its digits are
@@ -455,7 +432,7 @@ class ThreadAdapter(
         // This has to be checked before anything else, otherwise the row falls
         // through to a branch that leaves the avatar square and empty.
         if (AvatarHelper.isUnknown(display)) {
-            showPersonGlyph(context, b, pad)
+            showPersonGlyph(context, b, pad, item.address)
             return
         }
 
@@ -492,19 +469,18 @@ class ThreadAdapter(
             return
         }
 
-        showPersonGlyph(context, b, pad)
+        showPersonGlyph(context, b, pad, item.address)
     }
 
     /** Grey circle, muted person silhouette: an unnamed sender, stated calmly. */
-    private fun showPersonGlyph(context: Context, b: ItemThreadBinding, pad: Int) {
-        b.avatar.background = AvatarHelper.circle(
-            ContextCompat.getColor(context, R.color.surface_sunken)
-        )
+    private fun showPersonGlyph(context: Context, b: ItemThreadBinding, pad: Int, key: String) {
+        val (container, ink) = AvatarHelper.softPair(key)
+        b.avatar.background = AvatarHelper.circle(container)
         b.avatarLetter.text = null
         b.avatarImage.setPadding(pad, pad, pad, pad)
         b.avatarImage.scaleType = ImageView.ScaleType.CENTER_INSIDE
         b.avatarImage.setImageResource(R.drawable.ic_person)
-        b.avatarImage.setColorFilter(ContextCompat.getColor(context, R.color.text_muted))
+        b.avatarImage.setColorFilter(ink)
     }
 
     private fun parseColor(hex: String): Int = try {

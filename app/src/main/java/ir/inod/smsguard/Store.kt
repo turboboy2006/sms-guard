@@ -69,6 +69,11 @@ class SettingsStore(context: Context) {
         get() = prefs.getString("language", "") ?: ""
         set(v) = prefs.edit().putString("language", v).apply()
 
+    /** -1 follows Android's current default SMS subscription. */
+    var defaultSimId: Int
+        get() = prefs.getInt("default_sim_id", -1)
+        set(v) = prefs.edit().putInt("default_sim_id", v).apply()
+
     /**
      * Quiet hours. Off by default: silently withholding a notification is a
      * surprising thing for a messaging app to do on its own, so the user has to
@@ -529,6 +534,26 @@ class SenderStore(context: Context) {
 
     fun setPolicy(sender: String, policy: SenderPolicy) {
         put(sender, entry(sender).apply { put("policy", policy.name) })
+    }
+
+    fun simFor(sender: String): Int = entry(sender).optInt("sim", -1)
+
+    fun setSim(sender: String, subscriptionId: Int) {
+        val o = entry(sender)
+        if (subscriptionId < 0) o.remove("sim") else o.put("sim", subscriptionId)
+        put(sender, o)
+    }
+
+    fun notificationsMuted(sender: String): Boolean = entry(sender).optBoolean("muted", false)
+
+    fun setNotificationsMuted(sender: String, muted: Boolean) {
+        put(sender, entry(sender).apply { put("muted", muted) })
+    }
+
+    fun bannerDismissed(sender: String): Boolean = entry(sender).optBoolean("banner_seen", false)
+
+    fun setBannerDismissed(sender: String, dismissed: Boolean = true) {
+        put(sender, entry(sender).apply { put("banner_seen", dismissed) })
     }
 
     fun colorFor(sender: String): String? =

@@ -40,7 +40,7 @@ object Dates {
             return when {
                 age < DAY_MS -> faTime(millis)
                 age < 7 * DAY_MS -> faDayName(millis)
-                else -> faDate(millis)
+                else -> faShortDate(millis)
             }
         }
         val pattern = when {
@@ -96,6 +96,31 @@ object Dates {
     private fun faDate(millis: Long): String {
         val j = jalali(millis)
         return faDigits("${j[2]} ${FA_MONTHS[j[1] - 1]} ${j[0]}")
+    }
+
+    fun faShortDate(millis: Long): String {
+        val j = jalali(millis)
+        return faDigits("${j[2]} ${FA_MONTHS[j[1] - 1]}")
+    }
+
+    fun year(context: Context, millis: Long): Int =
+        if (isPersian(context)) jalali(millis)[0]
+        else Calendar.getInstance().apply { timeInMillis = millis }.get(Calendar.YEAR)
+
+    fun yearLabel(context: Context, millis: Long): String {
+        val value = year(context, millis).toString()
+        return if (isPersian(context)) faDigits(value) else value
+    }
+
+    fun conversationDay(context: Context, millis: Long): String {
+        val age = System.currentTimeMillis() - millis
+        return when {
+            age < DAY_MS -> context.getString(R.string.today)
+            age < 2 * DAY_MS -> context.getString(R.string.yesterday)
+            isPersian(context) && age < 7 * DAY_MS -> faDayName(millis)
+            isPersian(context) -> faShortDate(millis)
+            else -> SimpleDateFormat("MMM d", localeOf(context)).format(Date(millis))
+        }
     }
 
     private fun faDayName(millis: Long): String {

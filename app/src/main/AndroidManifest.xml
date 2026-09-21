@@ -10,6 +10,8 @@
 
     <!-- Needed to resolve sender names -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
 
     <!-- Notification on API 33+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
