@@ -43,19 +43,22 @@ class AppearancePreviewView @JvmOverloads constructor(
             gravity = Gravity.CENTER_VERTICAL
         }
 
+        // The preview must use the same avatar palette as the real list,
+        // otherwise the one thing this screen exists to show is wrong.
+        val (container, ink) = AvatarHelper.softPair(context.getString(R.string.preview_sender))
         avatar = com.google.android.material.card.MaterialCardView(context).apply {
             radius = 100f
             cardElevation = 0f
-            setCardBackgroundColor(Color.parseColor("#DCFCE7"))
+            setCardBackgroundColor(container)
             val size = dp(48)
             layoutParams = LayoutParams(size, size)
         }
         avatarLetter = TextView(context).apply {
             text = "ب"
-            setTextColor(Color.parseColor("#166534"))
+            setTextColor(ink)
             gravity = Gravity.CENTER
             setTypeface(null, Typeface.BOLD)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
         }
         avatar.addView(
             avatarLetter,

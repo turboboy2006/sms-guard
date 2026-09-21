@@ -1,40 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Blocking rules. Same tokens as every other screen: a white app bar with a back
+  arrow, a screen-coloured background, and the two actions as a filled button
+  plus a quiet outlined one.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/screen_bg"
     android:orientation="vertical">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary"
+        android:layout_height="@dimen/appbar_height"
+        android:background="@color/card_bg"
+        app:navigationIcon="?attr/homeAsUpIndicator"
         app:title="@string/rules"
-        app:titleTextColor="@android:color/white" />
+        app:titleTextAppearance="@style/TextAppearance.SmsGuard.Title"
+        app:titleTextColor="@color/text_primary" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingTop="8dp"
-        android:paddingEnd="8dp">
+        android:paddingStart="@dimen/gutter"
+        android:paddingTop="@dimen/space_12"
+        android:paddingEnd="@dimen/gutter"
+        android:paddingBottom="@dimen/space_4">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonAddRule"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:minHeight="@dimen/touch_target"
             android:text="@string/add_rule" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonBlockedLog"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="@dimen/space_8"
             android:layout_weight="1"
+            android:minHeight="@dimen/touch_target"
             android:text="@string/blocked_log" />
     </LinearLayout>
 
@@ -48,18 +59,36 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp" />
+            android:paddingTop="@dimen/space_8"
+            android:paddingBottom="@dimen/space_16" />
 
-        <TextView
+        <LinearLayout
             android:id="@+id/textEmpty"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:gravity="center"
-            android:padding="24dp"
-            android:text="@string/no_rules"
-            android:visibility="gone" />
+            android:orientation="vertical"
+            android:padding="@dimen/space_24"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:alpha="0.55"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_tab_suspicious"
+                app:tint="@color/text_muted" />
+
+            <TextView
+                android:id="@+id/textEmptyLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_12"
+                android:gravity="center"
+                android:text="@string/no_rules"
+                android:textAppearance="@style/TextAppearance.SmsGuard.Body" />
+        </LinearLayout>
     </FrameLayout>
 
 </LinearLayout>

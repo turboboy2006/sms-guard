@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ripple-only row background: the pressed state is a soft blue wash of the
+     primary colour rather than the platform's grey, so it matches every other
+     pressable surface in the app. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="@color/nav_active_pill">
+    <item android:id="@android:id/mask">
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/white" />
+        </shape>
+    </item>
+</ripple>

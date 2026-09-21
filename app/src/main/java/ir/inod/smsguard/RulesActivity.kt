@@ -6,7 +6,6 @@ import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import ir.inod.smsguard.databinding.ActivityRulesBinding
 import ir.inod.smsguard.databinding.DialogRuleBinding

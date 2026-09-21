@@ -164,7 +164,7 @@ class ManagerActivity : BaseActivity() {
             emptyList()
         }
         (binding.recycler.adapter as RowAdapter).submit(data)
-        binding.textEmpty.setText(
+        binding.textEmptyLabel.setText(
             if (tabIndex == 0) R.string.no_overrides else R.string.blocked_none
         )
         binding.textEmpty.visibility = if (data.isEmpty()) View.VISIBLE else View.GONE
@@ -377,7 +377,7 @@ class ManagerActivity : BaseActivity() {
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
                 )
                 isClickable = true
-                setBackgroundResource(android.R.drawable.list_selector_background)
+                setBackgroundResource(R.drawable.row_ripple)
             }
             val circle = FrameLayout(parent.context).apply {
                 layoutParams = LinearLayout.LayoutParams(
@@ -433,24 +433,45 @@ class ManagerActivity : BaseActivity() {
             holder.subtitle.text = row.subtitle
             TextDir.apply(holder.subtitle, row.subtitle)
 
+            // Same avatar language as the inbox: a known business keeps its own
+            // colour with a white glyph, a person gets a soft tinted initial.
+            val letter = AvatarHelper.monogram(row.title)
+            val (container, ink) = if (row.iconRes != null) {
+                parseHex(row.colorHex) to Color.WHITE
+            } else {
+                AvatarHelper.softPair(row.title)
+            }
             holder.circle.background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.parseColor(row.colorHex))
+                setColor(container)
             }
+            holder.letter.setTextColor(ink)
 
-            val letter = AvatarHelper.monogram(row.title)
-            if (row.iconRes != null) {
-                holder.letter.text = null
-                holder.image.setImageResource(row.iconRes)
-            } else if (letter != null) {
-                holder.image.setImageDrawable(null)
-                holder.letter.text = letter
-            } else {
-                holder.image.setImageResource(R.drawable.ic_person)
-                holder.letter.text = null
+            when {
+                row.iconRes != null -> {
+                    holder.letter.text = null
+                    holder.image.setImageResource(row.iconRes)
+                }
+                letter != null -> {
+                    holder.image.setImageDrawable(null)
+                    holder.letter.text = letter
+                }
+                else -> {
+                    holder.image.setImageResource(R.drawable.ic_person)
+                    holder.image.setColorFilter(
+                        ContextCompat.getColor(holder.itemView.context, R.color.text_muted)
+                    )
+                    holder.letter.text = null
+                }
             }
 
             holder.root.setOnClickListener { row.action() }
+        }
+
+        private fun parseHex(hex: String): Int = try {
+            Color.parseColor(hex)
+        } catch (e: Exception) {
+            Color.GRAY
         }
     }
 }
