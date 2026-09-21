@@ -272,6 +272,39 @@ class SmsRepository(private val context: Context) {
         )?.use { it.count } ?: 0
     } catch (_: Exception) { 0 }
 
+    /** Candidate messages for the user-triggered one-time AI learning pass. */
+    fun aiScanCandidates(limit: Int = 1000): List<SmsMessage> {
+        val out = mutableListOf<SmsMessage>()
+        val projection = arrayOf(
+            Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY,
+            Telephony.Sms.DATE, Telephony.Sms.TYPE
+        )
+        try {
+            resolver.query(
+                Telephony.Sms.CONTENT_URI, projection, null, null,
+                "${Telephony.Sms.DATE} DESC"
+            )?.use { c ->
+                val id = c.getColumnIndexOrThrow(Telephony.Sms._ID)
+                val address = c.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+                val body = c.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                val date = c.getColumnIndexOrThrow(Telephony.Sms.DATE)
+                val type = c.getColumnIndexOrThrow(Telephony.Sms.TYPE)
+                while (c.moveToNext() && out.size < limit) {
+                    if (c.getInt(type) != Telephony.Sms.MESSAGE_TYPE_INBOX) continue
+                    val sender = c.getString(address).orEmpty()
+                    val text = c.getString(body).orEmpty()
+                    val local = Classifier.classifyLocal(context, sender, text)
+                    if (local.categoryId in setOf(Cat.BANKING, Cat.OTP, Cat.PERSONAL)) continue
+                    // Restrict cloud requests to messages worth another opinion.
+                    if (local.isSuspicious || local.categoryId == Cat.PROMOTION) {
+                        out += SmsMessage(c.getLong(id), sender, text, c.getLong(date), true, local.categoryId)
+                    }
+                }
+            }
+        } catch (_: Exception) { }
+        return out
+    }
+
     /**
      * Called from the SMS receiver for a single new message, so the stored inbox
      * is already correct the next time the app is opened — even if the app

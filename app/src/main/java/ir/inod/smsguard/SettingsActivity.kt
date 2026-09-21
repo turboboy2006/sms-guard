@@ -120,6 +120,7 @@ class SettingsActivity : BaseActivity() {
 
         binding.buttonSave.setOnClickListener { save() }
         binding.buttonTest.setOnClickListener { testConnection() }
+        binding.buttonAiScan.setOnClickListener { confirmAiScan() }
         binding.buttonCategories.setOnClickListener { manageCategories() }
         binding.buttonBrands.setOnClickListener {
             startActivity(Intent(this, ManagerActivity::class.java))
@@ -350,16 +351,12 @@ class SettingsActivity : BaseActivity() {
         binding.editModel.isEnabled = enabled
         binding.editTimeout.isEnabled = enabled
         binding.buttonTest.isEnabled = enabled
+        binding.buttonAiScan.isEnabled = enabled
         binding.textAiHint.visibility = if (enabled) View.GONE else View.VISIBLE
     }
 
     private fun save() {
-        settings.aiEnabled = binding.switchAi.isChecked
-        settings.aiBaseUrl = binding.editBase.text?.toString().orEmpty()
-        settings.aiApiKey = binding.editKey.text?.toString().orEmpty()
-        settings.aiModel = binding.editModel.text?.toString().orEmpty()
-        settings.aiTimeoutMs = binding.editTimeout.text?.toString()?.toIntOrNull()
-            ?.coerceIn(1000, 60000) ?: 8000
+        saveAiFields()
         settings.threshold = binding.textThreshold.text?.toString()?.toIntOrNull()
             ?.coerceIn(10, 95) ?: 40
         settings.language = langs[binding.spinnerLanguage.selectedItemPosition.coerceIn(0, 2)]
@@ -375,6 +372,15 @@ class SettingsActivity : BaseActivity() {
 
         Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
         finish()
+    }
+
+    private fun saveAiFields() {
+        settings.aiEnabled = binding.switchAi.isChecked
+        settings.aiBaseUrl = binding.editBase.text?.toString().orEmpty()
+        settings.aiApiKey = binding.editKey.text?.toString().orEmpty()
+        settings.aiModel = binding.editModel.text?.toString().orEmpty()
+        settings.aiTimeoutMs = binding.editTimeout.text?.toString()?.toIntOrNull()
+            ?.coerceIn(1000, 60000) ?: 8000
     }
 
     private fun setUpSimPicker() {
@@ -410,6 +416,30 @@ class SettingsActivity : BaseActivity() {
             val result = AiAnalyzer(snapshot).testConnection()
             runOnUiThread { binding.textTestResult.text = result }
         }.start()
+    }
+
+    private fun confirmAiScan() {
+        saveAiFields()
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.ai_scan_inbox)
+            .setMessage(R.string.ai_scan_explanation)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.start) { _, _ ->
+                binding.buttonAiScan.isEnabled = false
+                binding.textTestResult.text = getString(R.string.ai_scan_starting)
+                AiInboxScanner.scan(
+                    this,
+                    onProgress = { done, total, learned -> runOnUiThread {
+                        if (!isFinishing) binding.textTestResult.text = getString(R.string.ai_scan_progress, done, total, learned)
+                    } },
+                    onDone = { learned -> runOnUiThread {
+                        if (!isFinishing) {
+                            binding.buttonAiScan.isEnabled = binding.switchAi.isChecked
+                            binding.textTestResult.text = getString(R.string.ai_scan_done, learned)
+                        }
+                    } }
+                )
+            }.show()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

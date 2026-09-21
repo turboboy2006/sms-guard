@@ -311,13 +311,23 @@ object ThemePalette {
     const val VIOLET = "violet"
     const val ROSE = "rose"
     const val AMBER = "amber"
-    val IDS = listOf(OCEAN, EMERALD, VIOLET, ROSE, AMBER)
+    const val INDIGO = "indigo"
+    const val CORAL = "coral"
+    const val LIME = "lime"
+    const val SKY = "sky"
+    const val SUNSET = "sunset"
+    val IDS = listOf(OCEAN, EMERALD, VIOLET, ROSE, AMBER, INDIGO, CORAL, LIME, SKY, SUNSET)
 
     fun hex(id: String): String = when (id) {
         EMERALD -> "#059669"
         VIOLET -> "#7C3AED"
         ROSE -> "#E11D48"
         AMBER -> "#D97706"
+        INDIGO -> "#4F46E5"
+        CORAL -> "#F43F5E"
+        LIME -> "#65A30D"
+        SKY -> "#0284C7"
+        SUNSET -> "#EA580C"
         else -> "#2563EB"
     }
 }

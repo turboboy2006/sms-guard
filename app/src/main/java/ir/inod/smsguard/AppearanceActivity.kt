@@ -171,6 +171,11 @@ class AppearanceActivity : BaseActivity() {
                 R.id.buttonPaletteViolet -> ThemePalette.VIOLET
                 R.id.buttonPaletteRose -> ThemePalette.ROSE
                 R.id.buttonPaletteAmber -> ThemePalette.AMBER
+                R.id.buttonPaletteIndigo -> ThemePalette.INDIGO
+                R.id.buttonPaletteCoral -> ThemePalette.CORAL
+                R.id.buttonPaletteLime -> ThemePalette.LIME
+                R.id.buttonPaletteSky -> ThemePalette.SKY
+                R.id.buttonPaletteSunset -> ThemePalette.SUNSET
                 else -> ThemePalette.OCEAN
             }
             theme.touch()
@@ -217,6 +222,11 @@ class AppearanceActivity : BaseActivity() {
                 ThemePalette.VIOLET -> R.id.buttonPaletteViolet
                 ThemePalette.ROSE -> R.id.buttonPaletteRose
                 ThemePalette.AMBER -> R.id.buttonPaletteAmber
+                ThemePalette.INDIGO -> R.id.buttonPaletteIndigo
+                ThemePalette.CORAL -> R.id.buttonPaletteCoral
+                ThemePalette.LIME -> R.id.buttonPaletteLime
+                ThemePalette.SKY -> R.id.buttonPaletteSky
+                ThemePalette.SUNSET -> R.id.buttonPaletteSunset
                 else -> R.id.buttonPaletteOcean
             }
         )

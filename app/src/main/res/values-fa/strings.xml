@@ -199,6 +199,11 @@
     <string name="palette_violet">بنفش</string>
     <string name="palette_rose">رز</string>
     <string name="palette_amber">کهربایی</string>
+    <string name="palette_indigo">نیلی</string>
+    <string name="palette_coral">مرجانی</string>
+    <string name="palette_lime">لیمویی</string>
+    <string name="palette_sky">آسمانی</string>
+    <string name="palette_sunset">غروب</string>
     <string name="export_backup">خروجی تنظیمات و یادگیری</string>
     <string name="import_backup">بازیابی از پشتیبان</string>
     <string name="backup_saved">نسخهٔ پشتیبان ذخیره شد</string>
@@ -307,6 +312,12 @@
     <string name="risk_score">امتیاز خطر %1$d · اطمینان %2$d٪</string>
     <string name="notification_sound">صدای اعلان</string>
     <string name="sender_channel">پیام‌های %1$s</string>
+    <string name="ai_scan_inbox">اسکن هوشمند یک‌باره صندوق</string>
+    <string name="ai_scan_explanation">تا ۱۰۰۰ پیام مرتبط و غیر‌بانکی برای سرویس هوش مصنوعی انتخاب‌شده می‌رود. نتیجه به‌صورت محلی ذخیره می‌شود و پس از اسکن می‌توانی هوش مصنوعی را خاموش کنی.</string>
+    <string name="ai_scan_starting">در حال آماده‌سازی پیام‌ها برای تحلیل…</string>
+    <string name="ai_scan_progress">اسکن %1$d از %2$d · %3$d الگو یاد گرفته شد</string>
+    <string name="ai_scan_done">اسکن کامل شد · %1$d الگو به‌صورت محلی یاد گرفته شد</string>
+    <string name="start">شروع</string>
     <string name="trash_retention">پاک‌سازی خودکار سطل زباله</string>
     <string name="trash_keep_forever">برای همیشه نگه‌دار</string>
     <string name="trash_days">حذف پس از %1$d روز</string>

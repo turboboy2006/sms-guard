@@ -220,6 +220,11 @@
     <string name="palette_violet">Violet</string>
     <string name="palette_rose">Rose</string>
     <string name="palette_amber">Amber</string>
+    <string name="palette_indigo">Indigo</string>
+    <string name="palette_coral">Coral</string>
+    <string name="palette_lime">Lime</string>
+    <string name="palette_sky">Sky</string>
+    <string name="palette_sunset">Sunset</string>
     <string name="export_backup">Export settings and learning</string>
     <string name="import_backup">Restore from backup</string>
     <string name="backup_saved">Backup saved</string>
@@ -331,6 +336,12 @@
     <string name="risk_score">Risk score %1$d · confidence %2$d%%</string>
     <string name="notification_sound">Notification sound</string>
     <string name="sender_channel">Messages from %1$s</string>
+    <string name="ai_scan_inbox">One-time smart inbox scan</string>
+    <string name="ai_scan_explanation">This sends up to 1,000 relevant non-banking messages to your configured AI provider. Its decisions are saved locally, so you can turn AI off after the scan.</string>
+    <string name="ai_scan_starting">Preparing messages for analysis…</string>
+    <string name="ai_scan_progress">Scanning %1$d / %2$d · %3$d patterns learned</string>
+    <string name="ai_scan_done">Scan complete · %1$d patterns learned locally</string>
+    <string name="start">Start</string>
     <string name="trash_retention">Automatic trash cleanup</string>
     <string name="trash_keep_forever">Keep forever</string>
     <string name="trash_days">Delete after %1$d days</string>

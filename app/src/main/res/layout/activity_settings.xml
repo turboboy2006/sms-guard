@@ -203,6 +203,15 @@
                         android:minHeight="@dimen/touch_target"
                         android:text="@string/test_connection" />
 
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonAiScan"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_8"
+                        android:minHeight="@dimen/touch_target"
+                        android:text="@string/ai_scan_inbox" />
+
                     <TextView
                         android:id="@+id/textTestResult"
                         android:layout_width="match_parent"
