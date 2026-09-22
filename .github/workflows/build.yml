@@ -7,6 +7,11 @@ on:
   # APKs are intentionally built only when manually requested. This keeps
   # ordinary code changes from publishing/building an installable package.
   workflow_dispatch:
+  # A signed release-candidate tag is an explicit build request. Normal pushes
+  # remain build-free, so iteration never accidentally produces an APK.
+  push:
+    tags:
+      - "release-apk-*"
 
 jobs:
   build:
