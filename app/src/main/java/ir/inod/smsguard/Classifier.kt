@@ -3,6 +3,8 @@ package ir.inod.smsguard
 import android.content.Context
 import android.net.Uri
 import android.provider.ContactsContract
+import ir.inod.smsguard.intel.SpamDetector
+import ir.inod.smsguard.intel.SmsCategory as DetectorCategory
 
 /**
  * The offline brain: fast, network-free, and the product rather than a
@@ -431,39 +433,67 @@ object Classifier {
 
     /** Baseline decision that never touches the network. */
     fun classifyLocal(context: Context, address: String, body: String): LocalVerdict {
-        // Hard exemptions first, so protected traffic is never scored.
+        // A real address-book contact is stronger evidence than any statistical model.
         if (isKnownContact(context, address)) {
             return LocalVerdict(Cat.PERSONAL, 0, listOf("contact"), false)
         }
-        if (looksLikeOtp(body)) {
-            return LocalVerdict(Cat.OTP, 0, listOf("otp"), false)
-        }
-        if (looksLikeBank(address, body)) {
-            return LocalVerdict(Cat.BANKING, 0, listOf("bank"), false)
-        }
 
         val boundary = threshold(context)
-        val score = localScore(context, address, body)
-        val suspicious = score >= boundary
-
+        val heuristicScore = localScore(context, address, body)
+        val detector = SpamDetector.detect(detectorSender(address), body)
+        val detectorConfidence = (detector.confidence * 100).toInt().coerceIn(0, 100)
         val category = when {
-            suspicious -> Cat.SUSPICIOUS
+            looksLikeOtp(body) -> Cat.OTP
+            detector.category == DetectorCategory.OTP && detector.confidence >= 0.78 -> Cat.OTP
+            looksLikeBank(address, body) -> Cat.BANKING
+            detector.category == DetectorCategory.BANKING && detector.confidence >= 0.78 -> Cat.BANKING
+            heuristicScore >= boundary -> Cat.SUSPICIOUS
+            detector.category == DetectorCategory.SPAM &&
+                detector.confidence >= 0.82 && detector.riskScore >= 55 -> Cat.SPAM
+            detector.category == DetectorCategory.PROMOTION && detector.confidence >= 0.64 -> Cat.PROMOTION
+            detector.category == DetectorCategory.NOTIFICATION && detector.confidence >= 0.66 -> Cat.NOTIFICATION
+            detector.category == DetectorCategory.CONTACTS &&
+                detector.confidence >= 0.78 && looksLikePersonalNumber(address) -> Cat.PERSONAL
             Normalizer.containsAny(body, PROMO) -> Cat.PROMOTION
             looksLikeNotification(body) -> Cat.NOTIFICATION
             else -> Cat.OTHER
         }
-
-        // Heuristic spread, NOT a calibrated probability: it only reports how
-        // far the score sits from the decision boundary.
-        val confidence = (50 + kotlin.math.abs(score - boundary)).coerceIn(50, 99)
+        val protected = category == Cat.OTP || category == Cat.BANKING || category == Cat.PERSONAL
+        val suspicious = category == Cat.SUSPICIOUS || category == Cat.SPAM
+        val score = if (protected) 0 else maxOf(heuristicScore, detector.riskScore)
+        val modelTag = when (category) {
+            Cat.OTP -> "model-otp"
+            Cat.BANKING -> "model-bank"
+            Cat.SPAM -> "model-spam"
+            Cat.PROMOTION -> "model-promotion"
+            Cat.NOTIFICATION -> "model-notification"
+            Cat.PERSONAL -> "model-personal"
+            else -> null
+        }
+        val reasons = buildList {
+            addAll(reasonsFor(context, address, body))
+            modelTag?.let { add(it) }
+            addAll(detector.reasons.map { "detector:$it" })
+        }.distinct()
+        val heuristicConfidence = (50 + kotlin.math.abs(heuristicScore - boundary)).coerceIn(50, 99)
+        val confidence = maxOf(heuristicConfidence, detectorConfidence).coerceAtMost(99)
 
         return LocalVerdict(
             categoryId = category,
             score = score,
-            reasons = reasonsFor(context, address, body),
+            reasons = reasons,
             isSuspicious = suspicious,
             confidence = confidence
         )
+    }
+
+    /** Never expose a user's raw mobile number to sender-specific model weights. */
+    private fun detectorSender(address: String): String =
+        if (looksLikePersonalNumber(address)) "MOBILE" else address.trim()
+
+    private fun looksLikePersonalNumber(address: String): Boolean {
+        val digits = address.filter(Char::isDigit)
+        return digits.matches(Regex("(?:98)?9\\d{9}"))
     }
 
     /** Read-only resolution used while listing messages. Performs no writes. */
@@ -492,21 +522,14 @@ object Classifier {
         return if (categories(context)[category]?.enabled == false) Cat.OTHER else category
     }
 
-    /**
-     * Called once per incoming message. Remembers the sender, which is what
-     * makes bank and OTP senders permanently exempt from re-analysis.
-     */
+    /** Called once per incoming message; automatic guesses remain per-message. */
     fun rememberSender(context: Context, address: String, body: String): String {
+        SenderStore(context).categoryFor(address)?.let { explicit ->
+            return if (categories(context)[explicit]?.enabled == false) Cat.OTHER else explicit
+        }
         val verdict = classifyLocal(context, address, body)
-        val senders = SenderStore(context)
-        if (senders.categoryFor(address) == null) {
-            senders.setCategory(address, verdict.categoryId)
-        }
-        val cat = categories(context)[verdict.categoryId]
-        if (cat != null && cat.skipAi) {
-            senders.setPolicy(address, SenderPolicy.NEVER_ANALYZE)
-        }
-        invalidateCaches()
+        // SenderStore is reserved for explicit user choices. A single sender can
+        // legitimately deliver OTP, receipts and promotions in different messages.
         return verdict.categoryId
     }
 
@@ -533,6 +556,7 @@ object Classifier {
             "domain-blocked", "prefix-blocked", "sender-hostile" -> R.string.risk_known
             "callback-number" -> R.string.risk_callback
             "campaign" -> R.string.risk_campaign
+            "model-spam" -> R.string.risk_known
             "money" -> R.string.risk_money
             "emoji-lure" -> R.string.risk_prize
             "cta" -> R.string.risk_cta
@@ -550,7 +574,7 @@ object Classifier {
         "fraud-words", "card-number", "sheba", "brand-impersonation",
         "brand-mismatch", "ip-link", "punycode", "domain-blocked",
         "prefix-blocked", "sender-hostile", "callback-number",
-        "campaign", "shortener", "risky-tld", "money", "emoji-lure",
+        "model-spam", "campaign", "shortener", "risky-tld", "money", "emoji-lure",
         "link", "cta", "promo", "urgency", "late-night", "pattern"
     )
 }
