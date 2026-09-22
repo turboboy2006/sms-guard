@@ -155,7 +155,7 @@ class SmsRepository(private val context: Context) {
      * cache or to the latest message shown for each conversation. */
     fun searchThreads(
         query: String,
-        resultLimit: Int = 500,
+        resultLimit: Int = Int.MAX_VALUE,
         categoryId: String? = null,
         since: Long = 0L,
         subscriptionId: Int = -1
