@@ -2,97 +2,40 @@ package ir.inod.smsguard
 
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 
+/** Scheduled messages rendered as a scalable list, with immediate send and undoable cancel. */
 class ScheduledMessagesActivity : BaseActivity() {
-    private lateinit var list: LinearLayout
-    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
-
+    private lateinit var adapter: ScheduledAdapter
+    private lateinit var empty: TextView
+    private val store by lazy { ScheduledSmsStore(this) }
+    private val repo by lazy { SmsRepository(this) }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(ContextCompat.getColor(this@ScheduledMessagesActivity, R.color.screen_bg))
-        }
-        root.addView(MaterialToolbar(this).apply {
-            title = getString(R.string.scheduled_messages)
-            setNavigationIcon(android.R.drawable.ic_media_previous)
-            setNavigationOnClickListener { finish() }
-        }, LinearLayout.LayoutParams(-1, resources.getDimensionPixelSize(R.dimen.appbar_height)))
-        list = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(16))
-        }
-        root.addView(ScrollView(this).apply { addView(list) }, LinearLayout.LayoutParams(-1, 0, 1f))
-        setContentView(root)
-        render()
+        val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(ContextCompat.getColor(this@ScheduledMessagesActivity,R.color.screen_bg))}
+        root.addView(MaterialToolbar(this).apply{title=getString(R.string.scheduled_messages);setNavigationIcon(R.drawable.ic_chevron);setNavigationOnClickListener{finish()}},LinearLayout.LayoutParams(-1,dp(64)))
+        val frame=FrameLayout(this); adapter=ScheduledAdapter(::sendNow,::cancel)
+        frame.addView(RecyclerView(this).apply{layoutManager=LinearLayoutManager(this@ScheduledMessagesActivity);adapter=this@ScheduledMessagesActivity.adapter;clipToPadding=false;setPadding(dp(12),dp(8),dp(12),dp(20))},FrameLayout.LayoutParams(-1,-1))
+        empty=TextView(this).apply{gravity=Gravity.CENTER;textSize=16f;setCompoundDrawablesWithIntrinsicBounds(0,R.drawable.ic_calendar,0,0);compoundDrawablePadding=dp(14);setPadding(dp(24),dp(60),dp(24),dp(60))};frame.addView(empty,FrameLayout.LayoutParams(-1,-2,Gravity.CENTER));root.addView(frame,LinearLayout.LayoutParams(-1,0,1f));setContentView(root);render()
     }
-
-    private fun render() {
-        list.removeAllViews()
-        val items = ScheduledSmsStore(this).all()
-        if (items.isEmpty()) list.addView(TextView(this).apply {
-            text = getString(R.string.no_scheduled)
-            gravity = Gravity.CENTER
-            textSize = 16f
-            setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_calendar, 0, 0)
-            compoundDrawablePadding = dp(16)
-            setPadding(dp(20), dp(80), dp(20), dp(80))
-            setTextColor(ContextCompat.getColor(this@ScheduledMessagesActivity, R.color.text_secondary))
-        })
-        items.forEach { item ->
-            val card = MaterialCardView(this).apply {
-                radius = dp(18).toFloat()
-                strokeWidth = dp(1)
-                strokeColor = ContextCompat.getColor(this@ScheduledMessagesActivity, R.color.border_soft)
-            }
-            val content = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(16), dp(14), dp(16), dp(12))
-            }
-            content.addView(TextView(this).apply {
-                text = ContactNames.displayNameUi(item.address)
-                textSize = 17f
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(ContextCompat.getColor(this@ScheduledMessagesActivity, R.color.text_primary))
-                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_person, 0, 0, 0)
-                compoundDrawablePadding = dp(8)
-            })
-            content.addView(TextView(this).apply {
-                text = Dates.full(this@ScheduledMessagesActivity, item.at)
-                textSize = 13f
-                setPadding(0, dp(8), 0, dp(8))
-                setTextColor(ThemePrefs(this@ScheduledMessagesActivity).accentColor())
-                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_calendar, 0, 0, 0)
-                compoundDrawablePadding = dp(8)
-            })
-            content.addView(TextView(this).apply {
-                text = item.body
-                textSize = 15f
-                setPadding(dp(12), dp(10), dp(12), dp(10))
-                setTextColor(ContextCompat.getColor(this@ScheduledMessagesActivity, R.color.text_primary))
-                background = MessageStyler.background(this@ScheduledMessagesActivity, MessageStyle.FILLED, 16, true)
-            })
-            content.addView(MaterialButton(this).apply {
-                text = getString(R.string.cancel_scheduled)
-                setIconResource(R.drawable.ic_tab_trash)
-                setOnClickListener {
-                    ConfirmSheet.show(this@ScheduledMessagesActivity, getString(R.string.cancel_scheduled),
-                        getString(R.string.confirm_delete_message), R.drawable.ic_tab_trash) {
-                            ScheduledSmsStore(this@ScheduledMessagesActivity).remove(item.id)
-                            render()
-                        }
-                }
-            })
-            card.addView(content)
-            list.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
-        }
+    private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
+    private fun render(){val data=store.all();adapter.submit(data);empty.text=getString(R.string.no_scheduled);empty.visibility=if(data.isEmpty())View.VISIBLE else View.GONE}
+    private fun sendNow(item:ScheduledSms){store.remove(item.id);Thread{val ok=repo.send(item.address,item.body);runOnUiThread{render();Snackbar.make(empty,if(ok)R.string.forwarded else R.string.send_failed,Snackbar.LENGTH_LONG).show()}}.start()}
+    private fun cancel(item:ScheduledSms){store.remove(item.id);render();Snackbar.make(empty,R.string.applied,Snackbar.LENGTH_LONG).setAction(R.string.undo){store.schedule(item.address,item.body,item.at);render()}.show()}
+    private class ScheduledAdapter(val onSend:(ScheduledSms)->Unit,val onCancel:(ScheduledSms)->Unit):RecyclerView.Adapter<ScheduledAdapter.H>(){
+        private val items=mutableListOf<ScheduledSms>();class H(val c:MaterialCardView,val title:TextView,val whenText:TextView,val body:TextView,val send:MaterialButton,val cancel:MaterialButton):RecyclerView.ViewHolder(c)
+        override fun onCreateViewHolder(p:ViewGroup,t:Int):H{val c=p.context;val d=c.resources.displayMetrics.density;fun dp(v:Int)=(v*d).toInt();val card=MaterialCardView(c).apply{radius=dp(18).toFloat();strokeWidth=dp(1);layoutParams=RecyclerView.LayoutParams(-1,-2).apply{bottomMargin=dp(8)}};val box=LinearLayout(c).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(14),dp(12),dp(10),dp(8))};val title=TextView(c).apply{textSize=16f;setTypeface(null,1)};val whenText=TextView(c).apply{textSize=13f;setTextColor(ContextCompat.getColor(c,R.color.text_secondary))};val body=TextView(c).apply{textSize=15f;setPadding(dp(10),dp(8),dp(10),dp(8));textDirection=View.TEXT_DIRECTION_FIRST_STRONG};val actions=LinearLayout(c);val send=MaterialButton(c).apply{text="";setIconResource(R.drawable.ic_send);contentDescription=c.getString(R.string.send)};val cancel=MaterialButton(c).apply{text="";setIconResource(R.drawable.ic_tab_trash);contentDescription=c.getString(R.string.cancel_scheduled)};actions.addView(send);actions.addView(cancel);box.addView(title);box.addView(whenText);box.addView(body);box.addView(actions);card.addView(box);return H(card,title,whenText,body,send,cancel)}
+        override fun getItemCount()=items.size;override fun onBindViewHolder(h:H,p:Int){val i=items[p];h.title.text=ContactNames.displayNameUi(i.address);h.whenText.text=Dates.full(h.c.context,i.at);h.body.text=i.body;h.send.setOnClickListener{onSend(i)};h.cancel.setOnClickListener{onCancel(i)}};fun submit(next:List<ScheduledSms>){items.clear();items.addAll(next);notifyDataSetChanged()}
     }
 }

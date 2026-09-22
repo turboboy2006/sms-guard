@@ -25,6 +25,8 @@ class SavedMessageStore(context: Context) {
         prefs.edit().putString("items", arr.toString()).apply()
     }
     fun remove(id: Long) = saveRaw(all().filterNot { it.id == id })
+    fun restore(message: SavedMessage) = saveRaw((listOf(message) + all().filterNot { it.id == message.id })
+        .sortedByDescending { it.date }.take(1000))
     fun addNote(body: String) {
         val trimmed = body.trim()
         if (trimmed.isBlank()) return
