@@ -447,26 +447,25 @@ object Classifier {
             detector.category == DetectorCategory.OTP && detector.confidence >= 0.78 -> Cat.OTP
             looksLikeBank(address, body) -> Cat.BANKING
             detector.category == DetectorCategory.BANKING && detector.confidence >= 0.78 -> Cat.BANKING
-            heuristicScore >= boundary -> Cat.SUSPICIOUS
+            heuristicScore >= boundary -> Cat.SPAM
             detector.category == DetectorCategory.SPAM &&
                 detector.confidence >= 0.82 && detector.riskScore >= 55 -> Cat.SPAM
-            detector.category == DetectorCategory.PROMOTION && detector.confidence >= 0.64 -> Cat.PROMOTION
+            detector.category == DetectorCategory.PROMOTION && detector.confidence >= 0.64 -> Cat.NOTIFICATION
             detector.category == DetectorCategory.NOTIFICATION && detector.confidence >= 0.66 -> Cat.NOTIFICATION
             detector.category == DetectorCategory.CONTACTS &&
                 detector.confidence >= 0.78 && looksLikePersonalNumber(address) -> Cat.PERSONAL
-            Normalizer.containsAny(body, PROMO) -> Cat.PROMOTION
+            Normalizer.containsAny(body, PROMO) -> Cat.NOTIFICATION
             looksLikeNotification(body) -> Cat.NOTIFICATION
             else -> Cat.OTHER
         }
         val protected = category == Cat.OTP || category == Cat.BANKING || category == Cat.PERSONAL
-        val suspicious = category == Cat.SUSPICIOUS || category == Cat.SPAM
+        val suspicious = category == Cat.SPAM
         val score = if (protected) 0 else maxOf(heuristicScore, detector.riskScore)
         val modelTag = when (category) {
             Cat.OTP -> "model-otp"
             Cat.BANKING -> "model-bank"
             Cat.SPAM -> "model-spam"
-            Cat.PROMOTION -> "model-promotion"
-            Cat.NOTIFICATION -> "model-notification"
+            Cat.NOTIFICATION -> "model-service"
             Cat.PERSONAL -> "model-personal"
             else -> null
         }

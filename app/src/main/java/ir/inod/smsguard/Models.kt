@@ -13,6 +13,10 @@ object Cat {
     const val SPAM = "spam"
     const val TRASH = "trash"
     const val OTHER = "other"
+
+    /** Product-facing aliases: older stored ids remain readable after upgrades. */
+    const val SERVICES = NOTIFICATION
+    const val UNCATEGORIZED = OTHER
 }
 
 /** Where a blocking rule looks for its pattern. */
@@ -23,7 +27,7 @@ enum class RuleJoin { ANY, ALL }
 
 /** A rule can hide a message outright or file it where the user expects. */
 enum class RuleAction(val categoryId: String?) {
-    BLOCK(null), SPAM(Cat.SPAM), PROMOTION(Cat.PROMOTION)
+    BLOCK(null), SPAM(Cat.SPAM), PROMOTION(Cat.NOTIFICATION)
 }
 
 /**
@@ -150,15 +154,17 @@ object Categories {
         ),
         // A promotional pill said nothing the message did not: gone from the
         // list, which is exactly what the reference does.
-        Category(
-            Cat.PROMOTION, R.string.cat_promotion, "", "#EA580C", true, false, false, false, 4,
-            showBadge = false
-        ),
-        Category(Cat.SUSPICIOUS, R.string.cat_suspicious, "", "#E11D48", true, false, false, false, 5),
-        Category(Cat.SPAM, R.string.cat_spam, "", "#B91C1C", true, true, true, false, 6, showBadge = false),
+        // Promotion and suspicious are retained as legacy IDs so backups made by
+        // earlier versions still open, but the public taxonomy is deliberately
+        // small: service, spam and uncategorized are easier to understand.
+        Category(Cat.PROMOTION, R.string.cat_promotion, "", "#EA580C", true, false, false, false, 40,
+            showBadge = false, enabled = false),
+        Category(Cat.SUSPICIOUS, R.string.cat_suspicious, "", "#E11D48", true, false, false, false, 41,
+            showBadge = false, enabled = false),
+        Category(Cat.SPAM, R.string.cat_spam, "", "#B91C1C", true, true, true, false, 4, showBadge = false),
         // Trash is its own place: hidden from Every, but not counted as spam.
         Category(Cat.TRASH, R.string.tab_trash, "", "#475467", true, false, true, false, 7, showBadge = false),
-        Category(Cat.OTHER, R.string.cat_other, "", "#667085", true, false, false, false, 8, showBadge = false)
+        Category(Cat.OTHER, R.string.cat_other, "", "#667085", true, false, false, false, 5, showBadge = false)
     )
 
     /** Palette offered by the long-press colour picker. */

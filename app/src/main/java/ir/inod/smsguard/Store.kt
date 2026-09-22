@@ -534,6 +534,14 @@ class RuleStore(context: Context) {
 
     fun delete(id: Long) = save(all().filterNot { it.id == id })
 
+    fun restore(rule: Rule) {
+        val list = all()
+        if (list.none { it.id == rule.id }) {
+            list.add(rule)
+            save(list.sortedBy { it.id })
+        }
+    }
+
     fun blockingRuleFor(address: String, body: String): Rule? =
         all().firstOrNull { it.matches(address, body) }
 
@@ -557,7 +565,7 @@ class CategoryStore(context: Context) {
                 colorHex = o.optString("color", base.colorHex),
                 order = o.optInt("order", base.order),
                 iconId = o.optString("icon").ifBlank { base.iconId },
-                enabled = o.optBoolean("enabled", true)
+                enabled = o.optBoolean("enabled", base.enabled)
             )
         }
     }
@@ -912,7 +920,14 @@ class MessageCategoryStore(context: Context) {
     fun set(messageId: Long, categoryId: String) {
         val map = all()
         map[messageId] = categoryId
-        // keep the store bounded
+        save(map)
+    }
+
+    /** One atomic write for initial offline classification, not one JSON rewrite per SMS. */
+    fun replaceAll(values: Map<Long, String>) = save(values)
+
+    private fun save(values: Map<Long, String>) {
+        val map = values.toMutableMap()
         if (map.size > MAX) {
             val trimmed = map.entries.sortedByDescending { it.key }.take(MAX)
             map.clear()
@@ -925,7 +940,9 @@ class MessageCategoryStore(context: Context) {
 
     private companion object {
         const val KEY = "overrides"
-        const val MAX = 2000
+        // Initial offline indexing must survive a large mailbox. The cache in
+        // Classifier keeps reads cheap; this is only compact JSON metadata.
+        const val MAX = 50_000
     }
 }
 

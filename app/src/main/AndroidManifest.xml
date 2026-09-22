@@ -40,6 +40,7 @@
             android:exported="false" />
         <activity android:name=".ScheduledMessagesActivity" android:exported="false" />
         <activity android:name=".SavedMessagesActivity" android:exported="false" />
+        <activity android:name=".FolderActivity" android:exported="false" android:parentActivityName=".MainActivity" />
         <activity android:name=".CategoriesActivity" android:exported="false" android:parentActivityName=".SettingsActivity" />
         <activity
             android:name=".MainActivity"

@@ -277,6 +277,23 @@ class SmsRepository(private val context: Context) {
         return out.asReversed()
     }
 
+    /** A bounded preview for the rule builder; it never changes a message. */
+    fun countMatches(rule: Rule, limit: Int = 10_000): Int {
+        val projection = arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.BODY)
+        var count = 0
+        var scanned = 0
+        try {
+            resolver.query(Telephony.Sms.CONTENT_URI, projection, null, null, "${Telephony.Sms.DATE} DESC")?.use { c ->
+                val address = c.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+                val body = c.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                while (c.moveToNext() && scanned++ < limit) {
+                    if (rule.matches(c.getString(address).orEmpty(), c.getString(body).orEmpty())) count++
+                }
+            }
+        } catch (_: Exception) { }
+        return count
+    }
+
     fun messageCount(threadId: Long): Int = try {
         resolver.query(
             Telephony.Sms.CONTENT_URI, arrayOf(Telephony.Sms._ID),

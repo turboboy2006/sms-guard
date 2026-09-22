@@ -74,6 +74,11 @@
 
     <!-- Settings screen -->
     <string name="settings_title">Settings</string>
+    <string name="settings_tab_general">General</string>
+    <string name="settings_tab_notifications">Notifications</string>
+    <string name="settings_tab_categories">Categories</string>
+    <string name="settings_tab_data">Data</string>
+    <string name="settings_tab_backup">Backup</string>
     <string name="ai_section">AI analysis (optional)</string>
     <string name="ai_enable">Connect to an AI API</string>
     <string name="ai_hint_off">Off. Nothing leaves this device and everything runs offline.</string>
@@ -398,6 +403,12 @@
     <string name="detail_date">Date and time</string>
     <string name="detail_sim">SIM card</string>
     <string name="detail_error">Error code</string>
+    <string name="detail_category">Category</string>
+    <string name="detail_confidence">Confidence</string>
+    <string name="detail_decision_source">Decision source</string>
+    <string name="detail_reasons">Reasons</string>
+    <string name="decision_user">Your choice</string>
+    <string name="decision_offline">Offline rules and model</string>
     <string name="detail_reason">Reason</string>
     <string name="tab_unread">Unread</string>
     <string name="mark_all_read">Mark all read</string>

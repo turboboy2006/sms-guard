@@ -6,11 +6,15 @@ import android.view.Menu
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
+import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import ir.inod.smsguard.databinding.ActivityRulesBinding
 import ir.inod.smsguard.databinding.DialogRuleBinding
+import java.util.concurrent.Executors
 
 class RulesActivity : BaseActivity() {
 
@@ -21,6 +25,7 @@ class RulesActivity : BaseActivity() {
 
     private val store by lazy { RuleStore(this) }
     private val blockedStore by lazy { BlockedStore(this) }
+    private val previewWorker = Executors.newSingleThreadExecutor()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,6 +42,8 @@ class RulesActivity : BaseActivity() {
             onDelete = { rule ->
                 store.delete(rule.id)
                 reload()
+                Snackbar.make(binding.root, R.string.applied, Snackbar.LENGTH_LONG)
+                    .setAction(R.string.undo) { store.restore(rule); reload() }.show()
             },
             onSelectionChanged = { count ->
                 supportActionBar?.title = if (count > 0) Dates.count(this, count) else getString(R.string.rules)
@@ -85,6 +92,46 @@ class RulesActivity : BaseActivity() {
                 getString(R.string.rule_action_promotion)
             )
         )
+
+        // Plain-language rules are the default. Regex remains available as an
+        // advanced escape hatch, but the live preview makes ordinary rules
+        // understandable before they can block a real message.
+        val preview = TextView(this).apply {
+            textSize = 13f
+            setPadding(0, (8 * resources.displayMetrics.density).toInt(), 0, 0)
+            setTextColor(getColor(R.color.text_secondary))
+            text = "پیش‌نمایش: عبارت‌ها را وارد کنید"
+        }
+        (dialogBinding.root as android.view.ViewGroup).addView(preview)
+        var previewGeneration = 0
+        fun refreshPreview() {
+            val included = dialogBinding.editPattern.text?.toString()?.trim().orEmpty()
+            if (included.isBlank()) { preview.text = "پیش‌نمایش: عبارت‌ها را وارد کنید"; return }
+            val target = targets[dialogBinding.spinnerTarget.selectedItemPosition.coerceIn(0, targets.lastIndex)]
+            val join = joins[dialogBinding.spinnerJoin.selectedItemPosition.coerceIn(0, joins.lastIndex)]
+            val action = actions[dialogBinding.spinnerAction.selectedItemPosition.coerceIn(0, actions.lastIndex)]
+            val rule = Rule(0, included, target, dialogBinding.checkRegex.isChecked, true,
+                dialogBinding.editExcluded.text?.toString().orEmpty(), join, action)
+            val token = ++previewGeneration
+            preview.text = "در حال بررسی پیام‌های موجود…"
+            previewWorker.execute {
+                val count = SmsRepository(this).countMatches(rule)
+                runOnUiThread {
+                    if (!isFinishing && token == previewGeneration) {
+                        preview.text = "پیش‌نمایش: $count پیام موجود با این قانون تطبیق دارد"
+                    }
+                }
+            }
+        }
+        dialogBinding.editPattern.doAfterTextChanged { refreshPreview() }
+        dialogBinding.editExcluded.doAfterTextChanged { refreshPreview() }
+        dialogBinding.checkRegex.setOnCheckedChangeListener { _, _ -> refreshPreview() }
+        listOf(dialogBinding.spinnerTarget, dialogBinding.spinnerJoin, dialogBinding.spinnerAction).forEach { spinner ->
+            spinner.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) = refreshPreview()
+                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+            }
+        }
 
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.add_rule)
@@ -191,9 +238,12 @@ class RulesActivity : BaseActivity() {
             return true
         }
         if (item.itemId == MENU_DELETE_SELECTED) {
-            adapter.selectedRules().forEach { store.delete(it.id) }
+            val removed = adapter.selectedRules()
+            removed.forEach { store.delete(it.id) }
             adapter.clearSelection()
             reload()
+            Snackbar.make(binding.root, R.string.applied, Snackbar.LENGTH_LONG)
+                .setAction(R.string.undo) { removed.forEach(store::restore); reload() }.show()
             return true
         }
         if (item.itemId == android.R.id.home) {
@@ -221,5 +271,10 @@ class RulesActivity : BaseActivity() {
     override fun onBackPressed() {
         if (::adapter.isInitialized && adapter.selectionCount > 0) adapter.clearSelection()
         else super.onBackPressed()
+    }
+
+    override fun onDestroy() {
+        previewWorker.shutdownNow()
+        super.onDestroy()
     }
 }

@@ -13,12 +13,12 @@
     <string name="tab_suspicious">مشکوک</string>
     <string name="tab_spam">اسپم</string>
     <string name="tab_banking">بانکی</string>
-    <string name="tab_notifications">اطلاع‌رسانی</string>
+    <string name="tab_notifications">خدماتی</string>
 
     <string name="cat_personal">مخاطبین</string>
     <string name="cat_banking">بانکی</string>
     <string name="cat_otp">رمز پویا</string>
-    <string name="cat_notification">اطلاع‌رسانی</string>
+    <string name="cat_notification">خدماتی</string>
     <string name="cat_promotion">تبلیغاتی</string>
     <string name="cat_suspicious">مشکوک</string>
     <string name="cat_spam">اسپم</string>
@@ -65,6 +65,11 @@
     <string name="regex_hint">اگر مطمئن نیستی این گزینه را خالی بگذار. الگوی ساده کافی است.</string>
 
     <string name="settings_title">تنظیمات</string>
+    <string name="settings_tab_general">عمومی</string>
+    <string name="settings_tab_notifications">اعلان‌ها</string>
+    <string name="settings_tab_categories">دسته‌بندی</string>
+    <string name="settings_tab_data">داده‌ها</string>
+    <string name="settings_tab_backup">پشتیبان‌گیری</string>
     <string name="ai_section">تحلیل هوش مصنوعی (اختیاری)</string>
     <string name="ai_enable">اتصال به API هوش مصنوعی</string>
     <string name="ai_hint_off">خاموش است. هیچ پیامکی از گوشی خارج نمی‌شود و همه‌چیز آفلاین کار می‌کند.</string>
@@ -374,6 +379,12 @@
     <string name="detail_date">تاریخ و ساعت</string>
     <string name="detail_sim">سیم‌کارت</string>
     <string name="detail_error">کد خطا</string>
+    <string name="detail_category">دسته‌بندی</string>
+    <string name="detail_confidence">درجهٔ اطمینان</string>
+    <string name="detail_decision_source">منبع تصمیم</string>
+    <string name="detail_reasons">دلیل‌ها</string>
+    <string name="decision_user">انتخاب شما</string>
+    <string name="decision_offline">قواعد و مدل آفلاین</string>
     <string name="detail_reason">دلیل</string>
     <string name="tab_unread">خوانده‌نشده</string>
     <string name="mark_all_read">خواندن همه</string>

@@ -15,6 +15,7 @@ class SmsApp : Application() {
         createChannel()
         watchContacts()
         InboxSyncJob.schedule(this)
+        OfflineInboxClassifier.scheduleIfNeeded(this)
     }
 
     private fun createChannel() {

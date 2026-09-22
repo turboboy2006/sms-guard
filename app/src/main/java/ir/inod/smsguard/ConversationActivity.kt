@@ -666,6 +666,21 @@ class ConversationActivity : BaseActivity() {
             InfoSheet.Field(getString(R.string.detail_status), state, R.drawable.ic_send),
             InfoSheet.Field(getString(R.string.detail_date), Dates.full(this, message.date), R.drawable.ic_calendar)
         )
+        if (message.isIncoming) {
+            val verdict = Classifier.classifyLocal(this, message.address, message.body)
+            val category = CategoryStore(this).byId(message.categoryId.ifBlank { verdict.categoryId })
+            val source = if (Classifier.overrideFor(this, message.id) != null) {
+                getString(R.string.decision_user)
+            } else getString(R.string.decision_offline)
+            fields += InfoSheet.Field(getString(R.string.detail_category),
+                category?.label(this).orEmpty(), R.drawable.ic_tab_all)
+            fields += InfoSheet.Field(getString(R.string.detail_confidence),
+                "${verdict.confidence}%", R.drawable.ic_cat_security)
+            fields += InfoSheet.Field(getString(R.string.detail_decision_source), source, R.drawable.ic_cat_receipt)
+            verdict.reasons.filterNot { it.startsWith("detector:") }.take(3).takeIf { it.isNotEmpty() }?.let { reasons ->
+                fields += InfoSheet.Field(getString(R.string.detail_reasons), reasons.joinToString(" · "), R.drawable.ic_warning)
+            }
+        }
         if (message.subscriptionId >= 0) fields += InfoSheet.Field(
             getString(R.string.detail_sim), simLabel(message.subscriptionId), R.drawable.ic_cat_mobile)
         if (message.errorCode != 0) fields += InfoSheet.Field(

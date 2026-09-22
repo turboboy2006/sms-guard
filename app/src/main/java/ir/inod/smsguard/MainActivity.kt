@@ -109,6 +109,9 @@ class MainActivity : BaseActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
         loadThreads()
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
+            OfflineInboxClassifier.scheduleIfNeeded(this)
+        }
         if (grants[Manifest.permission.READ_CONTACTS] == false) {
             Snackbar.make(binding.root, R.string.contacts_permission_explanation, Snackbar.LENGTH_LONG)
                 .setAction(R.string.settings) {
@@ -218,11 +221,14 @@ class MainActivity : BaseActivity() {
      */
     private fun setUpFilterChips() {
         binding.chipGroup.removeAllViews()
-        val entries = listOf<Pair<String?, String>>(
-            null to getString(R.string.tab_all),
-            UNREAD_FILTER to getString(R.string.tab_unread)
-        ) +
-            CategoryStore(this).active().map { it.id to it.label(this) }
+        // The public inbox taxonomy is intentionally compact. Archive and Trash
+        // are destinations in the More menu, not categories competing for room
+        // with real messages; unread stays at the far edge as a quick filter.
+        val visible = listOf(Cat.PERSONAL, Cat.BANKING, Cat.OTP, Cat.NOTIFICATION, Cat.SPAM, Cat.OTHER)
+            .mapNotNull { id -> CategoryStore(this).byId(id)?.takeIf { it.enabled } }
+        val entries = listOf<Pair<String?, String>>(null to getString(R.string.tab_all)) +
+            visible.map { it.id to it.label(this) } +
+            listOf(UNREAD_FILTER to getString(R.string.tab_unread))
         val idToCategory = HashMap<Int, String?>()
         val density = resources.displayMetrics.density
         entries.forEachIndexed { index, entry ->
@@ -386,7 +392,10 @@ class MainActivity : BaseActivity() {
         val missing = needed.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
-        if (missing.isEmpty()) loadThreads() else permissionLauncher.launch(missing.toTypedArray())
+        if (missing.isEmpty()) {
+            OfflineInboxClassifier.scheduleIfNeeded(this)
+            loadThreads()
+        } else permissionLauncher.launch(missing.toTypedArray())
     }
 
     private fun isDefaultSmsApp(): Boolean =
@@ -630,14 +639,7 @@ class MainActivity : BaseActivity() {
             MENU_RULES -> startActivity(Intent(this, RulesActivity::class.java))
             MENU_BLOCKED -> showBlockedLog()
             MENU_TRASH -> {
-                contactsOnly = false
-                selectedCategoryId = Cat.TRASH
-                binding.bottomNav.selectedItemId = R.id.nav_messages
-                for (i in 0 until binding.chipGroup.childCount) {
-                    val chip = binding.chipGroup.getChildAt(i) as? com.google.android.material.chip.Chip
-                    if (chip != null && chip.text == CategoryStore(this).byId(Cat.TRASH)?.label(this)) chip.isChecked = true
-                }
-                applyFilter()
+                startActivity(Intent(this, FolderActivity::class.java).putExtra(FolderActivity.EXTRA_FOLDER, FolderActivity.TRASH))
             }
             MENU_MANAGE -> startActivity(Intent(this, ManagerActivity::class.java))
             MENU_ARCHIVED -> showArchived()
@@ -1007,10 +1009,7 @@ class MainActivity : BaseActivity() {
     }
 
     private fun showArchived() {
-        contactsOnly = false
-        binding.bottomNav.selectedItemId = R.id.nav_messages
-        archiveMode = true
-        applyFilter()
+        startActivity(Intent(this, FolderActivity::class.java).putExtra(FolderActivity.EXTRA_FOLDER, FolderActivity.ARCHIVE))
     }
 
     /**

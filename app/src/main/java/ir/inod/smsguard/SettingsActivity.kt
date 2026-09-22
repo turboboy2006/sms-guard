@@ -156,27 +156,50 @@ class SettingsActivity : BaseActivity() {
             val index = column.indexOfChild(card)
             return listOfNotNull(column.getChildAt(index - 1), card)
         }
+        val cache = ((binding.rowCache.parent as View).parent as View)
+        // These are real section tabs, not a second settings menu: each tab
+        // exposes a focused group of cards and preserves the same controls.
         val groups = listOf(
+            section(general),
+            listOf(quiet),
             section(appearance),
-            section(offline) + section(general),
             section(management),
-            listOf(quiet, ai)
+            listOf(ai, offline),
+            listOf(cache),
+            section(management)
         )
         val tabs = TabLayout(this).apply {
             tabMode = TabLayout.MODE_SCROLLABLE
             setBackgroundColor(androidx.core.content.ContextCompat.getColor(this@SettingsActivity, R.color.card_bg))
         }
-        val names = listOf(R.string.group_appearance, R.string.group_detection,
-            R.string.group_manage, R.string.settings_advanced)
-        val icons = listOf(R.drawable.ic_cat_shop, R.drawable.ic_tab_all,
-            R.drawable.ic_cat_security, R.drawable.ic_settings)
+        val names = listOf(R.string.settings_tab_general, R.string.settings_tab_notifications,
+            R.string.group_appearance, R.string.settings_tab_categories, R.string.ai_section,
+            R.string.settings_tab_data, R.string.settings_tab_backup)
+        val icons = listOf(R.drawable.ic_settings, R.drawable.ic_tab_service,
+            R.drawable.ic_cat_shop, R.drawable.ic_tab_all, R.drawable.ic_cat_security,
+            R.drawable.ic_archive, R.drawable.ic_archive)
         names.indices.forEach { index ->
             tabs.addTab(tabs.newTab().setText(names[index]).setIcon(icons[index]))
         }
         (binding.root as ViewGroup).addView(tabs, 1)
         fun select(index: Int) {
-            groups.flatten().forEach { it.visibility = View.GONE }
+            groups.flatten().distinct().forEach { it.visibility = View.GONE }
             groups[index].forEach { it.visibility = View.VISIBLE }
+            // The management card is shared structurally, but its controls are
+            // not: categories and backup each get a focused tab instead of a
+            // long mixed list of unrelated actions.
+            val managementButtons = listOf(
+                binding.buttonCategories, binding.buttonBrands, binding.buttonRules,
+                binding.buttonScheduled, binding.buttonSavedMessages,
+                binding.buttonExportBackup, binding.buttonImportBackup
+            )
+            managementButtons.forEach { it.visibility = View.VISIBLE }
+            if (index == 3) {
+                listOf(binding.buttonExportBackup, binding.buttonImportBackup).forEach { it.visibility = View.GONE }
+            } else if (index == 6) {
+                listOf(binding.buttonCategories, binding.buttonBrands, binding.buttonRules,
+                    binding.buttonScheduled, binding.buttonSavedMessages).forEach { it.visibility = View.GONE }
+            }
         }
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) = select(tab.position)
