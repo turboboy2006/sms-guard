@@ -239,7 +239,7 @@ class MainActivity : BaseActivity() {
                 )
                 val ink = baseColor
                 setTextColor(ColorStateList(arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()), intArrayOf(ink, ink)))
-                val icon = if (entry.first == null) R.drawable.ic_tab_all else if (entry.first == UNREAD_FILTER) R.drawable.ic_tab_service else
+                val icon = if (entry.first == null) R.drawable.ic_tab_all else if (entry.first == UNREAD_FILTER) R.drawable.ic_unread else
                     (IconCatalog.byId(category?.iconId) ?: IconCatalog.forCategory(entry.first!!)).drawable
                 if (icon != 0) {
                     chipIcon = ContextCompat.getDrawable(this@MainActivity, icon)?.mutate()?.apply {
@@ -555,7 +555,7 @@ class MainActivity : BaseActivity() {
             .setIcon(R.drawable.ic_more)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
         menu.add(0, MENU_READ_ALL, 2, R.string.mark_all_read)
-            .setIcon(R.drawable.ic_copy)
+            .setIcon(R.drawable.ic_mark_read)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_REFRESH, 1, R.string.refresh)
         menu.add(0, MENU_RULES, 2, R.string.rules)
@@ -641,7 +641,9 @@ class MainActivity : BaseActivity() {
     }
 
     private fun markAllUnreadRead() {
-        val rows = allThreads.filter { it.unreadCount > 0 }
+        val rows = allThreads.filter {
+            it.unreadCount > 0 && it.categoryId != Cat.TRASH && !senderStore.isArchived(it.address)
+        }
         if (rows.isEmpty()) return
         val ids = rows.mapTo(HashSet()) { it.threadId }
         worker.execute {
@@ -686,7 +688,10 @@ class MainActivity : BaseActivity() {
                 Snackbar.make(binding.root, swipeActionLabel(action), 1000).show()
                 performSwipeAction(row, action)
                 if (action == SwipeAction.READ && position >= 0) {
-                    main.postDelayed({ if (!isFinishing && !isDestroyed && position < adapter.itemCount) adapter.notifyItemChanged(position) }, 900L)
+                    main.postDelayed({
+                        if (!isFinishing && !isDestroyed && position < adapter.itemCount &&
+                            adapter.itemAt(position)?.threadId == row.threadId) adapter.notifyItemChanged(position)
+                    }, 900L)
                 }
             }
 
