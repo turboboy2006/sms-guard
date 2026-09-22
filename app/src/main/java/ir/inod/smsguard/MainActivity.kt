@@ -179,6 +179,10 @@ class MainActivity : BaseActivity() {
                     startActivity(Intent(this, SavedMessagesActivity::class.java))
                     false
                 }
+                R.id.nav_more -> {
+                    showMainMenu()
+                    false
+                }
                 R.id.nav_contacts -> {
                     archiveMode = false
                     contactsOnly = true
@@ -660,8 +664,17 @@ class MainActivity : BaseActivity() {
             R.string.rules, R.string.blocked_log, R.string.manage_brands, R.string.settings)
         val icons = listOf(R.drawable.ic_archive, R.drawable.ic_archive, R.drawable.ic_tab_trash,
             R.drawable.ic_cat_security, R.drawable.ic_tab_spam, R.drawable.ic_cat_bank, R.drawable.ic_settings)
+        val details = listOf(
+            "به‌روزرسانی امن فهرست پیام‌ها",
+            "گفتگوهایی که برای بعد کنار گذاشته‌اید",
+            "بازیابی یا حذف دائمی گفتگوها",
+            "ساخت قانون ساده برای اسپم و تبلیغات",
+            "پیام‌هایی که قانون‌ها متوقف کرده‌اند",
+            "نام، رنگ، آیکن و دستهٔ فرستنده‌ها",
+            "ظاهر، اعلان، سیم‌کارت، داده و پشتیبان‌گیری"
+        )
         ChoiceSheet.show(this, getString(R.string.more_actions), ids.indices.map { index ->
-            ChoiceSheet.Option(getString(labels[index]), icons[index])
+            ChoiceSheet.Option(getString(labels[index]), icons[index], detail = details[index])
         }) { index ->
             binding.toolbar.menu.findItem(ids[index])?.let { onOptionsItemSelected(it) }
         }
