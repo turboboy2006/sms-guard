@@ -902,11 +902,13 @@ class MainActivity : BaseActivity() {
 
     private fun showOptions(thread: ThreadSummary) {
         if (archiveMode) {
-            MaterialAlertDialogBuilder(this)
-                .setTitle(ContactNames.displayNameUi(thread.address))
-                .setPositiveButton(R.string.unarchive) { _, _ -> senderStore.setArchived(thread.address, false); applyFilter() }
-                .setNeutralButton(R.string.open) { _, _ -> openThread(thread) }
-                .setNegativeButton(R.string.cancel, null).show()
+            ChoiceSheet.show(this, ContactNames.displayNameUi(thread.address), listOf(
+                ChoiceSheet.Option(getString(R.string.open), R.drawable.ic_tab_messages),
+                ChoiceSheet.Option(getString(R.string.unarchive), R.drawable.ic_archive)
+            )) { which ->
+                if (which == 0) openThread(thread)
+                else { senderStore.setArchived(thread.address, false); applyFilter() }
+            }
             return
         }
         val inTrash = thread.categoryId == Cat.TRASH
@@ -1031,16 +1033,16 @@ class MainActivity : BaseActivity() {
 
     private fun pickCategory(thread: ThreadSummary) {
         val cats = CategoryStore(this).all()
-        val labels = cats.map { it.label(this) }.toTypedArray()
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.change_category)
-            .setItems(labels) { _, which ->
-                val chosen = cats[which]
+        ChoiceSheet.show(this, getString(R.string.change_category), cats.map { category ->
+            ChoiceSheet.Option(category.label(this),
+                (IconCatalog.byId(category.iconId) ?: IconCatalog.forCategory(category.id)).drawable,
+                runCatching { Color.parseColor(category.colorHex) }.getOrNull())
+        }) { which ->
+                val chosen = cats.getOrNull(which) ?: return@show
                 confirm(R.string.change_category, getString(R.string.confirm_category_msg)) {
                     changeCategory(thread, chosen.id)
                 }
             }
-            .show()
     }
 
     /** Compact, coloured category chooser for the label directly on a row. */

@@ -151,14 +151,11 @@ class SavedMessagesActivity : BaseActivity() {
                 contentDescription = getString(R.string.note_optional)
                 setIconResource(R.drawable.ic_compose)
                 setOnClickListener {
-                    val input = EditText(this@SavedMessagesActivity).apply { setText(item.note) }
-                    MaterialAlertDialogBuilder(this@SavedMessagesActivity)
-                        .setTitle(R.string.note_optional).setView(input)
-                        .setNegativeButton(R.string.cancel, null)
-                        .setPositiveButton(R.string.save) { _, _ ->
-                            SavedMessageStore(this@SavedMessagesActivity).updateNote(item.id, input.text.toString())
+                    InputSheet.show(this@SavedMessagesActivity, getString(R.string.note_optional),
+                        getString(R.string.note_optional), item.note, R.drawable.ic_compose, true) { value ->
+                            SavedMessageStore(this@SavedMessagesActivity).updateNote(item.id, value)
                             render()
-                        }.show()
+                        }
                 }
             }, LinearLayout.LayoutParams(dp(48), dp(48)))
             actions.addView(MaterialButton(this).apply {

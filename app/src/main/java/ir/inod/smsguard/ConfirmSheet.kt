@@ -12,6 +12,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 /** Consistent confirmation for potentially destructive actions. */
 object ConfirmSheet {
     fun show(context: Context, title: String, message: String, icon: Int,
+             confirmLabel: Int = R.string.confirm, dangerous: Boolean = true,
              onConfirm: () -> Unit) {
         val density = context.resources.displayMetrics.density
         fun dp(value: Int) = (value * density).toInt()
@@ -22,7 +23,8 @@ object ConfirmSheet {
         }
         body.addView(ImageView(context).apply {
             setImageResource(icon)
-            imageTintList = ColorStateList.valueOf(ContextCompat.getColor(context, R.color.danger))
+            imageTintList = ColorStateList.valueOf(if (dangerous)
+                ContextCompat.getColor(context, R.color.danger) else ThemePrefs(context).accentColor())
         }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { bottomMargin = dp(14) })
         body.addView(TextView(context).apply {
             text = message
@@ -32,6 +34,6 @@ object ConfirmSheet {
         })
         MaterialAlertDialogBuilder(context).setTitle(title).setView(body)
             .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.confirm) { _, _ -> onConfirm() }.show()
+            .setPositiveButton(confirmLabel) { _, _ -> onConfirm() }.show()
     }
 }

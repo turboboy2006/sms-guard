@@ -731,13 +731,11 @@ class ConversationActivity : BaseActivity() {
     }
 
     private fun saveMessage(message: SmsMessage) {
-        val note = android.widget.EditText(this).apply { hint = getString(R.string.note_optional) }
-        MaterialAlertDialogBuilder(this).setTitle(R.string.save_message).setView(note)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.save) { _, _ ->
-                SavedMessageStore(this).save(message, note.text?.toString().orEmpty().trim())
+        InputSheet.show(this, getString(R.string.save_message), getString(R.string.note_optional),
+            icon = R.drawable.ic_star, multiline = true) { note ->
+                SavedMessageStore(this).save(message, note.trim())
                 Toast.makeText(this, R.string.message_saved, Toast.LENGTH_SHORT).show()
-            }.show()
+            }
     }
 
     /** Sender controls live behind the tappable conversation title. */
@@ -933,21 +931,14 @@ class ConversationActivity : BaseActivity() {
     }
 
     private fun searchConversation() {
-        val input = android.widget.EditText(this).apply {
-            hint = getString(R.string.search_hint)
-            setSingleLine(true)
-        }
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.search_conversation)
-            .setView(input)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.search) { _, _ ->
-                val needle = input.text?.toString()?.trim().orEmpty()
+        InputSheet.show(this, getString(R.string.search_conversation), getString(R.string.search_hint),
+            icon = R.drawable.ic_search, confirmLabel = R.string.search) { value ->
+                val needle = value.trim()
                 val match = lastMessages.lastOrNull { it.body.contains(needle, ignoreCase = true) }
                 val position = match?.let { adapter.positionOf(it.id) } ?: -1
                 if (position >= 0) binding.recyclerMessages.smoothScrollToPosition(position)
                 else Toast.makeText(this, R.string.search_no_results, Toast.LENGTH_SHORT).show()
-            }.show()
+            }
     }
 
     private fun addGroupRecipient() {

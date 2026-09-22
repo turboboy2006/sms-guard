@@ -282,20 +282,12 @@ class ManagerActivity : BaseActivity() {
     }
 
     private fun pickName(override: SenderOverride) {
-        val input = EditText(this).apply {
-            hint = getString(R.string.choose_name)
-            setText(override.displayName ?: "")
-        }
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.choose_name)
-            .setView(input)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.confirm) { _, _ ->
-                senders.setName(override.address, input.text?.toString())
+        InputSheet.show(this, getString(R.string.choose_name), getString(R.string.choose_name),
+            override.displayName.orEmpty(), R.drawable.ic_person) { value ->
+                senders.setName(override.address, value)
                 Classifier.invalidateCaches()
                 load()
             }
-            .show()
     }
 
     private fun pickCategory(override: SenderOverride) {

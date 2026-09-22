@@ -84,14 +84,11 @@ class ScheduledMessagesActivity : BaseActivity() {
                 text = getString(R.string.cancel_scheduled)
                 setIconResource(R.drawable.ic_tab_trash)
                 setOnClickListener {
-                    MaterialAlertDialogBuilder(this@ScheduledMessagesActivity)
-                        .setTitle(R.string.cancel_scheduled)
-                        .setMessage(R.string.confirm_delete_message)
-                        .setNegativeButton(R.string.cancel, null)
-                        .setPositiveButton(R.string.confirm) { _, _ ->
+                    ConfirmSheet.show(this@ScheduledMessagesActivity, getString(R.string.cancel_scheduled),
+                        getString(R.string.confirm_delete_message), R.drawable.ic_tab_trash) {
                             ScheduledSmsStore(this@ScheduledMessagesActivity).remove(item.id)
                             render()
-                        }.show()
+                        }
                 }
             })
             card.addView(content)

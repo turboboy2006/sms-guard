@@ -86,7 +86,7 @@ class RulesActivity : BaseActivity() {
             )
         )
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle(R.string.add_rule)
             .setView(dialogBinding.root)
             .setPositiveButton(R.string.save) { _, _ ->

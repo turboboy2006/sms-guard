@@ -1,17 +1,12 @@
 package ir.inod.smsguard
 
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
-import android.widget.BaseAdapter
-import android.widget.EditText
-import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.LocaleListCompat
@@ -337,109 +332,6 @@ class SettingsActivity : BaseActivity() {
             }
     }
 
-    // ------------------------------------------------------- category manager
-
-    private fun manageCategories() {
-        val store = CategoryStore(this)
-        val categories = store.all()
-        val labels = (categories.map { it.label(this) } + listOf(getString(R.string.new_category))).toTypedArray()
-
-        AlertDialog.Builder(this)
-            .setTitle(R.string.manage_categories)
-            .setItems(labels) { _, which ->
-                if (which < categories.size) {
-                    editCategory(categories[which])
-                } else {
-                    addCategory()
-                }
-            }
-            .setNegativeButton(R.string.close, null)
-            .show()
-    }
-
-    private fun editCategory(category: Category) {
-        val options = mutableListOf(
-            getString(R.string.rename), getString(R.string.pick_color),
-            getString(R.string.choose_icon), getString(R.string.move_up), getString(R.string.move_down),
-            getString(if (category.enabled) R.string.disable_category else R.string.enable_category)
-        )
-        if (!category.isSystem) options += getString(R.string.delete)
-        AlertDialog.Builder(this).setTitle(category.label(this))
-            .setItems(options.toTypedArray()) { _, which ->
-                when (which) {
-                    0 -> {
-                        val input = EditText(this).apply { setText(category.label(this@SettingsActivity)) }
-                        AlertDialog.Builder(this).setTitle(R.string.rename).setView(input)
-                            .setPositiveButton(R.string.save) { _, _ ->
-                                CategoryStore(this).updateAny(category.copy(nameRes = 0, customName = input.text.toString().trim()))
-                            }.setNegativeButton(R.string.cancel, null).show()
-                    }
-                    1 -> pickCategoryColor(category)
-                    2 -> pickCategoryIcon(category)
-                    3 -> CategoryStore(this).move(category.id, -1)
-                    4 -> CategoryStore(this).move(category.id, 1)
-                    5 -> if (category.id != Cat.OTHER) {
-                        CategoryStore(this).updateAny(category.copy(enabled = !category.enabled))
-                        Classifier.invalidateCaches()
-                    }
-                    6 -> CategoryStore(this).delete(category.id)
-                }
-            }.show()
-    }
-
-    private fun pickCategoryColor(category: Category) {
-        val labels = Categories.PALETTE.toTypedArray()
-        AlertDialog.Builder(this).setTitle(R.string.pick_color).setItems(labels) { _, which ->
-            CategoryStore(this).updateAny(category.copy(colorHex = Categories.PALETTE[which]))
-        }.show()
-    }
-
-    private fun pickCategoryIcon(category: Category) {
-        val icons = IconCatalog.ALL
-        AlertDialog.Builder(this).setTitle(R.string.choose_icon)
-            .setItems(icons.map { it.id }.toTypedArray()) { _, which ->
-                CategoryStore(this).updateAny(category.copy(iconId = icons[which].id))
-            }.show()
-    }
-
-    private fun addCategory() {
-        val input = EditText(this).apply { hint = getString(R.string.category_name_hint) }
-        val palette = Categories.PALETTE
-        val listAdapter = object : BaseAdapter() {
-            override fun getCount(): Int = palette.size
-            override fun getItem(position: Int): Any = palette[position]
-            override fun getItemId(position: Int): Long = position.toLong()
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val tv = (convertView as? TextView) ?: TextView(this@SettingsActivity).apply {
-                    setPadding(56, 36, 56, 36)
-                    textSize = 15f
-                }
-                tv.text = palette[position]
-                tv.setBackgroundColor(Color.parseColor(palette[position]))
-                tv.setTextColor(Color.WHITE)
-                return tv
-            }
-        }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.new_category)
-            .setView(input)
-            .setPositiveButton(R.string.add) { _, _ ->
-                val name = input.text?.toString()?.trim().orEmpty()
-                if (name.isEmpty()) return@setPositiveButton
-                // Name first, then colour: two short steps beat one cramped form.
-                AlertDialog.Builder(this)
-                    .setTitle(R.string.pick_color)
-                    .setAdapter(listAdapter) { _, which ->
-                        val created = CategoryStore(this).add(name, palette[which])
-                        pickCategoryIcon(created)
-                        Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
-                    }
-                    .show()
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
     private fun setAiFieldsEnabled(enabled: Boolean) {
         binding.editBase.isEnabled = enabled
         binding.editKey.isEnabled = enabled
@@ -533,11 +425,8 @@ class SettingsActivity : BaseActivity() {
 
     private fun confirmAiScan() {
         saveAiFields()
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.ai_scan_inbox)
-            .setMessage(R.string.ai_scan_explanation)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.start) { _, _ ->
+        ConfirmSheet.show(this, getString(R.string.ai_scan_inbox), getString(R.string.ai_scan_explanation),
+            R.drawable.ic_cat_security, R.string.start, dangerous = false) {
                 binding.buttonAiScan.isEnabled = false
                 binding.textTestResult.text = getString(R.string.ai_scan_starting)
                 AiInboxScanner.scan(
@@ -552,7 +441,7 @@ class SettingsActivity : BaseActivity() {
                         }
                     } }
                 )
-            }.show()
+            }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
