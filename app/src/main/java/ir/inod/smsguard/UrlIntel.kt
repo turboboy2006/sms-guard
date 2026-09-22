@@ -31,7 +31,11 @@ data class UrlFeatures(
  */
 object UrlIntel {
 
-    private val URL_REGEX = Regex("(https?://|www\\.)[^\\s]+", RegexOption.IGNORE_CASE)
+    private val URL_REGEX = Regex(
+        "(?:https?://|www\\.)[^\\s]+|(?<![@\\w])(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+" +
+            "(?:ir|com|net|org|co|me|io|info|biz|app|dev|site|online)(?:/[^\\s]*)?",
+        RegexOption.IGNORE_CASE
+    )
     private val IP_REGEX = Regex("^\\d{1,3}(\\.\\d{1,3}){3}$")
     private val PUNY_REGEX = Regex("(^|\\.)xn--", RegexOption.IGNORE_CASE)
 

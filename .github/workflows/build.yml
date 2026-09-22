@@ -4,8 +4,8 @@ name: Build APK
 # Download the result from the run's "Artifacts" section.
 
 on:
-  push:
-    branches: [ main, master ]
+  # APKs are intentionally built only when manually requested. This keeps
+  # ordinary code changes from publishing/building an installable package.
   workflow_dispatch:
 
 jobs:

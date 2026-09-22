@@ -99,7 +99,11 @@ class MainActivity : BaseActivity() {
 
     private val roleLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) { refreshBanner() }
+    ) {
+        refreshBanner()
+        if (isDefaultSmsApp()) ensurePermissions()
+        else if (Build.VERSION.SDK_INT >= 35) showRestrictedRoleHelp()
+    }
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -199,7 +203,9 @@ class MainActivity : BaseActivity() {
             applyFilter()
         }
         loadCachedThreads()
-        ensurePermissions()
+        // Request the default-SMS role before sensitive SMS permissions. This
+        // ordering matters for modern Android's restricted-setting checks.
+        if (isDefaultSmsApp()) ensurePermissions() else refreshBanner()
     }
 
     /**
@@ -407,6 +413,25 @@ class MainActivity : BaseActivity() {
                 startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
             } catch (e2: Exception) {
                 Toast.makeText(this, R.string.open_settings_manually, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun showRestrictedRoleHelp() {
+        ChoiceSheet.show(this, getString(R.string.restricted_sms_title), listOf(
+            ChoiceSheet.Option(getString(R.string.open_app_settings), R.drawable.ic_settings,
+                detail = getString(R.string.restricted_sms_settings_hint)),
+            ChoiceSheet.Option(getString(R.string.open_android_help), R.drawable.ic_cat_security,
+                detail = getString(R.string.restricted_sms_store_hint)),
+            ChoiceSheet.Option(getString(R.string.try_again), R.drawable.ic_archive)
+        )) { which ->
+            when (which) {
+                0 -> startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = android.net.Uri.parse("package:$packageName")
+                })
+                1 -> startActivity(Intent(Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://support.google.com/android/answer/12623953")))
+                else -> requestDefaultRole()
             }
         }
     }
@@ -741,13 +766,14 @@ class MainActivity : BaseActivity() {
 
     private fun performSwipeAction(row: ThreadSummary, action: String) {
         when (action) {
-            SwipeAction.READ -> worker.execute {
-                repo.markThreadRead(row.threadId)
-                main.post {
-                    allThreads = allThreads.map { if (it.threadId == row.threadId) it.copy(unreadCount = 0) else it }
-                    applyFilter()
-                    loadThreads()
+            SwipeAction.READ -> {
+                // Update the visible model first. A provider reload here made
+                // the Unread tab briefly render an empty intermediate frame.
+                allThreads = allThreads.map {
+                    if (it.threadId == row.threadId) it.copy(unreadCount = 0) else it
                 }
+                applyFilter()
+                worker.execute { repo.markThreadRead(row.threadId) }
             }
             SwipeAction.TRASH -> changeCategory(row, Cat.TRASH)
             SwipeAction.ARCHIVE -> { senderStore.setArchived(row.address, true); applyFilter() }

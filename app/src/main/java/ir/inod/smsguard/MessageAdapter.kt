@@ -1,5 +1,9 @@
 package ir.inod.smsguard
 
+import android.text.Spannable
+import android.text.method.LinkMovementMethod
+import android.text.style.URLSpan
+import android.text.util.Linkify
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -207,6 +211,7 @@ class MessageAdapter(
         val density = context.resources.displayMetrics.density
 
         bubble.text = item.body
+        applySafeLinks(context, bubble, item)
         time.text = Dates.full(context, item.date)
         val showMeta = item.id in latestMetaIds || item.id in expandedMetaIds || selectedIds.isNotEmpty()
         time.visibility = if (showMeta) View.VISIBLE else View.GONE
@@ -296,6 +301,29 @@ class MessageAdapter(
         holder.itemView.setOnLongClickListener {
             onLongClick(item)
             true
+        }
+    }
+
+    /** Enables ordinary web links while leaving spam and risky domains inert. */
+    private fun applySafeLinks(context: android.content.Context, bubble: android.widget.TextView,
+                               item: SmsMessage) {
+        bubble.movementMethod = null
+        val category = CategoryStore(context).byId(item.categoryId)
+        if (category?.spamFolder == true || item.categoryId == Cat.TRASH) return
+        if (!Linkify.addLinks(bubble, Linkify.WEB_URLS)) return
+        val text = bubble.text as? Spannable ?: return
+        val blocked = BlockStore(context)
+        text.getSpans(0, text.length, URLSpan::class.java).forEach { span ->
+            val feature = UrlIntel.extract(span.url).firstOrNull()
+            val unsafe = feature == null || blocked.matchesDomain(feature.host) ||
+                feature.isIp || feature.isShortener || feature.isPunycode ||
+                feature.hasRedirectParam || feature.riskyTld
+            if (unsafe) text.removeSpan(span)
+        }
+        if (text.getSpans(0, text.length, URLSpan::class.java).isNotEmpty()) {
+            bubble.movementMethod = LinkMovementMethod.getInstance()
+            bubble.highlightColor = android.graphics.Color.TRANSPARENT
+            bubble.linksClickable = true
         }
     }
 

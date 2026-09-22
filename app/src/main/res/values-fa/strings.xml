@@ -392,4 +392,10 @@
     <string name="notification_summary_silent">اعلان بی‌صدا</string>
     <string name="notification_summary_custom">صدای اختصاصی</string>
     <string name="notification_summary_off">اعلان خاموش</string>
+    <string name="restricted_sms_title">اندروید دسترسی پیامک را مسدود کرد</string>
+    <string name="open_app_settings">بازکردن تنظیمات برنامه</string>
+    <string name="open_android_help">راهنمای رسمی اندروید</string>
+    <string name="try_again">تلاش دوباره</string>
+    <string name="restricted_sms_settings_hint">در اطلاعات برنامه، منوی بالا را باز کنید و اگر وجود داشت «اجازه تنظیمات محدودشده» را فعال کنید.</string>
+    <string name="restricted_sms_store_hint">اندروید ۱۵ و ۱۶ ممکن است دسترسی حساس پیامک را برای APK نصب‌شده خارج از فروشگاه معتبر مسدود کنند.</string>
 </resources>
