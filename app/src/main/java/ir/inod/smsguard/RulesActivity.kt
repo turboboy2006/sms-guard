@@ -8,6 +8,7 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import ir.inod.smsguard.databinding.ActivityRulesBinding
 import ir.inod.smsguard.databinding.DialogRuleBinding
 
@@ -112,16 +113,56 @@ class RulesActivity : BaseActivity() {
 
     private fun showBlockedLog() {
         val blocked = blockedStore.all()
-        val message = if (blocked.isEmpty()) {
-            getString(R.string.blocked_empty)
-        } else {
-            blocked.joinToString("\n\n") {
-                "${Dates.full(this, it.date)}\n${it.address}\n${it.body}\n[${it.rulePattern}]"
-            }
+        val density = resources.displayMetrics.density
+        val list = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            val p = (16 * density).toInt(); setPadding(p, p, p, p)
         }
-        AlertDialog.Builder(this)
+        if (blocked.isEmpty()) list.addView(android.widget.TextView(this).apply {
+            text = getString(R.string.blocked_empty)
+            textSize = 16f
+            gravity = android.view.Gravity.CENTER
+            setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_tab_spam, 0, 0)
+            setPadding(24, 48, 24, 48)
+        })
+        blocked.forEach { entry ->
+            val card = com.google.android.material.card.MaterialCardView(this).apply {
+                radius = 16f * density
+                strokeWidth = 1
+                strokeColor = androidx.core.content.ContextCompat.getColor(this@RulesActivity, R.color.border_soft)
+            }
+            val body = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                val p = (14 * density).toInt(); setPadding(p, p, p, p)
+            }
+            body.addView(android.widget.TextView(this).apply {
+                text = entry.address
+                textSize = 16f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_tab_spam, 0, 0, 0)
+                compoundDrawablePadding = (8 * density).toInt()
+            })
+            body.addView(android.widget.TextView(this).apply {
+                text = Dates.full(this@RulesActivity, entry.date)
+                textSize = 12f
+                setTextColor(androidx.core.content.ContextCompat.getColor(this@RulesActivity, R.color.text_secondary))
+            })
+            body.addView(android.widget.TextView(this).apply {
+                text = entry.body
+                textSize = 14f
+                setPadding(0, (8 * density).toInt(), 0, (8 * density).toInt())
+            })
+            body.addView(android.widget.TextView(this).apply {
+                text = entry.rulePattern
+                textSize = 12f
+                setTextColor(androidx.core.content.ContextCompat.getColor(this@RulesActivity, R.color.danger))
+            })
+            card.addView(body)
+            list.addView(card, android.widget.LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = (8 * density).toInt() })
+        }
+        MaterialAlertDialogBuilder(this)
             .setTitle(getString(R.string.blocked_log) + " (${blocked.size})")
-            .setMessage(message)
+            .setView(android.widget.ScrollView(this).apply { addView(list) })
             .setPositiveButton(R.string.close, null)
             .setNeutralButton(R.string.clear) { _, _ ->
                 blockedStore.clear()
@@ -132,18 +173,21 @@ class RulesActivity : BaseActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == MENU_SAMPLES) {
+            data class Example(val words: String, val excluded: String,
+                val join: RuleJoin, val action: RuleAction)
             val samples = listOf(
-                Triple("برنده شدید،جایزه", RuleJoin.ANY, RuleAction.SPAM),
-                Triple("وام فوری،بدون ضامن", RuleJoin.ALL, RuleAction.PROMOTION),
-                Triple("تخفیف ویژه،فروش فوق‌العاده", RuleJoin.ANY, RuleAction.PROMOTION),
-                Triple("قرعه‌کشی،دریافت جایزه", RuleJoin.ALL, RuleAction.SPAM)
+                Example("برنده شدید،دریافت جایزه", "رمز پویا،کد تایید", RuleJoin.ALL, RuleAction.SPAM),
+                Example("حراج،تخفیف ویژه،فروش فوق‌العاده", "رسید خرید،کد تایید", RuleJoin.ANY, RuleAction.PROMOTION)
             )
-            AlertDialog.Builder(this).setTitle(R.string.sample_rules)
-                .setItems(samples.map { it.first.replace("،", " + ") }.toTypedArray()) { _, index ->
+            ChoiceSheet.show(this, getString(R.string.sample_rules), samples.map { sample ->
+                ChoiceSheet.Option(sample.words.replace("،", if (sample.join == RuleJoin.ALL) " + " else " / "),
+                    if (sample.action == RuleAction.SPAM) R.drawable.ic_tab_spam else R.drawable.ic_cat_shop,
+                    detail = getString(if (sample.join == RuleJoin.ALL) R.string.rule_join_all else R.string.rule_join_any))
+            }) { index ->
                     val sample = samples[index]
-                    store.addSimple(sample.first.replace('،', ','), "", sample.second, RuleTarget.BODY, sample.third)
+                    store.addSimple(sample.words, sample.excluded, sample.join, RuleTarget.BODY, sample.action)
                     reload()
-                }.setNegativeButton(R.string.cancel, null).show()
+                }
             return true
         }
         if (item.itemId == MENU_DELETE_SELECTED) {

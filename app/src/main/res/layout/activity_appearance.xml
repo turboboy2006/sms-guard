@@ -199,7 +199,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:stepSize="5"
-                android:valueFrom="70"
+                android:valueFrom="85"
                 android:valueTo="100" />
 
             <com.google.android.material.card.MaterialCardView

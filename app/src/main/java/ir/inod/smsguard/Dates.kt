@@ -17,6 +17,15 @@ import java.util.Locale
 object Dates {
 
     private const val DAY_MS = 24L * 60L * 60L * 1000L
+    private const val SECONDS_CUTOFF = 100_000_000_000L
+
+    /** Imported/provider rows occasionally carry Unix seconds, not millis. */
+    fun normalizedMillis(value: Long): Long = when {
+        value <= 0L -> 0L
+        value < SECONDS_CUTOFF -> value * 1000L
+        else -> value
+    }
+    private fun stamp(value: Long) = normalizedMillis(value)
 
     private val FA_MONTHS = arrayOf(
         "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
@@ -35,17 +44,18 @@ object Dates {
         context.resources.configuration.locales[0]
 
     fun listLabel(context: Context, millis: Long): String {
-        if (millis <= 0L) return ""
-        val age = System.currentTimeMillis() - millis
+        val date = stamp(millis)
+        if (date == 0L) return context.getString(R.string.date_unknown)
+        val age = System.currentTimeMillis() - date
         val today = Calendar.getInstance()
-        val target = Calendar.getInstance().apply { timeInMillis = millis }
+        val target = Calendar.getInstance().apply { timeInMillis = date }
         val sameDay = today.get(Calendar.YEAR) == target.get(Calendar.YEAR) &&
             today.get(Calendar.DAY_OF_YEAR) == target.get(Calendar.DAY_OF_YEAR)
         if (isPersian(context)) {
             return when {
-                sameDay -> faTime(millis)
-                age < 7 * DAY_MS -> faDayName(millis)
-                else -> faShortDate(millis)
+                sameDay -> faTime(date)
+                age < 7 * DAY_MS -> faDayName(date)
+                else -> faShortDate(date)
             }
         }
         val pattern = when {
@@ -53,16 +63,19 @@ object Dates {
             age < 7 * DAY_MS -> "EEE"
             else -> "yyyy/MM/dd"
         }
-        return SimpleDateFormat(pattern, localeOf(context)).format(Date(millis))
+        return SimpleDateFormat(pattern, localeOf(context)).format(Date(date))
     }
 
     /** Full stamp shown under each message bubble. */
-    fun full(context: Context, millis: Long): String =
-        if (isPersian(context)) {
-            faDate(millis) + " · " + faTime(millis)
+    fun full(context: Context, millis: Long): String {
+        val date = stamp(millis)
+        if (date == 0L) return context.getString(R.string.date_unknown)
+        return if (isPersian(context)) {
+            faDate(date) + " · " + faTime(date)
         } else {
-            SimpleDateFormat("yyyy/MM/dd HH:mm", localeOf(context)).format(Date(millis))
+            SimpleDateFormat("yyyy/MM/dd HH:mm", localeOf(context)).format(Date(date))
         }
+    }
 
     // ------------------------------------------------------------ Jalali
 
@@ -109,8 +122,8 @@ object Dates {
     }
 
     fun year(context: Context, millis: Long): Int =
-        if (isPersian(context)) jalali(millis)[0]
-        else Calendar.getInstance().apply { timeInMillis = millis }.get(Calendar.YEAR)
+        if (isPersian(context)) jalali(stamp(millis))[0]
+        else Calendar.getInstance().apply { timeInMillis = stamp(millis) }.get(Calendar.YEAR)
 
     fun yearLabel(context: Context, millis: Long): String {
         val value = year(context, millis).toString()
@@ -118,10 +131,11 @@ object Dates {
     }
 
     fun conversationDay(context: Context, millis: Long): String {
-        if (millis <= 0L) return ""
-        val age = System.currentTimeMillis() - millis
+        val date = stamp(millis)
+        if (date == 0L) return context.getString(R.string.date_unknown)
+        val age = System.currentTimeMillis() - date
         val today = Calendar.getInstance()
-        val target = Calendar.getInstance().apply { timeInMillis = millis }
+        val target = Calendar.getInstance().apply { timeInMillis = date }
         val sameDay = today.get(Calendar.YEAR) == target.get(Calendar.YEAR) &&
             today.get(Calendar.DAY_OF_YEAR) == target.get(Calendar.DAY_OF_YEAR)
         today.add(Calendar.DAY_OF_YEAR, -1)
@@ -130,9 +144,9 @@ object Dates {
         return when {
             sameDay -> context.getString(R.string.today)
             yesterday -> context.getString(R.string.yesterday)
-            isPersian(context) && age < 7 * DAY_MS -> faDayName(millis)
-            isPersian(context) -> faShortDate(millis)
-            else -> SimpleDateFormat("MMM d", localeOf(context)).format(Date(millis))
+            isPersian(context) && age < 7 * DAY_MS -> faDayName(date)
+            isPersian(context) -> faShortDate(date)
+            else -> SimpleDateFormat("MMM d", localeOf(context)).format(Date(date))
         }
     }
 

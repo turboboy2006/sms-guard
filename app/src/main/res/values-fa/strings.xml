@@ -368,4 +368,16 @@
     <string name="open">باز کردن</string>
     <string name="starred">ستاره‌دار</string>
     <string name="sample_rules">نمونه قواعد</string>
+    <string name="date_unknown">تاریخ نامشخص</string>
+    <string name="more_actions">گزینه‌های بیشتر</string>
+    <string name="detail_status">وضعیت</string>
+    <string name="detail_date">تاریخ و ساعت</string>
+    <string name="detail_sim">سیم‌کارت</string>
+    <string name="detail_error">کد خطا</string>
+    <string name="detail_reason">دلیل</string>
+    <string name="tab_unread">خوانده‌نشده</string>
+    <string name="mark_all_read">خواندن همه</string>
+    <string name="self_note">یادداشت من</string>
+    <string name="saved_note_hint">یادداشت خصوصی بنویسید…</string>
+    <string name="settings_advanced">پیشرفته</string>
 </resources>

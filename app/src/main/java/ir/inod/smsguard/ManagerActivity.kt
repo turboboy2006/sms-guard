@@ -189,12 +189,7 @@ class ManagerActivity : BaseActivity() {
     }
 
     private fun confirm(titleRes: Int, message: String, onYes: () -> Unit) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(titleRes)
-            .setMessage(message)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.confirm) { _, _ -> onYes() }
-            .show()
+        ConfirmSheet.show(this, getString(titleRes), message, R.drawable.ic_warning, onYes)
     }
 
     // ------------------------------------------------- per-sender appearance
@@ -207,9 +202,10 @@ class ManagerActivity : BaseActivity() {
             getString(R.string.pick_color),
             getString(R.string.clear_override)
         )
-        MaterialAlertDialogBuilder(this)
-            .setTitle(override.displayName ?: override.address)
-            .setItems(options) { _, which ->
+        val icons = listOf(R.drawable.ic_person, R.drawable.ic_cat_receipt,
+            R.drawable.ic_tab_all, R.drawable.ic_cat_shop, R.drawable.ic_tab_trash)
+        ChoiceSheet.show(this, override.displayName ?: override.address,
+            options.mapIndexed { index, label -> ChoiceSheet.Option(label, icons[index]) }) { which ->
                 when (which) {
                     0 -> pickIcon(override)
                     1 -> pickName(override)
@@ -226,7 +222,6 @@ class ManagerActivity : BaseActivity() {
                     }
                 }
             }
-            .show()
     }
 
     /** Catalog icons laid out as a tap grid, grouped by their catalogue group. */
@@ -306,14 +301,14 @@ class ManagerActivity : BaseActivity() {
     private fun pickCategory(override: SenderOverride) {
         val cats = CategoryStore(this).all()
         val labels = cats.map { it.label(this) }.toTypedArray()
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.change_category)
-            .setItems(labels) { _, which ->
+        ChoiceSheet.show(this, getString(R.string.change_category),
+            cats.map { category -> ChoiceSheet.Option(category.label(this),
+                (IconCatalog.byId(category.iconId) ?: IconCatalog.forCategory(category.id)).drawable,
+                runCatching { Color.parseColor(category.colorHex) }.getOrNull()) }) { which ->
                 senders.setCategory(override.address, cats[which].id)
                 Classifier.invalidateCaches()
                 load()
             }
-            .show()
     }
 
     private fun pickColor(override: SenderOverride) {

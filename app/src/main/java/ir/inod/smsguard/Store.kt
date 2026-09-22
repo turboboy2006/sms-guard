@@ -8,6 +8,7 @@ data class SavedMessage(val id: Long, val address: String, val body: String, val
 
 /** A local vault for messages the user wants to retain without forwarding them. */
 class SavedMessageStore(context: Context) {
+    companion object { const val SELF_ADDRESS = "__sms_guard_self__" }
     private val prefs = context.applicationContext.getSharedPreferences("saved_messages", Context.MODE_PRIVATE)
     fun all(): List<SavedMessage> = runCatching {
         val arr = JSONArray(prefs.getString("items", "[]"))
@@ -24,6 +25,12 @@ class SavedMessageStore(context: Context) {
         prefs.edit().putString("items", arr.toString()).apply()
     }
     fun remove(id: Long) = saveRaw(all().filterNot { it.id == id })
+    fun addNote(body: String) {
+        val trimmed = body.trim()
+        if (trimmed.isBlank()) return
+        val now = System.currentTimeMillis()
+        saveRaw((listOf(SavedMessage(-now, SELF_ADDRESS, trimmed, now, "")) + all()).take(1000))
+    }
     fun updateNote(id: Long, note: String) = saveRaw(all().map { if (it.id == id) it.copy(note = note) else it })
     fun setStarred(id: Long, starred: Boolean) = saveRaw(all().map { if (it.id == id) it.copy(starred = starred) else it })
     private fun saveRaw(list: List<SavedMessage>) {
@@ -287,10 +294,10 @@ class ThemePrefs(context: Context) {
         get() = prefs.getString("background_preset", null)
         set(v) = prefs.edit().putString("background_preset", BuiltInWallpaper.validOrNull(v)).apply()
 
-    /** Opacity of cards/toolbars above a photo wallpaper, 70..100 percent. */
+    /** Keep enough surface opacity for SMS text to stay legible on busy photos. */
     var surfaceOpacity: Int
-        get() = prefs.getInt("surface_opacity", 90)
-        set(v) = prefs.edit().putInt("surface_opacity", v.coerceIn(70, 100)).apply()
+        get() = prefs.getInt("surface_opacity", 90).coerceIn(85, 100)
+        set(v) = prefs.edit().putInt("surface_opacity", v.coerceIn(85, 100)).apply()
 
     fun hasWallpaper(): Boolean = backgroundImageUri != null || backgroundPreset != null
 

@@ -72,7 +72,7 @@ object RowStyler {
             )
 
             RowStyle.OUTLINE -> rounded(
-                if (unread) unreadColor else Color.TRANSPARENT,
+                if (unread) unreadColor else if (theme.hasWallpaper()) surface else Color.TRANSPARENT,
                 radius, 1, border
             )
 
@@ -80,14 +80,15 @@ object RowStyler {
                 when {
                     unread -> unreadColor
                     position % 2 == 1 -> sunken
-                    else -> Color.TRANSPARENT
+                    else -> if (theme.hasWallpaper()) surface else Color.TRANSPARENT
                 },
                 0f
             )
 
             // Accent, Compact, Flat and Classic all keep the surface plain; the
             // coloured bar, the avatar and the divider do the distinguishing.
-            else -> if (unread) rounded(unreadColor, 0f) else null
+            else -> if (unread) rounded(unreadColor, 0f)
+                else if (theme.hasWallpaper()) rounded(surface, 0f) else null
         }
     }
 

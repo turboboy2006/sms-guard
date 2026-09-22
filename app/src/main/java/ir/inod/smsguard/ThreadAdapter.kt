@@ -80,6 +80,9 @@ class ThreadAdapter(
     private val onSelectionChanged: (Int) -> Unit = {}
 ) : RecyclerView.Adapter<ThreadAdapter.VH>() {
 
+    init { setHasStableIds(true) }
+    override fun getItemId(position: Int): Long = items[position].threadId
+
     private val items = mutableListOf<ThreadSummary>()
     private val selectedIds = linkedSetOf<Long>()
     private var categoryCache: Map<String, Category>? = null
@@ -124,6 +127,16 @@ class ThreadAdapter(
             items.clear()
             items.addAll(list)
             old.indices.forEach { index -> if (old[index] != list[index]) notifyItemChanged(index) }
+            return
+        }
+        // DiffUtil's move detection can take seconds in a very large mailbox.
+        // Stable IDs preserve the visible anchor without calculating thousands
+        // of moves on the UI thread after returning from a conversation.
+        if (old.size + list.size > 800) {
+            items.clear()
+            items.addAll(list)
+            selectedIds.retainAll(items.mapTo(HashSet()) { it.threadId })
+            notifyDataSetChanged()
             return
         }
         val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
@@ -288,7 +301,7 @@ class ThreadAdapter(
         // --- avatar ---------------------------------------------------------
         b.avatar.visibility = if (showAvatar) View.VISIBLE else View.GONE
         if (showAvatar) {
-            val avatarSize = dp(density, if (compact) 40 else 52)
+            val avatarSize = dp(density, if (compact) 40 else 64)
             if (b.avatar.layoutParams.width != avatarSize) {
                 b.avatar.layoutParams = b.avatar.layoutParams.apply {
                     width = avatarSize
@@ -420,7 +433,7 @@ class ThreadAdapter(
         b.textCategory.setTextColor(foreground)
         b.textCategory.maxLines = 2
         b.textCategory.ellipsize = null
-        b.textCategory.maxWidth = (200 * context.resources.displayMetrics.density).toInt()
+        b.textCategory.maxWidth = (110 * context.resources.displayMetrics.density).toInt()
         return true
     }
 

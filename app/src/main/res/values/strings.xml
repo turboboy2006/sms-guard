@@ -392,4 +392,16 @@
     <string name="open">Open</string>
     <string name="starred">Starred</string>
     <string name="sample_rules">Rule examples</string>
+    <string name="date_unknown">Unknown date</string>
+    <string name="more_actions">More actions</string>
+    <string name="detail_status">Status</string>
+    <string name="detail_date">Date and time</string>
+    <string name="detail_sim">SIM card</string>
+    <string name="detail_error">Error code</string>
+    <string name="detail_reason">Reason</string>
+    <string name="tab_unread">Unread</string>
+    <string name="mark_all_read">Mark all read</string>
+    <string name="self_note">My note</string>
+    <string name="saved_note_hint">Write a private note…</string>
+    <string name="settings_advanced">Advanced</string>
 </resources>

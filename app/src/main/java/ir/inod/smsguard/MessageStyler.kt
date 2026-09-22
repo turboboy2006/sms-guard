@@ -47,7 +47,7 @@ object MessageStyler {
             )
 
             MessageStyle.OUTLINE -> rounded(
-                fill = Color.TRANSPARENT,
+                fill = if (theme.hasWallpaper()) surface else Color.TRANSPARENT,
                 radius = radius,
                 stroke = 1,
                 strokeColor = if (outgoing) {

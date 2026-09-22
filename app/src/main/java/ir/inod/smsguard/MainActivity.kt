@@ -43,8 +43,10 @@ class MainActivity : BaseActivity() {
         const val MENU_BULK_TRASH = 2103
         const val MENU_BULK_RESTORE = 2104
         const val MENU_ARCHIVED = 2007
-        const val MENU_CAMPAIGNS = 2008
         const val MENU_SETTINGS = 2009
+        const val MENU_MORE = 2010
+        const val MENU_READ_ALL = 2011
+        const val UNREAD_FILTER = "__unread__"
 
         /** Tab order, matching the chips built in [setUpFilterChips]. */
         const val TAB_ALL = 0
@@ -188,6 +190,14 @@ class MainActivity : BaseActivity() {
         // The stored inbox is on screen before the provider is even queried —
         // but it is read off the main thread, because at this point the cache
         // file can be at its largest.
+        val preview = ThreadCache.readPreview(this)
+        if (preview.isNotEmpty()) {
+            val active = CategoryStore(this).active().mapTo(HashSet()) { it.id }
+            allThreads = preview.map { cached -> cached.toSummary().let { row ->
+                if (row.categoryId in active) row else row.copy(categoryId = Cat.OTHER)
+            } }
+            applyFilter()
+        }
         loadCachedThreads()
         ensurePermissions()
     }
@@ -202,7 +212,10 @@ class MainActivity : BaseActivity() {
      */
     private fun setUpFilterChips() {
         binding.chipGroup.removeAllViews()
-        val entries = listOf<Pair<String?, String>>(null to getString(R.string.tab_all)) +
+        val entries = listOf<Pair<String?, String>>(
+            null to getString(R.string.tab_all),
+            UNREAD_FILTER to getString(R.string.tab_unread)
+        ) +
             CategoryStore(this).active().map { it.id to it.label(this) }
         val idToCategory = HashMap<Int, String?>()
         val density = resources.displayMetrics.density
@@ -226,7 +239,7 @@ class MainActivity : BaseActivity() {
                 )
                 val ink = baseColor
                 setTextColor(ColorStateList(arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()), intArrayOf(ink, ink)))
-                val icon = if (entry.first == null) R.drawable.ic_tab_all else
+                val icon = if (entry.first == null) R.drawable.ic_tab_all else if (entry.first == UNREAD_FILTER) R.drawable.ic_tab_service else
                     (IconCatalog.byId(category?.iconId) ?: IconCatalog.forCategory(entry.first!!)).drawable
                 if (icon != 0) {
                     chipIcon = ContextCompat.getDrawable(this@MainActivity, icon)?.mutate()?.apply {
@@ -413,7 +426,7 @@ class MainActivity : BaseActivity() {
      * already on screen, so this only has to be quick, not instant.
      */
     private fun loadCachedThreads() {
-        if (allThreads.isNotEmpty() || loadedFromCache) return
+        if (loadedFromCache) return
         worker.execute {
             val cached = try {
                 repo.cachedThreads()
@@ -423,7 +436,7 @@ class MainActivity : BaseActivity() {
             if (cached.isEmpty()) return@execute
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                if (allThreads.isNotEmpty()) return@runOnUiThread
+                if (allThreads.size >= cached.size) return@runOnUiThread
                 loadedFromCache = true
                 allThreads = cached
                 showSkeleton(false)
@@ -538,14 +551,18 @@ class MainActivity : BaseActivity() {
         menu.add(0, MENU_SEARCH, 0, R.string.search)
             .setIcon(R.drawable.ic_search)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
+        menu.add(0, MENU_MORE, 1, R.string.more_actions)
+            .setIcon(R.drawable.ic_more)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
+        menu.add(0, MENU_READ_ALL, 2, R.string.mark_all_read)
+            .setIcon(R.drawable.ic_copy)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_REFRESH, 1, R.string.refresh)
         menu.add(0, MENU_RULES, 2, R.string.rules)
         menu.add(0, MENU_BLOCKED, 3, R.string.blocked_log)
         menu.add(0, MENU_TRASH, 4, R.string.tab_trash)
         menu.add(0, MENU_MANAGE, 5, R.string.manage_brands)
         menu.add(0, MENU_ARCHIVED, 6, R.string.archived)
-        menu.add(0, MENU_CAMPAIGNS, 7, R.string.campaigns)
-            .setIcon(R.drawable.ic_search)
         menu.add(0, MENU_SETTINGS, 8, R.string.settings)
             .setIcon(R.drawable.ic_settings)
         menu.add(0, MENU_MARK_READ, 0, R.string.mark_read)
@@ -566,14 +583,19 @@ class MainActivity : BaseActivity() {
         }
         menu.findItem(MENU_BULK_RESTORE)?.isVisible = selecting && selectedCategoryId == Cat.TRASH
         if (selectedCategoryId == Cat.TRASH) menu.findItem(MENU_BULK_TRASH)?.isVisible = false
-        listOf(MENU_SEARCH, MENU_REFRESH, MENU_RULES, MENU_BLOCKED, MENU_TRASH, MENU_MANAGE, MENU_ARCHIVED, MENU_CAMPAIGNS, MENU_SETTINGS).forEach {
-            menu.findItem(it)?.isVisible = !selecting
+        menu.findItem(MENU_SEARCH)?.isVisible = !selecting
+        menu.findItem(MENU_MORE)?.isVisible = !selecting
+        menu.findItem(MENU_READ_ALL)?.isVisible = !selecting && selectedCategoryId == UNREAD_FILTER
+        listOf(MENU_REFRESH, MENU_RULES, MENU_BLOCKED, MENU_TRASH, MENU_MANAGE, MENU_ARCHIVED, MENU_SETTINGS).forEach {
+            menu.findItem(it)?.isVisible = false
         }
         return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
         when (item.itemId) {
+            MENU_MORE -> showMainMenu()
+            MENU_READ_ALL -> markAllUnreadRead()
             MENU_SEARCH -> showSearch()
             MENU_REFRESH -> {
                 ThreadCache.clear(this)
@@ -594,7 +616,6 @@ class MainActivity : BaseActivity() {
             }
             MENU_MANAGE -> startActivity(Intent(this, ManagerActivity::class.java))
             MENU_ARCHIVED -> showArchived()
-            MENU_CAMPAIGNS -> startActivity(Intent(this, CampaignsActivity::class.java))
             MENU_SETTINGS -> startActivity(Intent(this, SettingsActivity::class.java))
             MENU_MARK_READ -> bulkMarkRead()
             MENU_BULK_SPAM -> bulkCategory(Cat.SPAM)
@@ -603,6 +624,37 @@ class MainActivity : BaseActivity() {
             else -> return super.onOptionsItemSelected(item)
         }
         return true
+    }
+
+    private fun showMainMenu() {
+        val ids = listOf(MENU_REFRESH, MENU_ARCHIVED, MENU_TRASH, MENU_RULES,
+            MENU_BLOCKED, MENU_MANAGE, MENU_SETTINGS)
+        val labels = listOf(R.string.refresh, R.string.archived, R.string.tab_trash,
+            R.string.rules, R.string.blocked_log, R.string.manage_brands, R.string.settings)
+        val icons = listOf(R.drawable.ic_archive, R.drawable.ic_archive, R.drawable.ic_tab_trash,
+            R.drawable.ic_cat_security, R.drawable.ic_tab_spam, R.drawable.ic_cat_bank, R.drawable.ic_settings)
+        ChoiceSheet.show(this, getString(R.string.more_actions), ids.indices.map { index ->
+            ChoiceSheet.Option(getString(labels[index]), icons[index])
+        }) { index ->
+            binding.toolbar.menu.findItem(ids[index])?.let { onOptionsItemSelected(it) }
+        }
+    }
+
+    private fun markAllUnreadRead() {
+        val rows = allThreads.filter { it.unreadCount > 0 }
+        if (rows.isEmpty()) return
+        val ids = rows.mapTo(HashSet()) { it.threadId }
+        worker.execute {
+            rows.forEach { repo.markThreadRead(it.threadId) }
+            main.post {
+                if (isFinishing || isDestroyed) return@post
+                allThreads = allThreads.map { row ->
+                    if (row.threadId in ids) row.copy(unreadCount = 0) else row
+                }
+                applyFilter()
+                loadThreads()
+            }
+        }
     }
 
     private fun updateSelectionUi(count: Int) {
@@ -626,11 +678,16 @@ class MainActivity : BaseActivity() {
                 else super.getSwipeDirs(recyclerView, viewHolder)
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-                val row = adapter.itemAt(viewHolder.bindingAdapterPosition) ?: return
+                val position = viewHolder.bindingAdapterPosition
+                val row = adapter.itemAt(position) ?: return
                 val action = if (direction == ItemTouchHelper.RIGHT) {
                     SettingsStore(this@MainActivity).swipeRightAction
                 } else SettingsStore(this@MainActivity).swipeLeftAction
+                Snackbar.make(binding.root, swipeActionLabel(action), 1000).show()
                 performSwipeAction(row, action)
+                if (action == SwipeAction.READ && position >= 0) {
+                    main.postDelayed({ if (!isFinishing && !isDestroyed && position < adapter.itemCount) adapter.notifyItemChanged(position) }, 900L)
+                }
             }
 
             override fun onChildDraw(
@@ -679,7 +736,14 @@ class MainActivity : BaseActivity() {
 
     private fun performSwipeAction(row: ThreadSummary, action: String) {
         when (action) {
-            SwipeAction.READ -> worker.execute { repo.markThreadRead(row.threadId); main.post { loadThreads() } }
+            SwipeAction.READ -> worker.execute {
+                repo.markThreadRead(row.threadId)
+                main.post {
+                    allThreads = allThreads.map { if (it.threadId == row.threadId) it.copy(unreadCount = 0) else it }
+                    applyFilter()
+                    loadThreads()
+                }
+            }
             SwipeAction.TRASH -> changeCategory(row, Cat.TRASH)
             SwipeAction.ARCHIVE -> { senderStore.setArchived(row.address, true); applyFilter() }
             else -> changeCategory(row, Cat.SPAM)
@@ -760,10 +824,12 @@ class MainActivity : BaseActivity() {
     }
 
     private fun applyFilter() {
+        invalidateOptionsMenu()
         val inboxFlags = senderStore.inboxFlags()
         val spamIds = CategoryStore(this).active().filter { it.spamFolder }.map { it.id }.toSet()
         val byTab = when {
             archiveMode -> allThreads
+            selectedCategoryId == UNREAD_FILTER -> allThreads.filter { it.unreadCount > 0 && it.categoryId != Cat.TRASH }
             contactsOnly -> allThreads.filter { ContactsIndex.isKnownContact(it.address) }
             selectedCategoryId != null -> allThreads.filter { it.categoryId == selectedCategoryId }
             // "All" hides the spam folder and the trash alike.
@@ -857,9 +923,14 @@ class MainActivity : BaseActivity() {
                 getString(R.string.block_sender)
             )
         }
-        MaterialAlertDialogBuilder(this)
-            .setTitle(ContactNames.displayNameUi(thread.address))
-            .setItems(options) { _, which ->
+        val icons = if (inTrash) listOf(R.drawable.ic_tab_trash, R.drawable.ic_tab_trash)
+            else listOf(R.drawable.ic_pin, R.drawable.ic_archive, R.drawable.ic_tab_service,
+                R.drawable.ic_tab_all, R.drawable.ic_cat_shop, R.drawable.ic_tab_spam,
+                R.drawable.ic_person, R.drawable.ic_tab_trash, R.drawable.ic_cat_security)
+        ChoiceSheet.show(this, ContactNames.displayNameUi(thread.address),
+            options.mapIndexed { index, label -> ChoiceSheet.Option(label, icons[index],
+                if (label == getString(R.string.block_sender) || label == getString(R.string.delete_forever))
+                    ContextCompat.getColor(this, R.color.danger) else null) }) { which ->
                 if (inTrash) {
                     when (which) {
                         0 -> confirm(
@@ -874,7 +945,7 @@ class MainActivity : BaseActivity() {
                             getString(R.string.confirm_empty_trash)
                         ) { emptyTrash() }
                     }
-                    return@setItems
+                    return@show
                 }
                 when (which) {
                     0 -> { senderStore.setPinned(thread.address, !senderStore.isPinned(thread.address)); applyFilter() }
@@ -900,7 +971,6 @@ class MainActivity : BaseActivity() {
                     }
                 }
             }
-            .show()
     }
 
     private fun showArchived() {
@@ -951,12 +1021,7 @@ class MainActivity : BaseActivity() {
 
     /** Every state-changing choice passes through here, so nothing is one-tap. */
     private fun confirm(titleRes: Int, message: String, onYes: () -> Unit) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(titleRes)
-            .setMessage(message)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.confirm) { _, _ -> onYes() }
-            .show()
+        ConfirmSheet.show(this, getString(titleRes), message, R.drawable.ic_warning, onYes)
     }
 
     private fun pickCategory(thread: ThreadSummary) {

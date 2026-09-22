@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.LocaleListCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.tabs.TabLayout
 import ir.inod.smsguard.databinding.ActivitySettingsBinding
 
 /**
@@ -145,6 +146,49 @@ class SettingsActivity : BaseActivity() {
             importBackup.launch(arrayOf("application/json", "text/plain"))
         }
         moveAdvancedSettingsToEnd()
+        setUpTabs()
+    }
+
+    private fun setUpTabs() {
+        val column = binding.buttonSave.parent as ViewGroup
+        val offline = ((binding.sliderThreshold.parent as View).parent as View).parent as View
+        val appearance = ((binding.rowAppearance.parent as View).parent as View)
+        val general = ((binding.spinnerLanguage.parent as View).parent as View)
+        val management = ((binding.buttonCategories.parent as View).parent as View)
+        val quiet = (binding.switchQuiet.parent as View).parent as View
+        val ai = (binding.switchAi.parent as View).parent as View
+        fun section(card: View): List<View> {
+            val index = column.indexOfChild(card)
+            return listOfNotNull(column.getChildAt(index - 1), card)
+        }
+        val groups = listOf(
+            section(appearance),
+            section(offline) + section(general),
+            section(management),
+            listOf(quiet, ai)
+        )
+        val tabs = TabLayout(this).apply {
+            tabMode = TabLayout.MODE_SCROLLABLE
+            setBackgroundColor(androidx.core.content.ContextCompat.getColor(this@SettingsActivity, R.color.card_bg))
+        }
+        val names = listOf(R.string.group_appearance, R.string.group_detection,
+            R.string.group_manage, R.string.settings_advanced)
+        val icons = listOf(R.drawable.ic_cat_shop, R.drawable.ic_tab_all,
+            R.drawable.ic_cat_security, R.drawable.ic_settings)
+        names.indices.forEach { index ->
+            tabs.addTab(tabs.newTab().setText(names[index]).setIcon(icons[index]))
+        }
+        (binding.root as ViewGroup).addView(tabs, 1)
+        fun select(index: Int) {
+            groups.flatten().forEach { it.visibility = View.GONE }
+            groups[index].forEach { it.visibility = View.VISIBLE }
+        }
+        tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) = select(tab.position)
+            override fun onTabUnselected(tab: TabLayout.Tab) = Unit
+            override fun onTabReselected(tab: TabLayout.Tab) = Unit
+        })
+        select(0)
     }
 
     private fun moveAdvancedSettingsToEnd() {
@@ -285,16 +329,12 @@ class SettingsActivity : BaseActivity() {
     // ------------------------------------------------------- cache handling
 
     private fun confirmClearCache() {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.inbox_cache)
-            .setMessage(R.string.confirm_clear_cache)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.confirm) { _, _ ->
+        ConfirmSheet.show(this, getString(R.string.inbox_cache),
+            getString(R.string.confirm_clear_cache), R.drawable.ic_tab_trash) {
                 ThreadCache.clear(this)
                 binding.textCacheSummary.text = getString(R.string.cache_summary, 0)
                 Toast.makeText(this, R.string.cleared, Toast.LENGTH_SHORT).show()
             }
-            .show()
     }
 
     // ------------------------------------------------------- category manager

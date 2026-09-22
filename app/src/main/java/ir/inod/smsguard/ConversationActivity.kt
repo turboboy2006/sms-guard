@@ -545,10 +545,9 @@ class ConversationActivity : BaseActivity() {
     private fun showRiskDetails() {
         val message = lastMessages.lastOrNull { it.id == riskyMessageId } ?: return
         val verdict = Classifier.classifyLocal(this, address, message.body)
-        MaterialAlertDialogBuilder(this)
-            .setTitle(getString(R.string.risk_score, verdict.score, verdict.confidence))
-            .setMessage(verdict.reasons.joinToString("\n") { "• ${riskReasonLabel(it)}" })
-            .setPositiveButton(android.R.string.ok, null).show()
+        InfoSheet.show(this, getString(R.string.risk_score, verdict.score, verdict.confidence),
+            verdict.reasons.map { InfoSheet.Field(getString(R.string.detail_reason),
+                riskReasonLabel(it), R.drawable.ic_warning) })
     }
 
     private fun riskReasonLabel(reason: String): String = when (reason) {
@@ -671,24 +670,15 @@ class ConversationActivity : BaseActivity() {
             DeliveryState.DELIVERED -> getString(R.string.delivery_delivered)
             DeliveryState.FAILED -> getString(R.string.delivery_failed)
         }
-        val details = buildString {
-            append(getString(R.string.message_status_line, state))
-            append("\n")
-            append(getString(R.string.message_date_line, Dates.full(this@ConversationActivity, message.date)))
-            if (message.errorCode != 0) {
-                append("\n")
-                append(getString(R.string.message_error_line, message.errorCode))
-            }
-            if (message.subscriptionId >= 0) {
-                append("\n")
-                append(getString(R.string.message_sim_line, simLabel(message.subscriptionId)))
-            }
-        }
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle(R.string.message_details)
-            .setMessage(details)
-            .setPositiveButton(android.R.string.ok, null)
-            .show()
+        val fields = mutableListOf(
+            InfoSheet.Field(getString(R.string.detail_status), state, R.drawable.ic_send),
+            InfoSheet.Field(getString(R.string.detail_date), Dates.full(this, message.date), R.drawable.ic_calendar)
+        )
+        if (message.subscriptionId >= 0) fields += InfoSheet.Field(
+            getString(R.string.detail_sim), simLabel(message.subscriptionId), R.drawable.ic_cat_mobile)
+        if (message.errorCode != 0) fields += InfoSheet.Field(
+            getString(R.string.detail_error), message.errorCode.toString(), R.drawable.ic_warning)
+        InfoSheet.show(this, getString(R.string.message_details), fields)
     }
 
     private fun simLabel(subscriptionId: Int): String {
@@ -712,9 +702,17 @@ class ConversationActivity : BaseActivity() {
         if (!message.isIncoming && message.delivery == DeliveryState.FAILED) {
             options.add(0, getString(R.string.retry_started))
         }
-        MaterialAlertDialogBuilder(this)
-            .setTitle(Dates.full(this, message.date))
-            .setItems(options.toTypedArray()) { _, index ->
+        ChoiceSheet.show(this, Dates.full(this, message.date), options.map { label ->
+            ChoiceSheet.Option(label, when (label) {
+                getString(R.string.select_message) -> R.drawable.ic_tab_all
+                getString(R.string.copy) -> R.drawable.ic_copy
+                getString(R.string.forward) -> R.drawable.ic_send
+                getString(R.string.save_message) -> R.drawable.ic_star
+                getString(R.string.message_details) -> R.drawable.ic_cat_receipt
+                getString(R.string.delete_message) -> R.drawable.ic_tab_trash
+                else -> R.drawable.ic_send
+            })
+        }) { index ->
                 val selected = options[index]
                 when (selected) {
                     getString(R.string.retry_started) -> retry(message)
@@ -737,7 +735,7 @@ class ConversationActivity : BaseActivity() {
                     }
                     getString(R.string.delete_message) -> confirmDeleteMessage(message)
                 }
-            }.show()
+            }
     }
 
     private fun saveMessage(message: SmsMessage) {
@@ -814,8 +812,48 @@ class ConversationActivity : BaseActivity() {
             getString(R.string.background_photo), getString(R.string.background_follow_global),
             getString(R.string.background_remove_photo)
         )).toTypedArray()
-        MaterialAlertDialogBuilder(this).setTitle(R.string.chat_background)
-            .setItems(labels) { _, which ->
+        val density = resources.displayMetrics.density
+        val list = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            val p = (12 * density).toInt()
+            setPadding(p, p, p, p)
+        }
+        val scroll = android.widget.ScrollView(this).apply { addView(list) }
+        val dialog = MaterialAlertDialogBuilder(this).setTitle(R.string.chat_background)
+            .setView(scroll).setNegativeButton(R.string.cancel, null).create()
+        labels.forEachIndexed { index, label ->
+            val card = com.google.android.material.card.MaterialCardView(this).apply {
+                radius = 16f * density
+                layoutParams = android.widget.LinearLayout.LayoutParams(-1, (104 * density).toInt()).apply {
+                    bottomMargin = (8 * density).toInt()
+                }
+            }
+            val row = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding((8 * density).toInt(), (6 * density).toInt(), (12 * density).toInt(), (6 * density).toInt())
+            }
+            val preview = android.view.View(this).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams((60 * density).toInt(), (92 * density).toInt())
+            }
+            when (index) {
+                in BackgroundStyle.IDS.indices -> BackgroundRenderer.apply(preview, this, BackgroundStyle.IDS[index])
+                in BackgroundStyle.IDS.size until BackgroundStyle.IDS.size + BuiltInWallpaper.IDS.size ->
+                    BackgroundRenderer.apply(preview, this, theme.backgroundStyle,
+                        preset = BuiltInWallpaper.IDS[index - BackgroundStyle.IDS.size])
+                else -> preview.setBackgroundColor(androidx.core.content.ContextCompat.getColor(this, R.color.surface_elevated))
+            }
+            row.addView(preview)
+            row.addView(android.widget.TextView(this).apply {
+                text = label
+                textSize = 15f
+                setTextColor(androidx.core.content.ContextCompat.getColor(this@ConversationActivity, R.color.text_primary))
+                setPadding((14 * density).toInt(), 0, 0, 0)
+            })
+            card.addView(row)
+            card.setOnClickListener {
+                dialog.dismiss()
+                val which = index
                 when (which) {
                     in BackgroundStyle.IDS.indices -> {
                         SenderStore(this).setBackground(address, BackgroundStyle.IDS[which])
@@ -836,7 +874,10 @@ class ConversationActivity : BaseActivity() {
                     }
                     else -> { SenderStore(this).setBackgroundImage(address, null); SenderStore(this).setBackgroundPreset(address, null); applyAppearance() }
                 }
-            }.show()
+            }
+            list.addView(card)
+        }
+        dialog.show()
     }
 
     private fun pickNotificationSound() {
@@ -857,23 +898,27 @@ class ConversationActivity : BaseActivity() {
                     labels += getString(R.string.sim_label, info.simSlotIndex + 1, info.carrierName?.toString().orEmpty())
                 }
         } catch (_: SecurityException) { }
-        MaterialAlertDialogBuilder(this).setTitle(R.string.sender_reply_sim)
-            .setItems(labels.toTypedArray()) { _, which ->
+        ChoiceSheet.show(this, getString(R.string.sender_reply_sim), labels.map { label ->
+            ChoiceSheet.Option(label, R.drawable.ic_cat_mobile)
+        }) { which ->
                 SenderStore(this).setSim(address, ids[which])
                 Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show()
-            }.show()
+            }
     }
 
     private fun pickSenderCategory() {
         val categories = CategoryStore(this).all()
-        MaterialAlertDialogBuilder(this).setTitle(R.string.change_category)
-            .setItems(categories.map { it.label(this) }.toTypedArray()) { _, which ->
+        ChoiceSheet.show(this, getString(R.string.change_category), categories.map { category ->
+            ChoiceSheet.Option(category.label(this),
+                (IconCatalog.byId(category.iconId) ?: IconCatalog.forCategory(category.id)).drawable,
+                runCatching { android.graphics.Color.parseColor(category.colorHex) }.getOrNull())
+        }) { which ->
                 SenderStore(this).setCategory(address, categories[which].id)
                 SenderStore(this).setBannerDismissed(address)
                 Classifier.invalidateCaches()
                 ThreadCache.clear(this)
                 load()
-            }.show()
+            }
     }
 
     private fun moveConversationToTrash() {

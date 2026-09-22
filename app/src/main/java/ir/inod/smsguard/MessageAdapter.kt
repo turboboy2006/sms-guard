@@ -36,6 +36,7 @@ class MessageAdapter(
     private val selectedIds = linkedSetOf<Long>()
     private val expandedMetaIds = linkedSetOf<Long>()
     private val latestMetaIds = linkedSetOf<Long>()
+    private val attachedMessages = linkedSetOf<MsgVH>()
 
     val selectionCount: Int get() = selectedIds.size
 
@@ -95,8 +96,7 @@ class MessageAdapter(
                 rows.add(Row.Day(message.date))
                 lastDay = day
             }
-            if (!message.isIncoming && message.subscriptionId >= 0 &&
-                message.subscriptionId != lastOutgoingSim) {
+            if (!message.isIncoming && message.subscriptionId != lastOutgoingSim) {
                 rows.add(Row.Sim(message.subscriptionId))
                 lastOutgoingSim = message.subscriptionId
             }
@@ -120,11 +120,27 @@ class MessageAdapter(
     /** Temporary pinch zoom; persisted by the conversation after the gesture. */
     fun setFontZoom(scale: Float) {
         val next = layout.copy(fontScale = scale.coerceIn(0.85f, 1.5f))
-        if (next != layout) { layout = next; notifyDataSetChanged() }
+        if (next == layout) return
+        layout = next
+        attachedMessages.forEach { holder ->
+            holder.binding.textBubble.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f * next.fontScale)
+            holder.binding.textTime.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10.5f * next.fontScale.coerceAtMost(1.3f))
+            holder.binding.textStatus.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f * next.fontScale.coerceAtMost(1.3f))
+        }
+    }
+
+    override fun onViewAttachedToWindow(holder: RecyclerView.ViewHolder) {
+        super.onViewAttachedToWindow(holder)
+        if (holder is MsgVH) attachedMessages.add(holder)
+    }
+
+    override fun onViewDetachedFromWindow(holder: RecyclerView.ViewHolder) {
+        if (holder is MsgVH) attachedMessages.remove(holder)
+        super.onViewDetachedFromWindow(holder)
     }
 
     private fun dayKey(millis: Long): Int {
-        val c = Calendar.getInstance().apply { timeInMillis = millis }
+        val c = Calendar.getInstance().apply { timeInMillis = Dates.normalizedMillis(millis) }
         return c.get(Calendar.YEAR) * 1000 + c.get(Calendar.DAY_OF_YEAR)
     }
 
@@ -197,6 +213,13 @@ class MessageAdapter(
         status.visibility = if (item.isIncoming || !showMeta) View.GONE else View.VISIBLE
         if (!item.isIncoming) {
             status.text = when (item.delivery) {
+                DeliveryState.SENDING -> "◷"
+                DeliveryState.SENT -> "✓"
+                DeliveryState.DELIVERED -> "✓\u200A✓"
+                DeliveryState.FAILED -> "!"
+                DeliveryState.RECEIVED -> ""
+            }
+            status.contentDescription = when (item.delivery) {
                 DeliveryState.SENDING -> context.getString(R.string.delivery_sending)
                 DeliveryState.SENT -> context.getString(R.string.delivery_sent)
                 DeliveryState.DELIVERED -> context.getString(R.string.delivery_delivered)
@@ -226,7 +249,7 @@ class MessageAdapter(
         )
         status.setTextSize(
             android.util.TypedValue.COMPLEX_UNIT_SP,
-            11f * layout.fontScale.coerceAtMost(1.3f)
+            14f * layout.fontScale.coerceAtMost(1.3f)
         )
         time.setTextColor(
             androidx.core.content.ContextCompat.getColor(context, R.color.text_muted)

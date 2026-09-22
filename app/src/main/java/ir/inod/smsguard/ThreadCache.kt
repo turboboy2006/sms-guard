@@ -67,6 +67,16 @@ object ThreadCache {
 
     fun read(context: Context): List<CachedThread> = synchronized(lock) { readLocked(context) }
 
+    /** Tiny first-screen snapshot; never parses the entire mailbox on the UI thread. */
+    fun readPreview(context: Context, limit: Int = 60): List<CachedThread> {
+        synchronized(lock) { memory?.let { return it.take(limit) } }
+        return runCatching {
+            file(context).bufferedReader().use { reader ->
+                parse(reader.lineSequence().take(limit + 1).joinToString("\n"))
+            }
+        }.getOrDefault(emptyList())
+    }
+
     /** Caller must already hold [lock]. */
     private fun readLocked(context: Context): List<CachedThread> {
         memory?.let { return it }
