@@ -57,7 +57,7 @@ class AppearancePreviewView @JvmOverloads constructor(
             layoutParams = LayoutParams(size, size)
         }
         avatarLetter = TextView(context).apply {
-            text = "ب"
+            text = if (Dates.isPersian(context)) "ب" else "B"
             setTextColor(ink)
             gravity = Gravity.CENTER
             setTypeface(null, Typeface.BOLD)
@@ -95,7 +95,7 @@ class AppearancePreviewView @JvmOverloads constructor(
             layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         }
         time = TextView(context).apply {
-            text = "۱۲:۳۰"
+            text = if (Dates.isPersian(context)) "۱۲:۳۰" else "12:30"
             setTextColor(ContextCompat.getColor(context, R.color.text_muted))
             gravity = Gravity.END
         }

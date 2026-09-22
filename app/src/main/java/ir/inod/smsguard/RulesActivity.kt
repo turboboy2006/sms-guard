@@ -100,25 +100,25 @@ class RulesActivity : BaseActivity() {
             textSize = 13f
             setPadding(0, (8 * resources.displayMetrics.density).toInt(), 0, 0)
             setTextColor(getColor(R.color.text_secondary))
-            text = "پیش‌نمایش: عبارت‌ها را وارد کنید"
+            setText(R.string.rule_preview_enter)
         }
         (dialogBinding.root as android.view.ViewGroup).addView(preview)
         var previewGeneration = 0
         fun refreshPreview() {
             val included = dialogBinding.editPattern.text?.toString()?.trim().orEmpty()
-            if (included.isBlank()) { preview.text = "پیش‌نمایش: عبارت‌ها را وارد کنید"; return }
+            if (included.isBlank()) { preview.setText(R.string.rule_preview_enter); return }
             val target = targets[dialogBinding.spinnerTarget.selectedItemPosition.coerceIn(0, targets.lastIndex)]
             val join = joins[dialogBinding.spinnerJoin.selectedItemPosition.coerceIn(0, joins.lastIndex)]
             val action = actions[dialogBinding.spinnerAction.selectedItemPosition.coerceIn(0, actions.lastIndex)]
             val rule = Rule(0, included, target, dialogBinding.checkRegex.isChecked, true,
                 dialogBinding.editExcluded.text?.toString().orEmpty(), join, action)
             val token = ++previewGeneration
-            preview.text = "در حال بررسی پیام‌های موجود…"
+            preview.setText(R.string.rule_preview_scanning)
             previewWorker.execute {
                 val count = SmsRepository(this).countMatches(rule)
                 runOnUiThread {
                     if (!isFinishing && token == previewGeneration) {
-                        preview.text = "پیش‌نمایش: $count پیام موجود با این قانون تطبیق دارد"
+                        preview.text = getString(R.string.rule_preview_matches, count)
                     }
                 }
             }
@@ -223,8 +223,8 @@ class RulesActivity : BaseActivity() {
             data class Example(val words: String, val excluded: String,
                 val join: RuleJoin, val action: RuleAction)
             val samples = listOf(
-                Example("برنده شدید،دریافت جایزه", "رمز پویا،کد تایید", RuleJoin.ALL, RuleAction.SPAM),
-                Example("حراج،تخفیف ویژه،فروش فوق‌العاده", "رسید خرید،کد تایید", RuleJoin.ANY, RuleAction.PROMOTION)
+                Example(getString(R.string.rule_sample_prize_words), getString(R.string.rule_sample_prize_excluded), RuleJoin.ALL, RuleAction.SPAM),
+                Example(getString(R.string.rule_sample_sale_words), getString(R.string.rule_sample_sale_excluded), RuleJoin.ANY, RuleAction.PROMOTION)
             )
             ChoiceSheet.show(this, getString(R.string.sample_rules), samples.map { sample ->
                 ChoiceSheet.Option(sample.words.replace("،", if (sample.join == RuleJoin.ALL) " + " else " / "),

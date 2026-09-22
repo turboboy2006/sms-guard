@@ -179,10 +179,6 @@ class MainActivity : BaseActivity() {
                     startActivity(Intent(this, SavedMessagesActivity::class.java))
                     false
                 }
-                R.id.nav_more -> {
-                    showMainMenu()
-                    false
-                }
                 R.id.nav_contacts -> {
                     archiveMode = false
                     contactsOnly = true
@@ -665,16 +661,13 @@ class MainActivity : BaseActivity() {
         val icons = listOf(R.drawable.ic_archive, R.drawable.ic_archive, R.drawable.ic_tab_trash,
             R.drawable.ic_cat_security, R.drawable.ic_tab_spam, R.drawable.ic_cat_bank, R.drawable.ic_settings)
         val details = listOf(
-            "به‌روزرسانی امن فهرست پیام‌ها",
-            "گفتگوهایی که برای بعد کنار گذاشته‌اید",
-            "بازیابی یا حذف دائمی گفتگوها",
-            "ساخت قانون ساده برای اسپم و تبلیغات",
-            "پیام‌هایی که قانون‌ها متوقف کرده‌اند",
-            "نام، رنگ، آیکن و دستهٔ فرستنده‌ها",
-            "ظاهر، اعلان، سیم‌کارت، داده و پشتیبان‌گیری"
+            R.string.menu_refresh_detail, R.string.menu_archive_detail,
+            R.string.menu_trash_detail, R.string.menu_rules_detail,
+            R.string.menu_blocked_detail, R.string.menu_senders_detail,
+            R.string.menu_settings_detail
         )
         ChoiceSheet.show(this, getString(R.string.more_actions), ids.indices.map { index ->
-            ChoiceSheet.Option(getString(labels[index]), icons[index], detail = details[index])
+            ChoiceSheet.Option(getString(labels[index]), icons[index], detail = getString(details[index]))
         }) { index ->
             binding.toolbar.menu.findItem(ids[index])?.let { onOptionsItemSelected(it) }
         }
@@ -721,17 +714,32 @@ class MainActivity : BaseActivity() {
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                 val position = viewHolder.bindingAdapterPosition
-                val row = adapter.itemAt(position) ?: return
+                val row = adapter.itemAt(position) ?: run {
+                    if (position >= 0) adapter.notifyItemChanged(position)
+                    return
+                }
                 val action = if (direction == ItemTouchHelper.RIGHT) {
                     SettingsStore(this@MainActivity).swipeRightAction
                 } else SettingsStore(this@MainActivity).swipeLeftAction
                 Snackbar.make(binding.root, swipeActionLabel(action), 1000).show()
-                performSwipeAction(row, action)
-                if (action == SwipeAction.READ && position >= 0) {
+                if (action == SwipeAction.READ) {
+                    // Keep the action visible for a moment, then settle only
+                    // this row. Removing it in Unread must not refresh the list.
                     main.postDelayed({
-                        if (!isFinishing && !isDestroyed && position < adapter.itemCount &&
-                            adapter.itemAt(position)?.threadId == row.threadId) adapter.notifyItemChanged(position)
+                        if (!isFinishing && !isDestroyed) {
+                            allThreads = allThreads.map {
+                                if (it.threadId == row.threadId) it.copy(unreadCount = 0) else it
+                            }
+                            val remove = selectedCategoryId == UNREAD_FILTER
+                            rendered = if (remove) rendered.filterNot { it.threadId == row.threadId }
+                                else rendered.map { if (it.threadId == row.threadId) it.copy(unreadCount = 0) else it }
+                            adapter.finishReadSwipe(row.threadId, remove)
+                            binding.textEmpty.visibility = if (rendered.isEmpty()) View.VISIBLE else View.GONE
+                            worker.execute { repo.markThreadRead(row.threadId) }
+                        }
                     }, 900L)
+                } else {
+                    performSwipeAction(row, action)
                 }
             }
 
@@ -781,15 +789,7 @@ class MainActivity : BaseActivity() {
 
     private fun performSwipeAction(row: ThreadSummary, action: String) {
         when (action) {
-            SwipeAction.READ -> {
-                // Update the visible model first. A provider reload here made
-                // the Unread tab briefly render an empty intermediate frame.
-                allThreads = allThreads.map {
-                    if (it.threadId == row.threadId) it.copy(unreadCount = 0) else it
-                }
-                applyFilter()
-                worker.execute { repo.markThreadRead(row.threadId) }
-            }
+            SwipeAction.READ -> Unit // The delayed swipe completion handles this.
             SwipeAction.TRASH -> changeCategory(row, Cat.TRASH)
             SwipeAction.ARCHIVE -> { senderStore.setArchived(row.address, true); applyFilter() }
             else -> changeCategory(row, Cat.SPAM)

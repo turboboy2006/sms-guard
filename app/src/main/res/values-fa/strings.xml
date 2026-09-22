@@ -409,4 +409,18 @@
     <string name="try_again">تلاش دوباره</string>
     <string name="restricted_sms_settings_hint">در اطلاعات برنامه، منوی بالا را باز کنید و اگر وجود داشت «اجازه تنظیمات محدودشده» را فعال کنید.</string>
     <string name="restricted_sms_store_hint">اندروید ۱۵ و ۱۶ ممکن است دسترسی حساس پیامک را برای APK نصب‌شده خارج از فروشگاه معتبر مسدود کنند.</string>
+    <string name="menu_refresh_detail">به‌روزرسانی فهرست پیام‌ها</string>
+    <string name="menu_archive_detail">گفتگوهایی که برای بعد کنار گذاشته‌اید</string>
+    <string name="menu_trash_detail">بازیابی یا حذف دائمی گفتگوها</string>
+    <string name="menu_rules_detail">ساخت قانون برای پیام‌های ناخواسته</string>
+    <string name="menu_blocked_detail">پیام‌هایی که قانون‌ها متوقف کرده‌اند</string>
+    <string name="menu_senders_detail">نام، رنگ، آیکن و دستهٔ فرستنده‌ها</string>
+    <string name="menu_settings_detail">ظاهر، اعلان، سیم‌کارت و پشتیبان‌گیری</string>
+    <string name="rule_preview_enter">پیش‌نمایش: عبارت‌ها را وارد کنید</string>
+    <string name="rule_preview_scanning">در حال بررسی پیام‌های موجود…</string>
+    <string name="rule_preview_matches">پیش‌نمایش: %1$d پیام موجود با این قانون تطبیق دارد</string>
+    <string name="rule_sample_prize_words">برنده شدید،دریافت جایزه</string>
+    <string name="rule_sample_prize_excluded">رمز پویا،کد تایید</string>
+    <string name="rule_sample_sale_words">حراج،تخفیف ویژه،فروش فوق‌العاده</string>
+    <string name="rule_sample_sale_excluded">رسید خرید،کد تایید</string>
 </resources>

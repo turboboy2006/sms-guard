@@ -172,8 +172,17 @@ class SmsRepository(private val context: Context) {
             val clauses = mutableListOf<String>()
             val args = mutableListOf<String>()
             if (needle.isNotEmpty()) {
-                clauses += "(${Telephony.Sms.BODY} LIKE ? OR ${Telephony.Sms.ADDRESS} LIKE ?)"
+                // Also resolve a typed contact name to its saved numbers. The
+                // provider itself only knows addresses and message bodies.
+                val contactNumbers = runCatching {
+                    ContactsIndex.ensure(context)
+                    ContactsIndex.search(needle, 20).map { it.digits.takeLast(7) }
+                        .filter { it.length == 7 }.distinct()
+                }.getOrDefault(emptyList())
+                val addressMatches = contactNumbers.joinToString("") { " OR ${Telephony.Sms.ADDRESS} LIKE ?" }
+                clauses += "(${Telephony.Sms.BODY} LIKE ? OR ${Telephony.Sms.ADDRESS} LIKE ?$addressMatches)"
                 args += "%$needle%"; args += "%$needle%"
+                contactNumbers.forEach { args += "%$it%" }
             }
             if (since > 0) { clauses += "${Telephony.Sms.DATE} >= ?"; args += since.toString() }
             if (subscriptionId >= 0) { clauses += "sub_id = ?"; args += subscriptionId.toString() }

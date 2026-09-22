@@ -173,6 +173,19 @@ class ThreadAdapter(
 
     fun itemAt(position: Int): ThreadSummary? = items.getOrNull(position)
 
+    /** Complete a read swipe without rebuilding an unrelated row. */
+    fun finishReadSwipe(threadId: Long, remove: Boolean) {
+        val position = items.indexOfFirst { it.threadId == threadId }
+        if (position < 0) return
+        if (remove) {
+            items.removeAt(position)
+            notifyItemRemoved(position)
+        } else {
+            items[position] = items[position].copy(unreadCount = 0)
+            notifyItemChanged(position)
+        }
+    }
+
     fun selectedItems(): List<ThreadSummary> = items.filter { it.threadId in selectedIds }
 
     fun toggleSelection(item: ThreadSummary) {
@@ -210,7 +223,8 @@ class ThreadAdapter(
             val contact = ContactNames.displayNameUi(address)
             if (contact == address) {
                 // No contact: let the brand catalogue name a known sender ID.
-                BrandCatalog.find(address, "")?.displayName ?: address
+                if (Dates.isPersian(context)) BrandCatalog.find(address, "")?.displayName ?: address
+                else address
             } else {
                 contact
             }

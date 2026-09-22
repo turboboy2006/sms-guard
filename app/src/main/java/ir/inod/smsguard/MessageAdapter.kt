@@ -268,15 +268,13 @@ class MessageAdapter(
 
         val params = bubble.layoutParams as LinearLayout.LayoutParams
         val half = (layout.spacing * density).toInt() / 2
-        if (item.isIncoming) {
-            row.gravity = Gravity.START
-            params.marginStart = 0
-            time.gravity = Gravity.START
-        } else {
-            row.gravity = Gravity.END
-            params.marginStart = (48 * density).toInt()
-            time.gravity = Gravity.END
-        }
+        // Physical sides are independent of the message's script: Persian UI
+        // puts our messages on the right, English UI on the left.
+        val onRight = if (Dates.isPersian(context)) !item.isIncoming else item.isIncoming
+        row.gravity = if (onRight) Gravity.RIGHT else Gravity.LEFT
+        time.gravity = if (onRight) Gravity.RIGHT else Gravity.LEFT
+        params.leftMargin = if (onRight) (48 * density).toInt() else 0
+        params.rightMargin = if (onRight) 0 else (48 * density).toInt()
         // A minimum of one pixel keeps consecutive bubbles from touching when
         // the spacing preference is zero.
         val vertical = if (half < 1) 1 else half
