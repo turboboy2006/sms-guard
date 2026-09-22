@@ -404,4 +404,16 @@
     <string name="self_note">My note</string>
     <string name="saved_note_hint">Write a private note…</string>
     <string name="settings_advanced">Advanced</string>
+    <string name="category_notifications">Category notifications</string>
+    <string name="alert_default">Normal sound</string>
+    <string name="alert_silent">Silent</string>
+    <string name="alert_custom">Custom sound</string>
+    <string name="alert_off">No notification</string>
+    <string name="notification_vibrate">Vibrate</string>
+    <string name="notification_lockscreen">Show on lock screen</string>
+    <string name="notification_wake">Wake screen</string>
+    <string name="notification_summary_default">Normal notification</string>
+    <string name="notification_summary_silent">Silent notification</string>
+    <string name="notification_summary_custom">Custom sound</string>
+    <string name="notification_summary_off">Notifications off</string>
 </resources>

@@ -88,7 +88,7 @@ class SmsReceiver : BroadcastReceiver() {
         val suppressed = QuietHours.shouldSuppress(context, localCategory)
 
         if (messageId >= 0 && threadId >= 0 && !suppressed) {
-            Notifier(context).notifyIncoming(threadId, address, body)
+            Notifier(context).notifyIncoming(threadId, address, body, localCategory)
         }
 
         // 4. Fold the message into a campaign cluster. Local and cheap.

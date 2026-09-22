@@ -662,6 +662,51 @@ class CategoryStore(context: Context) {
     private companion object { const val KEY = "custom"; const val SYSTEM_KEY = "system_overrides" }
 }
 
+enum class CategoryAlertMode { DEFAULT, SILENT, CUSTOM, OFF }
+
+data class CategoryNotificationSettings(
+    val mode: CategoryAlertMode = CategoryAlertMode.DEFAULT,
+    val vibrate: Boolean = true,
+    val showOnLockScreen: Boolean = true,
+    val wakeScreen: Boolean = false,
+    val soundUri: String? = null,
+    val revision: Int = 0
+)
+
+/** Notification behaviour attached to a category rather than a sender. */
+class CategoryNotificationStore(context: Context) {
+    private val prefs = context.applicationContext
+        .getSharedPreferences("sms_guard_category_notifications", Context.MODE_PRIVATE)
+
+    fun get(categoryId: String): CategoryNotificationSettings {
+        val raw = prefs.getString(categoryId, null) ?: return CategoryNotificationSettings()
+        return runCatching {
+            val o = JSONObject(raw)
+            CategoryNotificationSettings(
+                mode = runCatching { CategoryAlertMode.valueOf(o.optString("mode")) }
+                    .getOrDefault(CategoryAlertMode.DEFAULT),
+                vibrate = o.optBoolean("vibrate", true),
+                showOnLockScreen = o.optBoolean("lock", true),
+                wakeScreen = o.optBoolean("wake", false),
+                soundUri = o.optString("sound").ifBlank { null },
+                revision = o.optInt("revision", 0)
+            )
+        }.getOrDefault(CategoryNotificationSettings())
+    }
+
+    fun set(categoryId: String, value: CategoryNotificationSettings) {
+        val next = value.copy(revision = get(categoryId).revision + 1)
+        prefs.edit().putString(categoryId, JSONObject().apply {
+            put("mode", next.mode.name)
+            put("vibrate", next.vibrate)
+            put("lock", next.showOnLockScreen)
+            put("wake", next.wakeScreen)
+            put("sound", next.soundUri ?: "")
+            put("revision", next.revision)
+        }.toString()).apply()
+    }
+}
+
 /** A user-defined appearance override for one sender or pattern. */
 data class SenderOverride(
     val address: String,

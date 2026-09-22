@@ -16,6 +16,7 @@
     <!-- Notification on API 33+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- Required so the system offers this app as a default SMS app -->
     <uses-permission android:name="android.permission.SEND_RESPOND_VIA_MESSAGE" />
@@ -58,6 +59,7 @@
             android:name=".ConversationActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:parentActivityName=".MainActivity"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.SENDTO" />

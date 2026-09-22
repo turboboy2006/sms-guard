@@ -9,7 +9,7 @@ object SettingsBackup {
     private val FILES = listOf(
         "sms_guard_settings", "sms_guard_theme", "sms_guard_rules",
         "sms_guard_categories", "sms_guard_senders", "sms_guard_msgcat",
-        "sms_guard_profiles", "sms_guard_weights"
+        "sms_guard_profiles", "sms_guard_weights", "sms_guard_category_notifications"
     )
 
     fun export(context: Context): String {

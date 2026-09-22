@@ -380,4 +380,16 @@
     <string name="self_note">یادداشت من</string>
     <string name="saved_note_hint">یادداشت خصوصی بنویسید…</string>
     <string name="settings_advanced">پیشرفته</string>
+    <string name="category_notifications">اعلان‌های دسته‌بندی</string>
+    <string name="alert_default">صدای عادی</string>
+    <string name="alert_silent">بی‌صدا</string>
+    <string name="alert_custom">صدای اختصاصی</string>
+    <string name="alert_off">بدون اعلان</string>
+    <string name="notification_vibrate">ویبره</string>
+    <string name="notification_lockscreen">نمایش روی صفحهٔ قفل</string>
+    <string name="notification_wake">روشن‌کردن صفحه</string>
+    <string name="notification_summary_default">اعلان عادی</string>
+    <string name="notification_summary_silent">اعلان بی‌صدا</string>
+    <string name="notification_summary_custom">صدای اختصاصی</string>
+    <string name="notification_summary_off">اعلان خاموش</string>
 </resources>

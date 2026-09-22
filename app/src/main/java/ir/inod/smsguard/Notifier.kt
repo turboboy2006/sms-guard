@@ -9,6 +9,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.media.AudioAttributes
 import android.net.Uri
+import androidx.core.app.TaskStackBuilder
 
 /**
  * Posts "new message" notifications. A single notification per thread is
@@ -18,20 +19,21 @@ class Notifier(private val context: Context) {
 
     private val nm = NotificationManagerCompat.from(context)
 
-    fun notifyIncoming(threadId: Long, address: String, body: String) {
+    fun notifyIncoming(threadId: Long, address: String, body: String, categoryId: String) {
         if (SenderStore(context).notificationsMuted(address)) return
-        val channelId = ensureSenderChannel(address)
+        val categorySettings = CategoryNotificationStore(context).get(categoryId)
+        if (categorySettings.mode == CategoryAlertMode.OFF) return
+        val channelId = ensureChannel(address, categoryId, categorySettings)
         val intent = Intent(context, ConversationActivity::class.java).apply {
             putExtra(ConversationActivity.EXTRA_THREAD_ID, threadId)
             putExtra(ConversationActivity.EXTRA_ADDRESS, address)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
-        val pi = android.app.PendingIntent.getActivity(
-            context,
-            threadId.toInt(),
-            intent,
-            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-        )
+        val pi = TaskStackBuilder.create(context)
+            .addNextIntent(Intent(context, MainActivity::class.java))
+            .addNextIntent(intent)
+            .getPendingIntent(threadId.toInt(), android.app.PendingIntent.FLAG_UPDATE_CURRENT or
+                android.app.PendingIntent.FLAG_IMMUTABLE) ?: return
         val replyIntent = Intent(context, NotificationReplyReceiver::class.java).apply {
             putExtra(NotificationReplyReceiver.EXTRA_ADDRESS, address)
             putExtra(NotificationReplyReceiver.EXTRA_THREAD_ID, threadId)
@@ -76,7 +78,9 @@ class Notifier(private val context: Context) {
             .addAction(readAction)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setVisibility(if (categorySettings.showOnLockScreen)
+                NotificationCompat.VISIBILITY_PRIVATE else NotificationCompat.VISIBILITY_SECRET)
+            .setSilent(categorySettings.mode == CategoryAlertMode.SILENT)
         if (otp != null) {
             val copyIntent = Intent(context, NotificationActionReceiver::class.java).apply {
                 action = NotificationActionReceiver.ACTION_COPY
@@ -98,28 +102,61 @@ class Notifier(private val context: Context) {
 
         try {
             nm.notify(threadId.toInt(), notification)
+            if (categorySettings.wakeScreen) wakeScreenBriefly()
         } catch (e: SecurityException) {
             // POST_NOTIFICATIONS was not granted; nothing useful to do here.
         }
     }
 
-    private fun ensureSenderChannel(address: String): String {
-        val sound = SenderStore(context).notificationSound(address) ?: return SmsApp.CHANNEL_ID
-        val id = senderChannelId(address)
+    private fun ensureChannel(address: String, categoryId: String,
+                              settings: CategoryNotificationSettings): String {
+        val senderSound = SenderStore(context).notificationSound(address)
+        val sound = senderSound ?: settings.soundUri.takeIf { settings.mode == CategoryAlertMode.CUSTOM }
+        val senderSuffix = if (senderSound == null) "" else
+            "_${address.hashCode().toUInt().toString(16)}_${senderSound.hashCode().toUInt().toString(16)}"
+        val id = "sms_cat_${categoryId.hashCode().toUInt().toString(16)}_${settings.revision}$senderSuffix"
         val nm = context.getSystemService(NotificationManager::class.java)
         if (nm.getNotificationChannel(id) == null) {
             val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build()
             nm.createNotificationChannel(NotificationChannel(
-                id, context.getString(R.string.sender_channel, ContactNames.displayName(context, address)),
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply { setSound(Uri.parse(sound), attrs); enableVibration(true) })
+                id, CategoryStore(context).byId(categoryId)?.label(context) ?: categoryId,
+                if (settings.mode == CategoryAlertMode.SILENT) NotificationManager.IMPORTANCE_LOW
+                else NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                if (settings.mode == CategoryAlertMode.SILENT) setSound(null, null)
+                else if (!sound.isNullOrBlank()) setSound(Uri.parse(sound), attrs)
+                enableVibration(settings.vibrate && settings.mode != CategoryAlertMode.SILENT)
+                enableLights(settings.mode != CategoryAlertMode.SILENT)
+                lockscreenVisibility = if (settings.showOnLockScreen)
+                    android.app.Notification.VISIBILITY_PRIVATE else android.app.Notification.VISIBILITY_SECRET
+            })
         }
         return id
     }
 
     fun resetSenderChannel(address: String) {
-        context.getSystemService(NotificationManager::class.java).deleteNotificationChannel(senderChannelId(address))
-        ensureSenderChannel(address)
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.deleteNotificationChannel(senderChannelId(address))
+        val senderKey = "_${address.hashCode().toUInt().toString(16)}_"
+        manager.notificationChannels.filter { it.id.startsWith("sms_cat_") && it.id.contains(senderKey) }
+            .forEach { manager.deleteNotificationChannel(it.id) }
+    }
+
+    fun resetCategoryChannels(categoryId: String) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val prefix = "sms_cat_${categoryId.hashCode().toUInt().toString(16)}_"
+        manager.notificationChannels.filter { it.id.startsWith(prefix) }
+            .forEach { manager.deleteNotificationChannel(it.id) }
+    }
+
+    private fun wakeScreenBriefly() {
+        runCatching {
+            val power = context.getSystemService(android.os.PowerManager::class.java)
+            @Suppress("DEPRECATION")
+            power.newWakeLock(android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
+                android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP, "SmsGuard:categoryAlert")
+                .acquire(2500L)
+        }
     }
 
     private fun senderChannelId(address: String) = "sms_sender_${address.hashCode().toUInt().toString(16)}"

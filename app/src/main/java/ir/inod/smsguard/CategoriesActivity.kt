@@ -32,6 +32,19 @@ class CategoriesActivity : BaseActivity() {
     private lateinit var binding: ActivityCategoriesBinding
     private lateinit var adapter: CategoryAdapter
     private val store by lazy { CategoryStore(this) }
+    private var pendingSoundResult: ((String?) -> Unit)? = null
+    private val ringtonePicker = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val uri: android.net.Uri? = if (android.os.Build.VERSION.SDK_INT >= 33) {
+            result.data?.getParcelableExtra(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI, android.net.Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION") result.data?.getParcelableExtra(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        }
+        pendingSoundResult?.invoke(uri?.toString())
+        pendingSoundResult = null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,6 +88,9 @@ class CategoriesActivity : BaseActivity() {
         val density = resources.displayMetrics.density
         var selectedColor = original?.colorHex ?: Categories.PALETTE.first()
         var selectedIcon = original?.iconId ?: "unknown"
+        val notificationStore = CategoryNotificationStore(this)
+        var alertSettings = original?.let { notificationStore.get(it.id) }
+            ?: CategoryNotificationSettings()
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val p = (18 * density).toInt(); setPadding(p, p / 2, p, p)
@@ -122,6 +138,68 @@ class CategoriesActivity : BaseActivity() {
         body.addView(iconGrid)
         updateIcons(iconViews, selectedIcon, selectedColor)
 
+        body.addView(sectionLabel(getString(R.string.category_notifications)))
+        val alertGroup = android.widget.RadioGroup(this).apply {
+            orientation = android.widget.RadioGroup.VERTICAL
+        }
+        val alertModes = listOf(
+            CategoryAlertMode.DEFAULT to R.string.alert_default,
+            CategoryAlertMode.SILENT to R.string.alert_silent,
+            CategoryAlertMode.CUSTOM to R.string.alert_custom,
+            CategoryAlertMode.OFF to R.string.alert_off
+        )
+        val modeIds = HashMap<Int, CategoryAlertMode>()
+        val soundButton = com.google.android.material.button.MaterialButton(this).apply {
+            text = getString(R.string.notification_sound)
+            setIconResource(R.drawable.ic_tab_service)
+            visibility = if (alertSettings.mode == CategoryAlertMode.CUSTOM) View.VISIBLE else View.GONE
+            setOnClickListener {
+                pendingSoundResult = { sound ->
+                    alertSettings = alertSettings.copy(soundUri = sound, mode = CategoryAlertMode.CUSTOM)
+                    text = getString(R.string.alert_custom)
+                }
+                ringtonePicker.launch(android.content.Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                    putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE, android.media.RingtoneManager.TYPE_NOTIFICATION)
+                    putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                    putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                    alertSettings.soundUri?.let { putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, android.net.Uri.parse(it)) }
+                })
+            }
+        }
+        alertModes.forEach { (mode, label) ->
+            val radio = android.widget.RadioButton(this).apply {
+                id = View.generateViewId()
+                text = getString(label)
+                minHeight = (48 * density).toInt()
+                isChecked = alertSettings.mode == mode
+            }
+            modeIds[radio.id] = mode
+            alertGroup.addView(radio)
+        }
+        alertGroup.setOnCheckedChangeListener { _, checkedId ->
+            val mode = modeIds[checkedId] ?: return@setOnCheckedChangeListener
+            alertSettings = alertSettings.copy(mode = mode)
+            soundButton.visibility = if (mode == CategoryAlertMode.CUSTOM) View.VISIBLE else View.GONE
+        }
+        body.addView(alertGroup)
+        body.addView(soundButton)
+        fun settingSwitch(label: Int, checked: Boolean, update: (Boolean) -> Unit) =
+            SwitchMaterial(this).apply {
+                text = getString(label)
+                isChecked = checked
+                minHeight = (48 * density).toInt()
+                setOnCheckedChangeListener { _, value -> update(value) }
+            }
+        body.addView(settingSwitch(R.string.notification_vibrate, alertSettings.vibrate) {
+            alertSettings = alertSettings.copy(vibrate = it)
+        })
+        body.addView(settingSwitch(R.string.notification_lockscreen, alertSettings.showOnLockScreen) {
+            alertSettings = alertSettings.copy(showOnLockScreen = it)
+        })
+        body.addView(settingSwitch(R.string.notification_wake, alertSettings.wakeScreen) {
+            alertSettings = alertSettings.copy(wakeScreen = it)
+        })
+
         val scroll = ScrollView(this).apply { addView(body) }
         val builder = MaterialAlertDialogBuilder(this)
             .setTitle(if (original == null) R.string.new_category else R.string.edit_category)
@@ -139,8 +217,12 @@ class CategoriesActivity : BaseActivity() {
                 if (original == null) {
                     val created = store.add(title, selectedColor)
                     store.update(created.copy(iconId = selectedIcon))
+                    notificationStore.set(created.id, alertSettings)
+                    Notifier(this).resetCategoryChannels(created.id)
                 } else {
                     store.updateAny(original.copy(nameRes = 0, customName = title, colorHex = selectedColor, iconId = selectedIcon))
+                    notificationStore.set(original.id, alertSettings)
+                    Notifier(this).resetCategoryChannels(original.id)
                 }
                 Classifier.invalidateCaches(); ThreadCache.clear(this); reload(); dialog.dismiss()
             }
@@ -240,8 +322,15 @@ class CategoriesActivity : BaseActivity() {
             val item = items[position]
             val color = runCatching { Color.parseColor(item.colorHex) }.getOrDefault(Color.GRAY)
             holder.title.text = item.label(this@CategoriesActivity)
+            val alert = CategoryNotificationStore(this@CategoriesActivity).get(item.id)
+            val alertLabel = getString(when (alert.mode) {
+                CategoryAlertMode.DEFAULT -> R.string.notification_summary_default
+                CategoryAlertMode.SILENT -> R.string.notification_summary_silent
+                CategoryAlertMode.CUSTOM -> R.string.notification_summary_custom
+                CategoryAlertMode.OFF -> R.string.notification_summary_off
+            })
             holder.subtitle.text = getString(if (item.enabled) R.string.category_enabled else R.string.category_disabled) + " · " +
-                getString(if (item.isSystem) R.string.category_builtin else R.string.category_custom)
+                getString(if (item.isSystem) R.string.category_builtin else R.string.category_custom) + " · " + alertLabel
             holder.icon.setImageResource((IconCatalog.byId(item.iconId) ?: IconCatalog.forCategory(item.id)).drawable)
             holder.icon.imageTintList = ColorStateList.valueOf(color)
             holder.iconBox.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.argb(28, Color.red(color), Color.green(color), Color.blue(color))) }
