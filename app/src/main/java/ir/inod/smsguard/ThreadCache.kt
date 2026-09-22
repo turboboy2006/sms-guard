@@ -56,7 +56,14 @@ object ThreadCache {
 
     private const val FILE_NAME = "inbox-cache.tsv"
     private const val MAGIC = "SMSCACHE1"
-    private const val MAX_ROWS = 4000
+    /**
+     * Conversation summaries, not full messages.  Four thousand was enough
+     * for a typical inbox but silently hid old conversations after a cold
+     * start for users with a large SMS history.  Keeping fifty thousand rows
+     * preserves a fast first frame without making the provider scan the
+     * source of truth for every navigation.
+     */
+    private const val MAX_ROWS = 50_000
 
     /** The separator unit: U+001F, never present in a sender ID or an SMS body. */
     private const val SEP = "\u001F"
