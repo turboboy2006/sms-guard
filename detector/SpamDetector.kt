@@ -790,7 +790,6 @@ object SpamDetector {
     private fun numFeatures(addr: String, body: String, out: FloatArray) {
         java.util.Arrays.fill(out, 0f)
         val n = low(body)
-        val a = low(addr)
         val s = senderOf(addr)
         val digits = RX_NON_DIGIT.replace(addr, "")
         val links = RX_LINK.findAll(body).map { it.value }.toList()
@@ -969,11 +968,10 @@ object SpamDetector {
     /* ======================= قواعد با دقت بالا ======================= */
     private class Rule(val cat: SmsCategory, val conf: Double, val why: List<String>, val score: Int)
 
-    private fun ruleOverride(addr: String, body: String, score: Int, risk: Int): Rule? {
+    private fun ruleOverride(addr: String, body: String, score: Int): Rule? {
         val n = low(body)
         val a = low(addr)
         val s = senderOf(addr)
-        val digits = RX_NON_DIGIT.replace(addr, "")
         val links = RX_LINK.findAll(body).map { it.value }.toList()
         val compact = RX_DASH_SPACE.replace(n, "")
         val knownBrand = hasWord(n, KNOWN_BRAND) || SENDER_BRAND.any { a.contains(it) }
@@ -1009,7 +1007,6 @@ object SpamDetector {
             Regex("(بانک|bank|رمز|کارت|شبا)").containsMatchIn(n))
         val isFraud = fraudWords.isNotEmpty() || card || sheba || ipLink || puny || brandPhish
 
-        val promoHits = hitsWord(n, PROMO)
         val notifyHits = hitsWord(n, NOTIFY)
         val optOut = RX_OPT_OUT.containsMatchIn(body)
 
@@ -1096,11 +1093,10 @@ object SpamDetector {
         val probs = softmax(scores(idx, vals, W_NUM, W_TOK))
 
         val risk = riskScoreOf(sender, body)
-        val rule = ruleOverride(sender, body, 0, risk)
+        val rule = ruleOverride(sender, body, risk)
         val cats = SmsCategory.values()
         val finalProbs = HashMap<SmsCategory, Double>(8)
         if (rule != null) {
-            val c = cats.indexOf(rule.cat)
             for (i in cats.indices) finalProbs[cats[i]] = probs[i] * (1.0 - rule.conf)
             finalProbs[rule.cat] = (finalProbs[rule.cat] ?: 0.0) + rule.conf
             return SmsDetection(rule.cat, rule.conf, finalProbs, SmsDetection.Decider.RULE, rule.why, risk)
@@ -1243,3 +1239,6 @@ object SpamDetector {
         }
     }
 }
+
+/** نقطهٔ ورود خط فرمان (تا `java -jar` هم کار کند) */
+fun main(args: Array<String>) = SpamDetector.main(args)
