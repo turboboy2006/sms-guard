@@ -4,11 +4,19 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Chat bubble with a shield notch, kept inside the 66x66 safe zone. -->
+    <!-- A clear shield silhouette stays legible even on small launchers. -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M36,32h36c2.2,0 4,1.8 4,4v24c0,2.2 -1.8,4 -4,4H52l-11,9v-9h-5c-2.2,0 -4,-1.8 -4,-4V36c0,-2.2 1.8,-4 4,-4z" />
+        android:pathData="M54,22 L78,31 V49 C78,65 68,77 54,85 C40,77 30,65 30,49 V31 Z" />
+    <!-- Message bubble: the product purpose remains obvious at a glance. -->
     <path
-        android:fillColor="#1B5E20"
-        android:pathData="M46,40h16v3H46zM46,46h16v3H46zM46,52h10v3H46z" />
+        android:fillColor="#4F46E5"
+        android:pathData="M41,39 C41,36.8 42.8,35 45,35 H65 C67.2,35 69,36.8 69,39 V54 C69,56.2 67.2,58 65,58 H55 L47,65 V58 H45 C42.8,58 41,56.2 41,54 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M47,42 H63 V45 H47 Z M47,49 H59 V52 H47 Z" />
+    <!-- Mint check adds a distinctive trusted-message accent. -->
+    <path
+        android:fillColor="#5EEAD4"
+        android:pathData="M58,68 L62,72 L70,63 L73,66 L62,78 L55,71 Z" />
 </vector>
