@@ -35,7 +35,26 @@ class ScheduledMessagesActivity : BaseActivity() {
     private fun cancel(item:ScheduledSms){store.remove(item.id);render();Snackbar.make(empty,R.string.applied,Snackbar.LENGTH_LONG).setAction(R.string.undo){store.schedule(item.address,item.body,item.at);render()}.show()}
     private class ScheduledAdapter(val onSend:(ScheduledSms)->Unit,val onCancel:(ScheduledSms)->Unit):RecyclerView.Adapter<ScheduledAdapter.H>(){
         private val items=mutableListOf<ScheduledSms>();class H(val c:MaterialCardView,val title:TextView,val whenText:TextView,val body:TextView,val send:MaterialButton,val cancel:MaterialButton):RecyclerView.ViewHolder(c)
-        override fun onCreateViewHolder(p:ViewGroup,t:Int):H{val c=p.context;val d=c.resources.displayMetrics.density;fun dp(v:Int)=(v*d).toInt();val card=MaterialCardView(c).apply{radius=dp(18).toFloat();strokeWidth=dp(1);layoutParams=RecyclerView.LayoutParams(-1,-2).apply{bottomMargin=dp(8)}};val box=LinearLayout(c).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(14),dp(12),dp(10),dp(8))};val title=TextView(c).apply{textSize=16f;setTypeface(null,1)};val whenText=TextView(c).apply{textSize=13f;setTextColor(ContextCompat.getColor(c,R.color.text_secondary))};val body=TextView(c).apply{textSize=15f;setPadding(dp(10),dp(8),dp(10),dp(8));textDirection=View.TEXT_DIRECTION_FIRST_STRONG};val actions=LinearLayout(c);val send=MaterialButton(c).apply{text="";setIconResource(R.drawable.ic_send);contentDescription=c.getString(R.string.send)};val cancel=MaterialButton(c).apply{text="";setIconResource(R.drawable.ic_tab_trash);contentDescription=c.getString(R.string.cancel_scheduled)};actions.addView(send);actions.addView(cancel);box.addView(title);box.addView(whenText);box.addView(body);box.addView(actions);card.addView(box);return H(card,title,whenText,body,send,cancel)}
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): H {
+            val context = parent.context
+            val density = context.resources.displayMetrics.density
+            fun dp(value: Int) = (value * density).toInt()
+            val card = MaterialCardView(context).apply {
+                radius = dp(18).toFloat(); strokeWidth = dp(1)
+                layoutParams = RecyclerView.LayoutParams(-1, -2).apply { bottomMargin = dp(8) }
+            }
+            val box = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(12), dp(10), dp(8)) }
+            val title = TextView(context).apply { textSize = 16f; setTypeface(null, 1) }
+            val whenText = TextView(context).apply { textSize = 13f; setTextColor(ContextCompat.getColor(context, R.color.text_secondary)) }
+            val body = TextView(context).apply { textSize = 15f; setPadding(dp(10), dp(8), dp(10), dp(8)); textDirection = View.TEXT_DIRECTION_FIRST_STRONG }
+            val actions = LinearLayout(context)
+            val send = MaterialButton(context).apply { text = ""; setIconResource(R.drawable.ic_send); contentDescription = context.getString(R.string.send) }
+            val cancel = MaterialButton(context).apply { text = ""; setIconResource(R.drawable.ic_tab_trash); contentDescription = context.getString(R.string.cancel_scheduled) }
+            actions.addView(send); actions.addView(cancel)
+            box.addView(title); box.addView(whenText); box.addView(body); box.addView(actions)
+            card.addView(box)
+            return H(card, title, whenText, body, send, cancel)
+        }
         override fun getItemCount()=items.size;override fun onBindViewHolder(h:H,p:Int){val i=items[p];h.title.text=ContactNames.displayNameUi(i.address);h.whenText.text=Dates.full(h.c.context,i.at);h.body.text=i.body;h.send.setOnClickListener{onSend(i)};h.cancel.setOnClickListener{onCancel(i)}};fun submit(next:List<ScheduledSms>){items.clear();items.addAll(next);notifyDataSetChanged()}
     }
 }

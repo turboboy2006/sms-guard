@@ -76,7 +76,31 @@ class SavedMessagesActivity : BaseActivity() {
     private class SavedAdapter(private val onClick: (SavedMessage) -> Unit, private val onLongClick: (SavedMessage) -> Unit, private val onStar: (SavedMessage) -> Unit, private val onNote: (SavedMessage) -> Unit, private val onDelete: (SavedMessage) -> Unit, private val onSelection: (Int) -> Unit) : RecyclerView.Adapter<SavedAdapter.Holder>() {
         private val items = mutableListOf<SavedMessage>(); private val selected = linkedSetOf<Long>(); val selectionCount get() = selected.size
         class Holder(val card: MaterialCardView, val title: TextView, val meta: TextView, val body: TextView, val note: TextView, val star: MaterialButton, val edit: MaterialButton, val delete: MaterialButton) : RecyclerView.ViewHolder(card)
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder { val c = parent.context; val d = c.resources.displayMetrics.density; fun dp(v: Int) = (v*d).toInt(); val card = MaterialCardView(c).apply { radius=dp(18).toFloat(); strokeWidth=dp(1); layoutParams=RecyclerView.LayoutParams(-1,-2).apply { bottomMargin=dp(8) } }; val box=LinearLayout(c).apply { orientation=LinearLayout.VERTICAL; setPadding(dp(14),dp(12),dp(10),dp(8)) }; val title=TextView(c).apply { textSize=16f; setTypeface(null,1) }; val meta=TextView(c).apply { textSize=12f; setTextColor(ContextCompat.getColor(c,R.color.text_secondary)) }; val body=TextView(c).apply { textSize=16f; setPadding(dp(10),dp(8),dp(10),dp(8)); textDirection=View.TEXT_DIRECTION_FIRST_STRONG }; val note=TextView(c).apply { textSize=14f; setPadding(dp(10),dp(6),dp(10),dp(6)); textDirection=View.TEXT_DIRECTION_FIRST_STRONG }; val actions=LinearLayout(c); fun action(icon:Int, desc:Int)=MaterialButton(c).apply { text=""; setIconResource(icon); contentDescription=c.getString(desc) }; val star=action(R.drawable.ic_star,R.string.starred); val edit=action(R.drawable.ic_compose,R.string.note_optional); val delete=action(R.drawable.ic_tab_trash,R.string.delete); actions.addView(star);actions.addView(edit);actions.addView(delete);box.addView(title);box.addView(meta);box.addView(body);box.addView(note);box.addView(actions);card.addView(box);return Holder(card,title,meta,body,note,star,edit,delete) }
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
+            val context = parent.context
+            val density = context.resources.displayMetrics.density
+            fun dp(value: Int) = (value * density).toInt()
+            fun action(icon: Int, description: Int) = MaterialButton(context).apply {
+                text = ""; setIconResource(icon); contentDescription = context.getString(description)
+            }
+            val card = MaterialCardView(context).apply {
+                radius = dp(18).toFloat(); strokeWidth = dp(1)
+                layoutParams = RecyclerView.LayoutParams(-1, -2).apply { bottomMargin = dp(8) }
+            }
+            val box = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(12), dp(10), dp(8)) }
+            val title = TextView(context).apply { textSize = 16f; setTypeface(null, 1) }
+            val meta = TextView(context).apply { textSize = 12f; setTextColor(ContextCompat.getColor(context, R.color.text_secondary)) }
+            val body = TextView(context).apply { textSize = 16f; setPadding(dp(10), dp(8), dp(10), dp(8)); textDirection = View.TEXT_DIRECTION_FIRST_STRONG }
+            val note = TextView(context).apply { textSize = 14f; setPadding(dp(10), dp(6), dp(10), dp(6)); textDirection = View.TEXT_DIRECTION_FIRST_STRONG }
+            val actions = LinearLayout(context)
+            val star = action(R.drawable.ic_star, R.string.starred)
+            val edit = action(R.drawable.ic_compose, R.string.note_optional)
+            val delete = action(R.drawable.ic_tab_trash, R.string.delete)
+            actions.addView(star); actions.addView(edit); actions.addView(delete)
+            box.addView(title); box.addView(meta); box.addView(body); box.addView(note); box.addView(actions)
+            card.addView(box)
+            return Holder(card, title, meta, body, note, star, edit, delete)
+        }
         override fun getItemCount()=items.size
         override fun onBindViewHolder(h:Holder,p:Int){ val i=items[p]; val c=h.card.context; h.title.text=if(i.address==SavedMessageStore.SELF_ADDRESS)c.getString(R.string.self_note) else ContactNames.displayNameUi(i.address); h.meta.text=Dates.full(c,i.date); h.body.text=i.body; h.note.text=i.note; h.note.visibility=if(i.note.isBlank())View.GONE else View.VISIBLE; h.star.alpha=if(i.starred)1f else .45f; h.card.alpha=if(i.id in selected).75f else 1f; h.card.setOnClickListener{onClick(i)}; h.card.setOnLongClickListener{onLongClick(i);true}; h.star.setOnClickListener{onStar(i)}; h.edit.setOnClickListener{onNote(i)}; h.delete.setOnClickListener{onDelete(i)} }
         fun submit(next:List<SavedMessage>){items.clear();items.addAll(next);selected.retainAll(items.map{it.id}.toSet());notifyDataSetChanged()}; fun toggle(i:SavedMessage){if(!selected.add(i.id))selected.remove(i.id);notifyItemChanged(items.indexOf(i));onSelection(selected.size)}; fun selected()=items.filter{it.id in selected}; fun clear(){if(selected.isEmpty())return;selected.clear();notifyDataSetChanged();onSelection(0)}
