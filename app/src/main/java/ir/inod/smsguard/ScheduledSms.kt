@@ -36,6 +36,19 @@ class ScheduledSmsStore(private val context: Context) {
         if (ok) save(all() + item)
         return ok
     }
+    /** Recreates Android jobs after a portable backup is restored into a fresh install. */
+    fun restoreJobs() {
+        val scheduler = context.getSystemService(JobScheduler::class.java)
+        all().forEach { item ->
+            if (item.at <= System.currentTimeMillis()) return@forEach
+            val extras = PersistableBundle().apply {
+                putInt("id", item.id); putString("address", item.address); putString("body", item.body)
+            }
+            scheduler.schedule(JobInfo.Builder(item.id, ComponentName(context, ScheduledSmsJob::class.java))
+                .setMinimumLatency(item.at - System.currentTimeMillis())
+                .setPersisted(true).setExtras(extras).build())
+        }
+    }
     fun remove(id: Int, cancel: Boolean = true) {
         if (cancel) context.getSystemService(JobScheduler::class.java).cancel(id)
         save(all().filterNot { it.id == id })
