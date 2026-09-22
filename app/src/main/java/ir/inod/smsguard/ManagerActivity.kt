@@ -189,7 +189,7 @@ class ManagerActivity : BaseActivity() {
     }
 
     private fun confirm(titleRes: Int, message: String, onYes: () -> Unit) {
-        ConfirmSheet.show(this, getString(titleRes), message, R.drawable.ic_warning, onYes)
+        ConfirmSheet.show(this, getString(titleRes), message, R.drawable.ic_warning, onConfirm = onYes)
     }
 
     // ------------------------------------------------- per-sender appearance

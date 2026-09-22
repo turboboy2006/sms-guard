@@ -903,7 +903,7 @@ class MainActivity : BaseActivity() {
     private fun showOptions(thread: ThreadSummary) {
         if (archiveMode) {
             ChoiceSheet.show(this, ContactNames.displayNameUi(thread.address), listOf(
-                ChoiceSheet.Option(getString(R.string.open), R.drawable.ic_tab_messages),
+                ChoiceSheet.Option(getString(R.string.open), R.drawable.ic_tab_all),
                 ChoiceSheet.Option(getString(R.string.unarchive), R.drawable.ic_archive)
             )) { which ->
                 if (which == 0) openThread(thread)
@@ -1028,7 +1028,7 @@ class MainActivity : BaseActivity() {
 
     /** Every state-changing choice passes through here, so nothing is one-tap. */
     private fun confirm(titleRes: Int, message: String, onYes: () -> Unit) {
-        ConfirmSheet.show(this, getString(titleRes), message, R.drawable.ic_warning, onYes)
+        ConfirmSheet.show(this, getString(titleRes), message, R.drawable.ic_warning, onConfirm = onYes)
     }
 
     private fun pickCategory(thread: ThreadSummary) {
