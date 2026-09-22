@@ -21,6 +21,8 @@ class ConversationActivity : BaseActivity() {
     companion object {
         const val EXTRA_THREAD_ID = "extra_thread_id"
         const val EXTRA_ADDRESS = "extra_address"
+        const val EXTRA_TARGET_MESSAGE_ID = "extra_target_message_id"
+        const val EXTRA_TARGET_DATE = "extra_target_date"
 
         /**
          * Sent by the compose button. The screen opens with nobody to write to
@@ -54,6 +56,8 @@ class ConversationActivity : BaseActivity() {
     private var address: String = ""
     private var riskyMessageId: Long = -1L
     private var messageLimit = 500
+    private var targetMessageId = -1L
+    private var targetDate = -1L
     private var loadingMessages = false
     private var lastMessages: List<SmsMessage> = emptyList()
     private val additionalRecipients = linkedSetOf<String>()
@@ -99,6 +103,8 @@ class ConversationActivity : BaseActivity() {
 
         val extraAddress = intent.getStringExtra(EXTRA_ADDRESS).orEmpty()
         threadId = intent.getLongExtra(EXTRA_THREAD_ID, -1L)
+        targetMessageId = intent.getLongExtra(EXTRA_TARGET_MESSAGE_ID, -1L)
+        targetDate = intent.getLongExtra(EXTRA_TARGET_DATE, -1L)
 
         // Launched from an sms:/smsto: link, e.g. from a browser or another app.
         val linkAddress = intent.data?.schemeSpecificPart?.substringBefore('?').orEmpty()
@@ -305,6 +311,9 @@ class ConversationActivity : BaseActivity() {
             if (threadId >= 0) {
                 repo.markThreadRead(threadId)
                 Notifier(this).cancel(threadId)
+                if (targetMessageId >= 0 && targetDate >= 0) {
+                    messageLimit = maxOf(messageLimit, repo.countMessagesSince(threadId, targetDate) + 50)
+                }
             }
 
             val messages = try {
@@ -328,9 +337,14 @@ class ConversationActivity : BaseActivity() {
                 adapter.submit(messages)
                 lastMessages = messages
                 bindRiskBanner(messages)
+                val targetPosition = if (targetMessageId >= 0) adapter.positionOf(targetMessageId) else -1
                 // The adapter also emits day dividers, so scroll to its own
                 // last row rather than to messages.size.
-                if (scrollToEnd && adapter.itemCount > 0) {
+                if (targetPosition >= 0) {
+                    binding.recyclerMessages.scrollToPosition(targetPosition)
+                    targetMessageId = -1L
+                    targetDate = -1L
+                } else if (scrollToEnd && adapter.itemCount > 0) {
                     binding.recyclerMessages.scrollToPosition(adapter.itemCount - 1)
                 } else if (preserveFromEnd > 0) {
                     val added = (adapter.itemCount - preserveFromEnd).coerceAtLeast(0)

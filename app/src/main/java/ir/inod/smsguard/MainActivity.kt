@@ -19,6 +19,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -582,9 +583,25 @@ class MainActivity : BaseActivity() {
 
     /** Search, plus the actions that used to live in a row of buttons. */
     override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
-        menu.add(0, MENU_SEARCH, 0, R.string.search)
+        val searchItem = menu.add(0, MENU_SEARCH, 0, R.string.search)
             .setIcon(R.drawable.ic_search)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
+        searchItem.setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS or
+            android.view.MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW)
+        searchItem.actionView = SearchView(this).apply {
+            queryHint = getString(R.string.search_hint)
+            maxWidth = Int.MAX_VALUE
+            setIconifiedByDefault(false)
+            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                override fun onQueryTextSubmit(text: String): Boolean {
+                    if (text.isBlank()) return false
+                    startActivity(Intent(this@MainActivity, SearchActivity::class.java)
+                        .putExtra(SearchActivity.EXTRA_INITIAL_QUERY, text.trim()))
+                    searchItem.collapseActionView()
+                    return true
+                }
+                override fun onQueryTextChange(text: String): Boolean = false
+            })
+        }
         menu.add(0, MENU_MORE, 1, R.string.more_actions)
             .setIcon(R.drawable.ic_more)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)

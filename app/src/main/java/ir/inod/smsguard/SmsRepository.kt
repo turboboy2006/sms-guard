@@ -161,7 +161,7 @@ class SmsRepository(private val context: Context) {
         subscriptionId: Int = -1
     ): List<ThreadSummary> {
         val needle = query.trim()
-        val out = LinkedHashMap<Long, ThreadSummary>()
+        val out = ArrayList<ThreadSummary>()
         val projection = arrayOf(
             Telephony.Sms._ID, Telephony.Sms.THREAD_ID, Telephony.Sms.ADDRESS,
             Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.READ,
@@ -202,13 +202,12 @@ class SmsRepository(private val context: Context) {
                 val iType = c.getColumnIndexOrThrow(Telephony.Sms.TYPE)
                 while (c.moveToNext() && out.size < resultLimit) {
                     val threadId = c.getLong(iThread)
-                    if (out.containsKey(threadId)) continue
                     val id = c.getLong(iId)
                     val address = c.getString(iAddr) ?: ""
                     val body = c.getString(iBody) ?: ""
                     val category = categoryFor(address, body, id)
                     if (categoryId != null && category != categoryId) continue
-                    out[threadId] = ThreadSummary(
+                    out += ThreadSummary(
                         threadId = threadId,
                         messageId = id,
                         address = address,
@@ -229,7 +228,7 @@ class SmsRepository(private val context: Context) {
         } catch (_: Exception) {
             // An unavailable provider produces an empty result, not a crash.
         }
-        return out.values.toList()
+        return out
     }
 
     fun loadMessages(threadId: Long, limit: Int = 500): List<SmsMessage> {
@@ -285,6 +284,16 @@ class SmsRepository(private val context: Context) {
         }
         return out.asReversed()
     }
+
+    /** Size the initial conversation page so an old search hit is included. */
+    fun countMessagesSince(threadId: Long, date: Long): Int = runCatching {
+        resolver.query(
+            Telephony.Sms.CONTENT_URI,
+            arrayOf(Telephony.Sms._ID),
+            "${Telephony.Sms.THREAD_ID} = ? AND ${Telephony.Sms.DATE} >= ?",
+            arrayOf(threadId.toString(), date.toString()), null
+        )?.use { it.count } ?: 0
+    }.getOrDefault(0)
 
     /** A bounded preview for the rule builder; it never changes a message. */
     fun countMatches(rule: Rule, limit: Int = 10_000): Int {

@@ -77,11 +77,13 @@ class ThreadAdapter(
     private val onClick: (ThreadSummary) -> Unit,
     private val onLongClick: (ThreadSummary) -> Unit,
     private val onCategoryClick: (ThreadSummary) -> Unit = {},
-    private val onSelectionChanged: (Int) -> Unit = {}
+    private val onSelectionChanged: (Int) -> Unit = {},
+    private val identityByMessage: Boolean = false
 ) : RecyclerView.Adapter<ThreadAdapter.VH>() {
 
     init { setHasStableIds(true) }
-    override fun getItemId(position: Int): Long = items[position].threadId
+    private fun key(item: ThreadSummary) = if (identityByMessage) item.messageId else item.threadId
+    override fun getItemId(position: Int): Long = key(items[position])
 
     private val items = mutableListOf<ThreadSummary>()
     private val selectedIds = linkedSetOf<Long>()
@@ -123,7 +125,7 @@ class ThreadAdapter(
      */
     fun merge(list: List<ThreadSummary>) {
         val old = items.toList()
-        if (old.size == list.size && old.indices.all { old[it].threadId == list[it].threadId }) {
+        if (old.size == list.size && old.indices.all { key(old[it]) == key(list[it]) }) {
             items.clear()
             items.addAll(list)
             old.indices.forEach { index -> if (old[index] != list[index]) notifyItemChanged(index) }
@@ -135,7 +137,7 @@ class ThreadAdapter(
         if (old.size + list.size > 800) {
             items.clear()
             items.addAll(list)
-            selectedIds.retainAll(items.mapTo(HashSet()) { it.threadId })
+            selectedIds.retainAll(items.mapTo(HashSet()) { key(it) })
             notifyDataSetChanged()
             return
         }
@@ -143,12 +145,12 @@ class ThreadAdapter(
             override fun getOldListSize() = old.size
             override fun getNewListSize() = list.size
             override fun areItemsTheSame(oldPos: Int, newPos: Int) =
-                old[oldPos].threadId == list[newPos].threadId
+                key(old[oldPos]) == key(list[newPos])
             override fun areContentsTheSame(oldPos: Int, newPos: Int) = old[oldPos] == list[newPos]
         }, true)
         items.clear()
         items.addAll(list)
-        selectedIds.retainAll(items.mapTo(HashSet()) { it.threadId })
+        selectedIds.retainAll(items.mapTo(HashSet()) { key(it) })
         diff.dispatchUpdatesTo(this)
     }
 
@@ -186,11 +188,11 @@ class ThreadAdapter(
         }
     }
 
-    fun selectedItems(): List<ThreadSummary> = items.filter { it.threadId in selectedIds }
+    fun selectedItems(): List<ThreadSummary> = items.filter { key(it) in selectedIds }
 
     fun toggleSelection(item: ThreadSummary) {
-        if (!selectedIds.add(item.threadId)) selectedIds.remove(item.threadId)
-        val position = items.indexOfFirst { it.threadId == item.threadId }
+        if (!selectedIds.add(key(item))) selectedIds.remove(key(item))
+        val position = items.indexOfFirst { key(it) == key(item) }
         if (position >= 0) notifyItemChanged(position)
         onSelectionChanged(selectedIds.size)
     }
@@ -199,7 +201,7 @@ class ThreadAdapter(
         if (selectedIds.isEmpty()) return
         val old = selectedIds.toSet()
         selectedIds.clear()
-        items.forEachIndexed { index, item -> if (item.threadId in old) notifyItemChanged(index) }
+        items.forEachIndexed { index, item -> if (key(item) in old) notifyItemChanged(index) }
         onSelectionChanged(0)
     }
 
@@ -346,7 +348,7 @@ class ThreadAdapter(
             android.graphics.Color.TRANSPARENT
         }
         RowStyler.apply(b.rowContent, background, fallback)
-        if (item.threadId in selectedIds) {
+        if (key(item) in selectedIds) {
             b.rowContent.setBackgroundColor(ContextCompat.getColor(context, R.color.selection_bg))
         }
         // Unread is stated twice on purpose: the row tint, and a small blue disc

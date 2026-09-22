@@ -14,7 +14,8 @@ import java.util.concurrent.Executors
 
 /** Full-mailbox search. Every query goes to the SMS provider off the UI thread. */
 class SearchActivity : BaseActivity() {
-    private companion object {
+    companion object {
+        const val EXTRA_INITIAL_QUERY = "initial_query"
         const val MENU_SPAM_SELECTED = 4101
         const val MENU_TRASH_SELECTED = 4102
     }
@@ -43,6 +44,8 @@ class SearchActivity : BaseActivity() {
                     startActivity(Intent(this, ConversationActivity::class.java).apply {
                         putExtra(ConversationActivity.EXTRA_THREAD_ID, row.threadId)
                         putExtra(ConversationActivity.EXTRA_ADDRESS, row.address)
+                        putExtra(ConversationActivity.EXTRA_TARGET_MESSAGE_ID, row.messageId)
+                        putExtra(ConversationActivity.EXTRA_TARGET_DATE, row.date)
                     })
                 }
             },
@@ -51,7 +54,8 @@ class SearchActivity : BaseActivity() {
                 supportActionBar?.title = if (count > 0) Dates.count(this, count)
                     else getString(R.string.search_all_messages)
                 invalidateOptionsMenu()
-            }
+            },
+            identityByMessage = true
         )
         adapter.applyLayout(ThemePrefs(this).snapshot())
         binding.recyclerResults.layoutManager = LinearLayoutManager(this)
@@ -61,6 +65,7 @@ class SearchActivity : BaseActivity() {
             main.postDelayed(searchRunnable, 250)
         }
         setUpFilters()
+        intent.getStringExtra(EXTRA_INITIAL_QUERY)?.let { binding.editSearch.setText(it) }
         binding.editSearch.requestFocus()
     }
 
