@@ -11,8 +11,9 @@ android {
         applicationId = "ir.inod.smsguard"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        val ciBuild = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+        versionCode = ciBuild ?: 1
+        versionName = if (ciBuild == null) "1.0-dev" else "1.0.$ciBuild"
     }
 
     val stableKeystore = System.getenv("SMS_GUARD_KEYSTORE")
