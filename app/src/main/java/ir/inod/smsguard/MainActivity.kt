@@ -1221,21 +1221,15 @@ class MainActivity : BaseActivity() {
 
     private fun showBlockedLog() {
         val blocked = blockedStore.all()
-        val message = if (blocked.isEmpty()) {
-            getString(R.string.blocked_empty)
-        } else {
-            blocked.joinToString("\n\n") {
-                "${Dates.full(this, it.date)}\n${it.address}\n${it.body}\n[${it.rulePattern}]"
-            }
+        val fields = if (blocked.isEmpty()) listOf(InfoSheet.Field(
+            getString(R.string.blocked_log), getString(R.string.blocked_empty), R.drawable.ic_tab_spam))
+        else blocked.map { entry -> InfoSheet.Field(
+            "${entry.address} · ${Dates.full(this, entry.date)}",
+            "${entry.body}\n${entry.rulePattern}", R.drawable.ic_tab_spam)
         }
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.blocked_log) + " (${blocked.size})")
-            .setMessage(message)
-            .setPositiveButton(R.string.close, null)
-            .setNeutralButton(R.string.clear) { _, _ ->
+        InfoSheet.show(this, getString(R.string.blocked_log) + " (${blocked.size})", fields) {
                 blockedStore.clear()
                 Toast.makeText(this, R.string.cleared, Toast.LENGTH_SHORT).show()
             }
-            .show()
     }
 }

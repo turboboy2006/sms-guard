@@ -403,11 +403,8 @@ class ConversationActivity : BaseActivity() {
      * still exists as context.
      */
     private fun confirmDeleteMessage(message: SmsMessage) {
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle(R.string.delete_message)
-            .setMessage(R.string.confirm_delete_message)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.confirm) { _, _ ->
+        ConfirmSheet.show(this, getString(R.string.delete_message),
+            getString(R.string.confirm_delete_message), R.drawable.ic_tab_trash) {
                 // A provider delete is I/O; it runs on the worker like every
                 // other provider call in this screen.
                 worker.execute {
@@ -427,7 +424,6 @@ class ConversationActivity : BaseActivity() {
                     if (deleted) load()
                 }
             }
-            .show()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -600,11 +596,8 @@ class ConversationActivity : BaseActivity() {
 
     private fun confirmDeleteSelected() {
         val selected = adapter.selectedMessages()
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle(R.string.delete_message)
-            .setMessage(getString(R.string.confirm_delete_selected, selected.size))
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.confirm) { _, _ ->
+        ConfirmSheet.show(this, getString(R.string.delete_message),
+            getString(R.string.confirm_delete_selected, selected.size), R.drawable.ic_tab_trash) {
                 adapter.clearSelection()
                 worker.execute {
                     selected.filter { it.isIncoming && (it.categoryId == Cat.SUSPICIOUS || it.categoryId == Cat.SPAM || it.categoryId == Cat.PROMOTION) }
@@ -617,7 +610,6 @@ class ConversationActivity : BaseActivity() {
                     load()
                 }
             }
-            .show()
     }
 
     private fun retry(message: SmsMessage) {
@@ -930,17 +922,14 @@ class ConversationActivity : BaseActivity() {
     }
 
     private fun confirmDeleteConversation() {
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle(R.string.delete_forever)
-            .setMessage(R.string.confirm_delete_conversation)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.confirm) { _, _ ->
+        ConfirmSheet.show(this, getString(R.string.delete_forever),
+            getString(R.string.confirm_delete_conversation), R.drawable.ic_tab_trash) {
                 worker.execute {
                     val deleted = repo.deleteThread(threadId)
                     if (deleted) ThreadCache.clear(this)
                     runOnUiThread { if (deleted) finish() else Toast.makeText(this, R.string.send_failed, Toast.LENGTH_SHORT).show() }
                 }
-            }.show()
+            }
     }
 
     private fun searchConversation() {
@@ -981,8 +970,9 @@ class ConversationActivity : BaseActivity() {
                 }
         } catch (_: SecurityException) { }
         if (ids.isEmpty()) { sendCurrent(); return }
-        MaterialAlertDialogBuilder(this).setTitle(R.string.send_with_sim)
-            .setItems(labels.toTypedArray()) { _, which ->
+        ChoiceSheet.show(this, getString(R.string.send_with_sim), labels.map { label ->
+            ChoiceSheet.Option(label, R.drawable.ic_cat_mobile)
+        }) { which ->
                 binding.editMessage.setText(""); drafts.edit().remove(address).apply()
                 worker.execute {
                     val targets = listOf(address) + additionalRecipients
@@ -990,7 +980,7 @@ class ConversationActivity : BaseActivity() {
                     runOnUiThread { Toast.makeText(this, getString(R.string.group_sent_report, sent, targets.size), Toast.LENGTH_SHORT).show() }
                     load()
                 }
-            }.show()
+            }
     }
 
     @Deprecated("Handled for selection mode")

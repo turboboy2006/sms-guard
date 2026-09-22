@@ -14,7 +14,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 /** Read-only details laid out as labelled rows instead of one text blob. */
 object InfoSheet {
     data class Field(val label: String, val value: String, val icon: Int)
-    fun show(context: Context, title: String, fields: List<Field>) {
+    fun show(context: Context, title: String, fields: List<Field>, onClear: (() -> Unit)? = null) {
         val density = context.resources.displayMetrics.density
         fun dp(value: Int) = (value * density).toInt()
         val list = LinearLayout(context).apply {
@@ -51,8 +51,10 @@ object InfoSheet {
             card.addView(row)
             list.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
         }
-        MaterialAlertDialogBuilder(context).setTitle(title)
+        val builder = MaterialAlertDialogBuilder(context).setTitle(title)
             .setView(ScrollView(context).apply { addView(list) })
-            .setPositiveButton(R.string.close, null).show()
+            .setPositiveButton(R.string.close, null)
+        if (onClear != null) builder.setNeutralButton(R.string.clear) { _, _ -> onClear() }
+        builder.show()
     }
 }
