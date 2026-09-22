@@ -15,9 +15,19 @@ android {
         versionName = "1.0"
     }
 
+    val stableKeystore = System.getenv("SMS_GUARD_KEYSTORE")
+    val stableSigning = if (!stableKeystore.isNullOrBlank()) signingConfigs.create("stable") {
+        storeFile = file(stableKeystore)
+        storePassword = System.getenv("SMS_GUARD_STORE_PASSWORD")
+        keyAlias = System.getenv("SMS_GUARD_KEY_ALIAS")
+        keyPassword = System.getenv("SMS_GUARD_KEY_PASSWORD")
+        storeType = "PKCS12"
+    } else null
+
     buildTypes {
         debug {
             isMinifyEnabled = false
+            stableSigning?.let { signingConfig = it }
         }
         release {
             isMinifyEnabled = false

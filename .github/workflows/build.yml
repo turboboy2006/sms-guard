@@ -34,7 +34,19 @@ jobs:
           java -version
           gradle --version
 
+      - name: Restore stable signing key
+        env:
+          SIGNING_KEY: ${{ secrets.SMS_GUARD_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$SIGNING_KEY"
+          printf '%s' "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/smsguard-release.p12"
+
       - name: Build debug APK
+        env:
+          SMS_GUARD_KEYSTORE: ${{ runner.temp }}/smsguard-release.p12
+          SMS_GUARD_STORE_PASSWORD: ${{ secrets.SMS_GUARD_STORE_PASSWORD }}
+          SMS_GUARD_KEY_ALIAS: ${{ secrets.SMS_GUARD_KEY_ALIAS }}
+          SMS_GUARD_KEY_PASSWORD: ${{ secrets.SMS_GUARD_KEY_PASSWORD }}
         run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
