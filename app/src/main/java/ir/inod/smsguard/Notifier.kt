@@ -21,7 +21,11 @@ class Notifier(private val context: Context) {
 
     fun notifyIncoming(threadId: Long, address: String, body: String, categoryId: String) {
         if (SenderStore(context).notificationsMuted(address)) return
-        val categorySettings = CategoryNotificationStore(context).get(categoryId)
+        val senderSettings = SenderStore(context)
+        val categorySettings = CategoryNotificationStore(context).get(categoryId).let {
+            if (senderSettings.vibrateOnly(address) && it.mode != CategoryAlertMode.OFF)
+                it.copy(mode = CategoryAlertMode.VIBRATE_ONLY) else it
+        }
         if (categorySettings.mode == CategoryAlertMode.OFF) return
         val channelId = ensureChannel(address, categoryId, categorySettings)
         val intent = Intent(context, ConversationActivity::class.java).apply {
@@ -112,7 +116,7 @@ class Notifier(private val context: Context) {
                               settings: CategoryNotificationSettings): String {
         val senderSound = SenderStore(context).notificationSound(address)
         val sound = senderSound ?: settings.soundUri.takeIf { settings.mode == CategoryAlertMode.CUSTOM }
-        val senderSuffix = if (senderSound == null) "" else
+        val senderSuffix = if (senderSound == null && !SenderStore(context).vibrateOnly(address)) "" else
             "_${address.hashCode().toUInt().toString(16)}_${senderSound.hashCode().toUInt().toString(16)}"
         val id = "sms_cat_${categoryId.hashCode().toUInt().toString(16)}_${settings.revision}$senderSuffix"
         val nm = context.getSystemService(NotificationManager::class.java)

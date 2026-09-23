@@ -77,6 +77,11 @@ class ContactDetailsActivity : BaseActivity() {
             R.drawable.ic_tab_service) {
             sender.setNotificationsMuted(address, !sender.notificationsMuted(address)); draw()
         }
+        action(label(if (sender.vibrateOnly(address)) "لغو حالت فقط لرزش" else "فقط لرزش",
+            if (sender.vibrateOnly(address)) "Turn off vibrate only" else "Vibrate only"),
+            R.drawable.ic_notification_vibrate) {
+            sender.setVibrateOnly(address, !sender.vibrateOnly(address)); draw()
+        }
         action(getString(R.string.change_category), R.drawable.ic_tab_all) {
             val cats = CategoryStore(this).active()
             ChoiceSheet.show(this, getString(R.string.change_category), cats.map {

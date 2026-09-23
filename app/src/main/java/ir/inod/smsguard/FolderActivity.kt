@@ -35,6 +35,11 @@ class FolderActivity : BaseActivity() {
     private lateinit var search: EditText
     private var all = emptyList<ThreadSummary>()
 
+    override fun onResume() {
+        super.onResume()
+        if (::adapter.isInitialized) adapter.refreshNotificationState()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val density = resources.displayMetrics.density
@@ -63,6 +68,7 @@ class FolderActivity : BaseActivity() {
         adapter = ThreadAdapter(
             onClick = { row -> if (adapter.selectionCount > 0) adapter.toggleSelection(row) else open(row) },
             onLongClick = { adapter.toggleSelection(it) },
+            onAvatarClick = { ContactPreview.show(this, it.address) },
             onSelectionChanged = { count ->
                 toolbar.title = if (count > 0) Dates.count(this, count)
                 else getString(if (folder == TRASH) R.string.tab_trash else R.string.archived)

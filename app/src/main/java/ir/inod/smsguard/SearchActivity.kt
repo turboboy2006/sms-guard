@@ -29,6 +29,11 @@ class SearchActivity : BaseActivity() {
     private var simIds: List<Int> = listOf(-1)
     private val searchRunnable = Runnable { search(binding.editSearch.text?.toString().orEmpty()) }
 
+    override fun onResume() {
+        super.onResume()
+        if (::adapter.isInitialized) adapter.refreshNotificationState()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySearchBinding.inflate(layoutInflater)

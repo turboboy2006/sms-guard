@@ -100,6 +100,7 @@ class ThreadAdapter(
     private var categoryCache: Map<String, Category>? = null
     private var notificationModes: MutableMap<String, CategoryAlertMode> = HashMap()
     private var mutedAddresses: Set<String>? = null
+    private var vibrateAddresses: Set<String>? = null
     private var nameCache: HashMap<String, String> = HashMap()
     private var layout = RowLayout(
         style = RowStyle.CLASSIC,
@@ -191,6 +192,7 @@ class ThreadAdapter(
     fun refreshNotificationState() {
         notificationModes.clear()
         mutedAddresses = null
+        vibrateAddresses = null
         if (items.isNotEmpty()) notifyItemRangeChanged(0, items.size)
     }
 
@@ -275,20 +277,22 @@ class ThreadAdapter(
         b.iconPinned.setColorFilter(themeColor(context, item.colorHex))
         val muted = (mutedAddresses ?: SenderStore(context).mutedAddresses()
             .also { mutedAddresses = it }).contains(item.address)
+        val vibrateOnly = (vibrateAddresses ?: SenderStore(context).vibrateOnlyAddresses()
+            .also { vibrateAddresses = it }).contains(item.address)
         val notificationMode = notificationModes.getOrPut(item.categoryId) {
             CategoryNotificationStore(context).get(item.categoryId).mode
         }
         val notificationIcon = when {
             muted || notificationMode == CategoryAlertMode.OFF ||
                 notificationMode == CategoryAlertMode.SILENT -> R.drawable.ic_notification_silent
-            notificationMode == CategoryAlertMode.VIBRATE_ONLY -> R.drawable.ic_notification_vibrate
+            vibrateOnly || notificationMode == CategoryAlertMode.VIBRATE_ONLY -> R.drawable.ic_notification_vibrate
             else -> 0
         }
         b.iconNotificationMode.visibility = if (notificationIcon == 0) View.GONE else View.VISIBLE
         if (notificationIcon != 0) {
             b.iconNotificationMode.setImageResource(notificationIcon)
             b.iconNotificationMode.contentDescription = context.getString(
-                if (notificationMode == CategoryAlertMode.VIBRATE_ONLY && !muted)
+                if ((vibrateOnly || notificationMode == CategoryAlertMode.VIBRATE_ONLY) && !muted)
                     R.string.alert_vibrate_only else R.string.notification_silent)
         }
         val preview = if (draft.isNotBlank()) {

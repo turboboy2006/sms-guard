@@ -805,6 +805,12 @@ class SenderStore(context: Context) {
 
     fun mutedAddresses(): Set<String> = load().filterValues { it.optBoolean("muted", false) }.keys
 
+    fun vibrateOnly(sender: String): Boolean = entry(sender).optBoolean("vibrate_only", false)
+    fun vibrateOnlyAddresses(): Set<String> = load().filterValues { it.optBoolean("vibrate_only", false) }.keys
+    fun setVibrateOnly(sender: String, enabled: Boolean) {
+        put(sender, entry(sender).apply { put("vibrate_only", enabled) })
+    }
+
     fun setNotificationsMuted(sender: String, muted: Boolean) {
         put(sender, entry(sender).apply { put("muted", muted) })
     }
