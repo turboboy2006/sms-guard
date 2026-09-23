@@ -9,6 +9,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.media.AudioAttributes
 import android.net.Uri
+import android.widget.RemoteViews
 import androidx.core.app.TaskStackBuilder
 
 /**
@@ -69,7 +70,7 @@ class Notifier(private val context: Context) {
             R.drawable.ic_notification, context.getString(R.string.mark_read), readPi
         ).build()
 
-        val otp = extractOtp(body)
+        val otp = extractOtp(body, categoryId)
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification)
@@ -85,6 +86,18 @@ class Notifier(private val context: Context) {
             .setVisibility(if (categorySettings.showOnLockScreen)
                 NotificationCompat.VISIBILITY_PRIVATE else NotificationCompat.VISIBILITY_SECRET)
             .setSilent(categorySettings.mode == CategoryAlertMode.SILENT)
+        // The phone can be LTR while SmsGuard is Persian. Standard BigTextStyle
+        // follows System UI alignment, so use a decorated RTL content area only
+        // for predominantly Persian SMS; the system keeps its header and actions.
+        if (Dates.isPersian(context) && isPredominantlyPersian(body)) {
+            fun view(layout: Int) = RemoteViews(context.packageName, layout).apply {
+                setTextViewText(R.id.notificationTitle, ContactNames.displayName(context, address))
+                setTextViewText(R.id.notificationBody, body)
+            }
+            builder.setStyle(NotificationCompat.DecoratedCustomViewStyle())
+                .setCustomContentView(view(R.layout.notification_sms_compact))
+                .setCustomBigContentView(view(R.layout.notification_sms_expanded))
+        }
         if (otp != null) {
             val copyIntent = Intent(context, NotificationActionReceiver::class.java).apply {
                 action = NotificationActionReceiver.ACTION_COPY
@@ -96,7 +109,7 @@ class Notifier(private val context: Context) {
             )
             builder.addAction(
                 NotificationCompat.Action.Builder(
-                    R.drawable.ic_notification,
+                    R.drawable.ic_copy,
                     context.getString(R.string.copy_otp, otp),
                     copyPi
                 ).build()
@@ -166,14 +179,28 @@ class Notifier(private val context: Context) {
 
     private fun senderChannelId(address: String) = "sms_sender_${address.hashCode().toUInt().toString(16)}"
 
-    private fun extractOtp(body: String): String? {
-        val normalized = body
-            .replace('۰', '0').replace('۱', '1').replace('۲', '2').replace('۳', '3')
-            .replace('۴', '4').replace('۵', '5').replace('۶', '6').replace('۷', '7')
-            .replace('۸', '8').replace('۹', '9')
-        val hasHint = Regex("(?i)(otp|code|verification|password|رمز|کد|تایید|تأیید)").containsMatchIn(body)
-        if (!hasHint) return null
-        return Regex("(?<!\\d)\\d{4,8}(?!\\d)").find(normalized)?.value
+    private fun isPredominantlyPersian(body: String): Boolean {
+        val persian = body.count { it in '\u0600'..'\u06FF' && it.isLetter() }
+        val latin = body.count { it in 'a'..'z' || it in 'A'..'Z' }
+        return persian >= 3 && persian > latin
+    }
+
+    private fun extractOtp(body: String, categoryId: String): String? {
+        val candidates = Regex("(?<![0-9۰-۹٠-٩])[0-9۰-۹٠-٩]{4,8}(?![0-9۰-۹٠-٩])")
+            .findAll(body).toList()
+        val hinted = candidates.firstOrNull { candidate ->
+            val before = body.substring(0, candidate.range.first).takeLast(45)
+            Regex("(?i)(otp|code|verification|password|رمز|کد|تایید|تأیید|احراز)")
+                .containsMatchIn(before)
+        }
+        val match = hinted ?: if (categoryId == Cat.OTP) candidates.singleOrNull() else null
+        return match?.value?.map { char ->
+            when (char) {
+                in '۰'..'۹' -> '0' + (char - '۰')
+                in '٠'..'٩' -> '0' + (char - '٠')
+                else -> char
+            }
+        }?.joinToString("")
     }
 
     fun cancel(threadId: Long) {
