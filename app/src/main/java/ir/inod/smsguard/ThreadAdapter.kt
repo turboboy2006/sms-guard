@@ -484,6 +484,9 @@ class ThreadAdapter(
             if (selectionCount > 0) toggleSelection(item) else onAvatarClick(item)
         }
         holder.itemView.setOnLongClickListener {
+            holder.itemView.animate().cancel()
+            holder.itemView.alpha = 0.88f
+            holder.itemView.animate().alpha(1f).setDuration(140).start()
             onLongClick(item)
             true
         }

@@ -15,6 +15,7 @@ object SafeLinkPreview {
 
     private val cache = ConcurrentHashMap<String, Card>()
     private val pending = ConcurrentHashMap.newKeySet<String>()
+    private val listeners = HashMap<String, MutableList<(Card?) -> Unit>>()
     private val workers = Executors.newFixedThreadPool(2)
 
     fun candidate(context: Context, message: SmsMessage): String? {
@@ -38,12 +39,19 @@ object SafeLinkPreview {
 
     fun request(url: String, callback: (Card?) -> Unit) {
         cache[url]?.let { callback(it); return }
-        if (!pending.add(url)) return
+        synchronized(listeners) {
+            listeners.getOrPut(url) { mutableListOf() }.add(callback)
+            if (!pending.add(url)) return
+        }
         workers.execute {
             val card = fetch(url)
             if (card != null) cache[url] = card
-            pending.remove(url)
-            callback(card)
+            val callbacks = synchronized(listeners) {
+                val registered = listeners.remove(url).orEmpty()
+                pending.remove(url)
+                registered
+            }
+            callbacks.forEach { it(card) }
         }
     }
 
