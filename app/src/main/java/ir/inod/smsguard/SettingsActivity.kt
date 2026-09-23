@@ -231,10 +231,23 @@ class SettingsActivity : BaseActivity() {
         fun select(index: Int) {
             groups.flatten().distinct().forEach { it.visibility = View.GONE }
             groups[index].forEach { it.visibility = View.VISIBLE }
+            binding.buttonSave.visibility = if (index == 0 || index == 3) View.VISIBLE else View.GONE
+            (column.parent as android.widget.ScrollView).post {
+                (column.parent as android.widget.ScrollView).scrollTo(0, 0)
+            }
             // Each tab owns its own card; no controls are reused across tabs.
         }
+        var currentTab = 0
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab) = select(tab.position)
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                if (tab.position == 2) {
+                    tabs.getTabAt(currentTab)?.select()
+                    startActivity(Intent(this@SettingsActivity, CategoriesActivity::class.java))
+                } else {
+                    currentTab = tab.position
+                    select(tab.position)
+                }
+            }
             override fun onTabUnselected(tab: TabLayout.Tab) = Unit
             override fun onTabReselected(tab: TabLayout.Tab) = Unit
         })

@@ -15,6 +15,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /** The same sender destination is used by the conversation header and inbox avatar. */
@@ -23,18 +24,26 @@ class ContactDetailsActivity : BaseActivity() {
     private lateinit var address: String
     private val sender by lazy { SenderStore(this) }
     private lateinit var panel: LinearLayout
+    private lateinit var actionContainer: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         address = intent.getStringExtra(EXTRA_ADDRESS).orEmpty()
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(ContextCompat.getColor(this@ContactDetailsActivity, R.color.screen_bg))
+        }
+        root.addView(SecondaryUi.toolbar(this, ContactNames.displayNameUi(address)) { finish() },
+            LinearLayout.LayoutParams(-1, SecondaryUi.px(this, R.dimen.appbar_height)))
         val scroll = ScrollView(this)
         panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            val pad = dp(20)
-            setPadding(pad, dp(12), pad, pad)
+            val pad = SecondaryUi.px(this@ContactDetailsActivity, R.dimen.gutter)
+            setPadding(pad, SecondaryUi.px(this@ContactDetailsActivity, R.dimen.space_12), pad, pad)
         }
         scroll.addView(panel)
-        setContentView(scroll)
+        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        setContentView(root)
         draw()
     }
 
@@ -43,13 +52,13 @@ class ContactDetailsActivity : BaseActivity() {
 
     private fun draw() {
         panel.removeAllViews()
-        action(label("بازگشت", "Back"), R.drawable.ic_arrow_up) { finish() }
         val photo = ContactsIndex.photo(this, address)
         panel.addView(ImageView(this).apply {
             layoutParams = LinearLayout.LayoutParams(dp(92), dp(92)).apply { gravity = Gravity.CENTER_HORIZONTAL }
             if (photo != null) setImageDrawable(BitmapDrawable(resources, photo))
             else setImageResource(R.drawable.ic_person)
             background = AvatarHelper.circle(ThemePrefs(this@ContactDetailsActivity).accentColor())
+            clipToOutline = true
             setPadding(dp(16), dp(16), dp(16), dp(16))
         })
         panel.addView(TextView(this).apply {
@@ -64,6 +73,7 @@ class ContactDetailsActivity : BaseActivity() {
             setTextColor(ContextCompat.getColor(this@ContactDetailsActivity, R.color.text_secondary))
             setOnClickListener { openContacts() }
         })
+        section(label("اقدام‌های سریع", "Quick actions"))
         action(label("شماره در مخاطبین", "View number in Contacts"), R.drawable.ic_person) { openContacts() }
         action(getString(R.string.call_sender), R.drawable.ic_cat_mobile) {
             startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${Uri.encode(address)}")))
@@ -72,6 +82,7 @@ class ContactDetailsActivity : BaseActivity() {
             startActivity(Intent(this, SearchActivity::class.java)
                 .putExtra(SearchActivity.EXTRA_INITIAL_QUERY, address))
         }
+        section(label("پیام‌ها و اعلان‌ها", "Messages and notifications"))
         action(getString(R.string.sender_reply_sim), R.drawable.ic_send) { chooseSim() }
         action(getString(if (sender.notificationsMuted(address)) R.string.enable_notifications else R.string.mute_notifications),
             R.drawable.ic_tab_service) {
@@ -90,6 +101,7 @@ class ContactDetailsActivity : BaseActivity() {
             }) { index -> sender.setCategory(address, cats[index].id); Classifier.invalidateCaches();
                 ThreadCache.clear(this); draw() }
         }
+        section(label("مدیریت گفتگو", "Conversation management"))
         action(getString(if (sender.isArchived(address)) R.string.unarchive else R.string.archive), R.drawable.ic_archive) {
             sender.setArchived(address, !sender.isArchived(address)); draw()
         }
@@ -104,14 +116,32 @@ class ContactDetailsActivity : BaseActivity() {
         }
     }
 
+    private fun section(title: String) {
+        panel.addView(TextView(this).apply {
+            text = title
+            setTextAppearance(R.style.TextAppearance_SmsGuard_Group)
+        }, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = SecondaryUi.px(this@ContactDetailsActivity, R.dimen.space_24)
+            bottomMargin = SecondaryUi.px(this@ContactDetailsActivity, R.dimen.space_8)
+        })
+        actionContainer = SecondaryUi.cardContent(this)
+        panel.addView(SecondaryUi.listCard(this).apply { addView(actionContainer) },
+            LinearLayout.LayoutParams(-1, -2))
+    }
+
     private fun action(title: String, icon: Int, run: () -> Unit) {
-        panel.addView(MaterialButton(this).apply {
+        actionContainer.addView(MaterialButton(this, null,
+            com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
             text = title
             setIconResource(icon)
             iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
-            iconPadding = dp(12)
+            iconPadding = SecondaryUi.px(this@ContactDetailsActivity, R.dimen.space_12)
+            minHeight = SecondaryUi.px(this@ContactDetailsActivity, R.dimen.touch_target)
+            gravity = Gravity.START or Gravity.CENTER_VERTICAL
             setOnClickListener { run() }
-        }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
+        }, LinearLayout.LayoutParams(-1, -2).apply {
+            bottomMargin = SecondaryUi.px(this@ContactDetailsActivity, R.dimen.space_4)
+        })
     }
 
     private fun chooseSim() {

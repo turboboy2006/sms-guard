@@ -316,16 +316,20 @@ class ThreadAdapter(
         b.textDelivery.visibility = if (item.delivery == null) View.GONE else View.VISIBLE
         b.textDelivery.text = when (item.delivery) {
             DeliveryState.DELIVERED -> ""
-            DeliveryState.SENT -> "✓"
+            DeliveryState.SENT -> ""
             DeliveryState.FAILED -> "!"
             DeliveryState.SENDING -> "…"
             else -> ""
         }
         b.textDelivery.setCompoundDrawablesWithIntrinsicBounds(
-            if (item.delivery == DeliveryState.DELIVERED) R.drawable.ic_double_check else 0,
+            when (item.delivery) {
+                DeliveryState.SENT -> R.drawable.ic_single_check
+                DeliveryState.DELIVERED -> R.drawable.ic_double_check
+                else -> 0
+            },
             0, 0, 0)
         b.textDelivery.setTextColor(ContextCompat.getColor(context, when (item.delivery) {
-            DeliveryState.DELIVERED -> R.color.success
+            DeliveryState.SENT, DeliveryState.DELIVERED -> R.color.success
             DeliveryState.FAILED -> R.color.danger
             else -> R.color.text_muted
         }))

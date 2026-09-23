@@ -219,8 +219,8 @@ class MessageAdapter(
         if (!item.isIncoming) {
             status.text = when (item.delivery) {
                 DeliveryState.SENDING -> "◷"
-                DeliveryState.SENT -> "✓"
-                DeliveryState.DELIVERED -> "✓\u200A✓"
+                DeliveryState.SENT -> ""
+                DeliveryState.DELIVERED -> ""
                 DeliveryState.FAILED -> "!"
                 DeliveryState.RECEIVED -> ""
             }
@@ -236,10 +236,18 @@ class MessageAdapter(
                 DeliveryState.FAILED -> androidx.core.content.ContextCompat.getColor(context, R.color.danger)
                 else -> androidx.core.content.ContextCompat.getColor(context, R.color.text_muted)
             })
+            status.setCompoundDrawablesWithIntrinsicBounds(when (item.delivery) {
+                DeliveryState.SENT -> R.drawable.ic_single_check
+                DeliveryState.DELIVERED -> R.drawable.ic_double_check
+                else -> 0
+            }, 0, 0, 0)
             status.setOnClickListener {
                 if (item.delivery == DeliveryState.FAILED) onRetry(item)
             }
-        } else status.setOnClickListener(null)
+        } else {
+            status.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
+            status.setOnClickListener(null)
+        }
         TextDir.apply(bubble, item.body)
 
         // Type and colour: two independent knobs, so a large font does not

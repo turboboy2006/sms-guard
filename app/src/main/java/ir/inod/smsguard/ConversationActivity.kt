@@ -470,6 +470,11 @@ class ConversationActivity : BaseActivity() {
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         val selecting = ::adapter.isInitialized && adapter.selectionCount > 0
+        val iconInk = android.content.res.ColorStateList.valueOf(
+            ContextCompat.getColor(this, R.color.text_primary))
+        listOf(MENU_SPAM_SELECTED, MENU_DELETE_SELECTED, MENU_TRASH_THREAD).forEach { id ->
+            menu.findItem(id)?.iconTintList = iconInk
+        }
         menu.findItem(MENU_NEW_MESSAGE)?.isVisible = !selecting
         menu.findItem(MENU_BLOCK_SENDER)?.isVisible = !selecting
         menu.findItem(MENU_SPAM_SELECTED)?.isVisible = selecting

@@ -736,6 +736,11 @@ class MainActivity : BaseActivity() {
 
     override fun onPrepareOptionsMenu(menu: android.view.Menu): Boolean {
         val selecting = ::adapter.isInitialized && adapter.selectionCount > 0
+        val iconInk = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.text_primary))
+        listOf(MENU_MARK_READ, MENU_BULK_SPAM, MENU_BULK_TRASH,
+            MENU_BULK_RESTORE, MENU_SEARCH, MENU_MORE).forEach { id ->
+            menu.findItem(id)?.iconTintList = iconInk
+        }
         listOf(MENU_MARK_READ, MENU_BULK_SPAM, MENU_BULK_TRASH).forEach {
             menu.findItem(it)?.isVisible = selecting
         }
