@@ -641,6 +641,16 @@ class CategoryStore(context: Context) {
 
     fun byId(id: String): Category? = all().firstOrNull { it.id == id }
 
+    fun disabledDestination(id: String): String? =
+        prefs.getString("disabled_destination_$id", null)
+
+    fun setDisabledDestination(id: String, destination: String?) {
+        prefs.edit().apply {
+            if (destination == null) remove("disabled_destination_$id")
+            else putString("disabled_destination_$id", destination)
+        }.apply()
+    }
+
     fun updateAny(category: Category) {
         if (!category.isSystem) { update(category); return }
         val root = runCatching { JSONObject(prefs.getString(SYSTEM_KEY, "{}") ?: "{}") }

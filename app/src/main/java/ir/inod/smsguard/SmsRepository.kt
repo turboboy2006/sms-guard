@@ -21,6 +21,11 @@ class SmsRepository(private val context: Context) {
     /** Categories are resolved once per distinct sender during a load. */
     private val categoryCache = HashMap<String, String>()
     private val colorCache = HashMap<String, String>()
+    private val categories by lazy { CategoryStore(context) }
+
+    private fun activeCategory(id: String, active: Set<String>): String =
+        if (id in active) id else categories.disabledDestination(id)
+            ?.takeIf { it in active } ?: Cat.OTHER
 
     /**
      * Loads the conversation list, reusing [ThreadCache] for everything that has
@@ -93,7 +98,7 @@ class SmsRepository(private val context: Context) {
                         val body = c.getString(iBody) ?: ""
                         val previous = if (cacheCurrent) cachedById[threadId] else null
                         val rawCategory = previous?.categoryId ?: categoryFor(address, body, messageId)
-                        val categoryId = rawCategory.takeIf { it in activeCategories } ?: Cat.OTHER
+                        val categoryId = activeCategory(rawCategory, activeCategories)
                         byThread[threadId] = ThreadSummary(
                             threadId = threadId,
                             messageId = messageId,
@@ -151,7 +156,7 @@ class SmsRepository(private val context: Context) {
         CategoryStore(context).active().mapTo(HashSet()) { it.id }.let { active ->
             ThreadCache.read(context).map { cached ->
                 cached.toSummary().let { row ->
-                    if (row.categoryId in active) row else row.copy(categoryId = Cat.OTHER)
+                    if (row.categoryId in active) row else row.copy(categoryId = activeCategory(row.categoryId, active))
                 }
             }
         }
@@ -212,8 +217,7 @@ class SmsRepository(private val context: Context) {
                     val id = c.getLong(iId)
                     val address = c.getString(iAddr) ?: ""
                     val body = c.getString(iBody) ?: ""
-                    val category = categoryFor(address, body, id)
-                        .takeIf { it in activeCategories } ?: Cat.OTHER
+                    val category = activeCategory(categoryFor(address, body, id), activeCategories)
                     if (categoryId != null && category != categoryId) continue
                     out += ThreadSummary(
                         threadId = threadId,

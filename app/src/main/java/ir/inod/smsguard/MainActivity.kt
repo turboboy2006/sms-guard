@@ -212,9 +212,11 @@ class MainActivity : BaseActivity() {
         // file can be at its largest.
         val preview = ThreadCache.readPreview(this)
         if (preview.isNotEmpty()) {
-            val active = CategoryStore(this).active().mapTo(HashSet()) { it.id }
+            val categoryStore = CategoryStore(this)
+            val active = categoryStore.active().mapTo(HashSet()) { it.id }
             allThreads = preview.map { cached -> cached.toSummary().let { row ->
-                if (row.categoryId in active) row else row.copy(categoryId = Cat.OTHER)
+                if (row.categoryId in active) row else row.copy(categoryId =
+                    categoryStore.disabledDestination(row.categoryId)?.takeIf { it in active } ?: Cat.OTHER)
             } }
             applyFilter()
         }
@@ -682,12 +684,16 @@ class MainActivity : BaseActivity() {
         menu.add(0, MENU_SETTINGS, 8, R.string.settings)
             .setIcon(R.drawable.ic_settings)
         menu.add(0, MENU_MARK_READ, 0, R.string.mark_read)
+            .setIcon(R.drawable.ic_mark_read)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_BULK_SPAM, 1, R.string.mark_spam)
+            .setIcon(R.drawable.ic_tab_spam)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_BULK_TRASH, 2, R.string.move_to_trash)
+            .setIcon(R.drawable.ic_tab_trash)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_BULK_RESTORE, 3, R.string.restore_from_trash)
+            .setIcon(R.drawable.ic_archive)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_SELECTION_MORE, 4, R.string.more_actions)
             .setIcon(R.drawable.ic_more)

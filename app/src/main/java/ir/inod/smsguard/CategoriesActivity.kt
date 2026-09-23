@@ -86,6 +86,7 @@ class CategoriesActivity : BaseActivity() {
             .setSingleChoiceItems(destinations.map { it.label(this) }.toTypedArray(),
                 destinations.indexOfFirst { it.id == Cat.OTHER }.coerceAtLeast(0)) { dialog, selected ->
                 val target = destinations[selected].id
+                store.setDisabledDestination(category.id, target)
                 SenderStore(this).reassignCategory(category.id, target)
                 val overrides = MessageCategoryStore(this)
                 val migrated = overrides.all().mapValues { (_, value) -> if (value == category.id) target else value }
@@ -99,6 +100,7 @@ class CategoriesActivity : BaseActivity() {
     }
 
     private fun setEnabled(category: Category, enabled: Boolean) {
+        if (enabled) store.setDisabledDestination(category.id, null)
         store.updateAny(category.copy(enabled = enabled))
         Classifier.invalidateCaches()
         ThreadCache.clear(this)

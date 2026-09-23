@@ -94,13 +94,25 @@ class SearchActivity : BaseActivity() {
         }
         binding.progress.visibility = View.VISIBLE
         adapter.setHighlightQuery(query)
+        if (query.length >= 2 && sim < 0) {
+            val preview = ThreadCache.readPreview(this, 80).map { it.toSummary() }.filter { row ->
+                (category == null || row.categoryId == category) && row.date >= since &&
+                    (row.address.contains(query, true) || row.snippet.contains(query, true) ||
+                        ContactNames.displayNameUi(row.address).contains(query, true))
+            }
+            if (preview.isNotEmpty()) {
+                adapter.merge(preview)
+                showCount(preview.size, true)
+                binding.textEmpty.visibility = View.GONE
+            }
+        }
         worker.execute {
             val rows = repo.searchThreads(query, categoryId = category, since = since,
                 subscriptionId = sim, onProgress = { partial ->
                     main.post {
                         if (token != generation || isFinishing || isDestroyed) return@post
                         binding.progress.visibility = View.GONE
-                        adapter.submit(partial)
+                        adapter.merge(partial)
                         showCount(partial.size, true)
                         binding.textEmpty.visibility = View.GONE
                     }
@@ -108,7 +120,7 @@ class SearchActivity : BaseActivity() {
             main.post {
                 if (token != generation || isFinishing || isDestroyed) return@post
                 binding.progress.visibility = View.GONE
-                adapter.submit(rows)
+                adapter.merge(rows)
                 showCount(rows.size, false)
                 binding.textEmpty.setText(R.string.search_no_results)
                 binding.textEmpty.visibility = if (rows.isEmpty()) View.VISIBLE else View.GONE

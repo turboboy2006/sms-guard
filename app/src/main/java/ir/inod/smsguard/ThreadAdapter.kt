@@ -380,7 +380,15 @@ class ThreadAdapter(
                     height = avatarSize
                 }
             }
-            bindAvatar(context, b, item, display)
+            if (key(item) in selectedIds) {
+                b.avatar.background = AvatarHelper.circle(ContextCompat.getColor(context, R.color.colorPrimary))
+                b.avatarImage.visibility = View.GONE
+                b.avatarLetter.text = "✓"
+                b.avatarLetter.setTextColor(android.graphics.Color.WHITE)
+            } else {
+                b.avatarImage.visibility = View.VISIBLE
+                bindAvatar(context, b, item, display)
+            }
         }
 
         // --- badge ----------------------------------------------------------
@@ -442,7 +450,9 @@ class ThreadAdapter(
             if (layout.showDividers && layout.style != RowStyle.CARD) View.VISIBLE else View.GONE
 
         holder.itemView.setOnClickListener { onClick(item) }
-        b.avatar.setOnClickListener { onAvatarClick(item) }
+        b.avatar.setOnClickListener {
+            if (selectionCount > 0) toggleSelection(item) else onAvatarClick(item)
+        }
         holder.itemView.setOnLongClickListener {
             onLongClick(item)
             true
