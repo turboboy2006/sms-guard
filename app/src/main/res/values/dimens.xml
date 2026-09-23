@@ -27,6 +27,7 @@
     <!-- Content -->
     <dimen name="gutter">16dp</dimen>
     <dimen name="avatar">48dp</dimen>
+    <dimen name="preview_avatar">72dp</dimen>
     <!-- A conversation row reads as a summary, not as a message: 84dp fits a
          name, two lines of preview and a category pill, and 96dp is the
          ceiling. Measured against the reference, which is tighter than it

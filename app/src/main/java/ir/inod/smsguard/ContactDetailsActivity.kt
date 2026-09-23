@@ -175,33 +175,60 @@ class ContactDetailsActivity : BaseActivity() {
 
 object ContactPreview {
     fun show(activity: android.app.Activity, address: String) {
-        val density = activity.resources.displayMetrics.density
         val body = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            val pad = (18 * density).toInt()
+            val pad = SecondaryUi.px(activity, R.dimen.space_16)
             setPadding(pad, pad, pad, pad)
         }
         val photo = ContactsIndex.photo(activity, address)
         body.addView(ImageView(activity).apply {
-            layoutParams = LinearLayout.LayoutParams((72*density).toInt(), (72*density).toInt())
+            val avatar = SecondaryUi.px(activity, R.dimen.preview_avatar)
+            layoutParams = LinearLayout.LayoutParams(avatar, avatar)
             if (photo != null) setImageDrawable(BitmapDrawable(activity.resources, photo))
             else setImageResource(R.drawable.ic_person)
+            background = AvatarHelper.circle(ThemePrefs(activity).accentColor())
+            clipToOutline = true
         })
         body.addView(TextView(activity).apply {
             text = ContactNames.displayNameUi(address)
-            textSize = 19f; gravity = Gravity.CENTER
-            setPadding(0, (12*density).toInt(), 0, 0)
+            setTextAppearance(R.style.TextAppearance_SmsGuard_Title)
+            gravity = Gravity.CENTER
+            setPadding(0, SecondaryUi.px(activity, R.dimen.space_12), 0, 0)
         })
-        body.addView(TextView(activity).apply { text = address; gravity = Gravity.CENTER })
-        MaterialAlertDialogBuilder(activity).setView(body)
-            .setPositiveButton(if (Dates.isPersian(activity)) "جزئیات" else "Details") { _, _ ->
+        body.addView(TextView(activity).apply {
+            text = address
+            gravity = Gravity.CENTER
+            setTextAppearance(R.style.TextAppearance_SmsGuard_Label)
+        })
+        val dialog = MaterialAlertDialogBuilder(activity).setView(body)
+            .setNegativeButton(R.string.close, null).create()
+        val actions = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        actions.addView(MaterialButton(activity).apply {
+            text = activity.getString(R.string.call_sender)
+            setIconResource(R.drawable.ic_cat_mobile)
+            setOnClickListener {
+                dialog.dismiss()
+                activity.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${Uri.encode(address)}")))
+            }
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        actions.addView(MaterialButton(activity).apply {
+            text = if (Dates.isPersian(activity)) "جزئیات" else "Details"
+            setIconResource(R.drawable.ic_person)
+            setOnClickListener {
+                dialog.dismiss()
                 activity.startActivity(Intent(activity, ContactDetailsActivity::class.java)
                     .putExtra(ContactDetailsActivity.EXTRA_ADDRESS, address))
             }
-            .setNeutralButton(R.string.call_sender) { _, _ ->
-                activity.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${Uri.encode(address)}")))
-            }
-            .setNegativeButton(R.string.close, null).show()
+        }, LinearLayout.LayoutParams(0, -2, 1f).apply {
+            marginStart = SecondaryUi.px(activity, R.dimen.space_8)
+        })
+        body.addView(actions, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = SecondaryUi.px(activity, R.dimen.space_16)
+        })
+        dialog.show()
     }
 }
