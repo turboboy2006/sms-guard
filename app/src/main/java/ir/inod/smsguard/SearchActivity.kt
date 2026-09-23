@@ -24,7 +24,7 @@ class SearchActivity : BaseActivity() {
     private val worker = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private val repo by lazy { SmsRepository(this) }
-    private var generation = 0
+    @Volatile private var generation = 0
     private var categories: List<Category?> = listOf(null)
     private var simIds: List<Int> = listOf(-1)
     private val searchRunnable = Runnable { search(binding.editSearch.text?.toString().orEmpty()) }
@@ -107,6 +107,7 @@ class SearchActivity : BaseActivity() {
             }
         }
         worker.execute {
+            if (token != generation) return@execute
             val rows = repo.searchThreads(query, categoryId = category, since = since,
                 subscriptionId = sim, onProgress = { partial ->
                     main.post {
@@ -116,7 +117,7 @@ class SearchActivity : BaseActivity() {
                         showCount(partial.size, true)
                         binding.textEmpty.visibility = View.GONE
                     }
-                })
+                }, shouldStop = { token != generation })
             main.post {
                 if (token != generation || isFinishing || isDestroyed) return@post
                 binding.progress.visibility = View.GONE

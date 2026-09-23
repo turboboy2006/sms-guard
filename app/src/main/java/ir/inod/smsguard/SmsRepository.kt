@@ -169,7 +169,8 @@ class SmsRepository(private val context: Context) {
         categoryId: String? = null,
         since: Long = 0L,
         subscriptionId: Int = -1,
-        onProgress: ((List<ThreadSummary>) -> Unit)? = null
+        onProgress: ((List<ThreadSummary>) -> Unit)? = null,
+        shouldStop: () -> Boolean = { false }
     ): List<ThreadSummary> {
         val needle = query.trim()
         val out = ArrayList<ThreadSummary>()
@@ -182,6 +183,7 @@ class SmsRepository(private val context: Context) {
             "sub_id"
         )
         try {
+            if (shouldStop()) return emptyList()
             val clauses = mutableListOf<String>()
             val args = mutableListOf<String>()
             if (needle.isNotEmpty()) {
@@ -192,6 +194,7 @@ class SmsRepository(private val context: Context) {
                     ContactsIndex.search(needle, 20).map { it.digits.takeLast(7) }
                         .filter { it.length == 7 }.distinct()
                 }.getOrDefault(emptyList())
+                if (shouldStop()) return emptyList()
                 val addressMatches = contactNumbers.joinToString("") { " OR ${Telephony.Sms.ADDRESS} LIKE ?" }
                 clauses += "(${Telephony.Sms.BODY} LIKE ? OR ${Telephony.Sms.ADDRESS} LIKE ?$addressMatches)"
                 args += "%$needle%"; args += "%$needle%"
@@ -214,7 +217,7 @@ class SmsRepository(private val context: Context) {
                 val iRead = c.getColumnIndexOrThrow(Telephony.Sms.READ)
                 val iType = c.getColumnIndexOrThrow(Telephony.Sms.TYPE)
                 val iStatus = c.getColumnIndex(Telephony.Sms.STATUS)
-                while (c.moveToNext() && out.size < resultLimit) {
+                while (!shouldStop() && c.moveToNext() && out.size < resultLimit) {
                     val threadId = c.getLong(iThread)
                     val id = c.getLong(iId)
                     val address = c.getString(iAddr) ?: ""
