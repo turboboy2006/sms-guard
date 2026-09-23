@@ -233,7 +233,7 @@ class AppearanceActivity : BaseActivity() {
         binding.sliderSurfaceOpacity.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 theme.surfaceOpacity = value.toInt(); theme.touch()
-                BackgroundRenderer.apply(binding.preview, this, theme.backgroundStyle, theme.backgroundImageUri, theme.backgroundPreset)
+                refresh()
             }
         }
         binding.sliderRowPadding.value = theme.rowPadding.toFloat()

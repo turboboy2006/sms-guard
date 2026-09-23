@@ -54,6 +54,13 @@ jobs:
           SMS_GUARD_KEY_PASSWORD: ${{ secrets.SMS_GUARD_KEY_PASSWORD }}
         run: gradle assembleRelease --no-daemon --stacktrace
 
+      - name: Verify release signature
+        run: |
+          set -e
+          APK_SIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          test -n "$APK_SIGNER"
+          "$APK_SIGNER" verify --verbose app/build/outputs/apk/release/app-release.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
