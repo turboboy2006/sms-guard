@@ -34,10 +34,10 @@ class SavedMessagesActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(ContextCompat.getColor(this@SavedMessagesActivity, R.color.screen_bg)) }
-        toolbar = MaterialToolbar(this).apply { title = getString(R.string.saved_messages); setNavigationIcon(R.drawable.ic_chevron); setNavigationOnClickListener { finish() } }
-        root.addView(toolbar, LinearLayout.LayoutParams(-1, dp(64)))
-        search = EditText(this).apply { hint = getString(R.string.search_hint); setSingleLine(true); setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0); compoundDrawablePadding = dp(10); setPadding(dp(18), dp(5), dp(18), dp(5)) }
-        root.addView(search, LinearLayout.LayoutParams(-1, dp(52)))
+        toolbar = SecondaryUi.toolbar(this, getString(R.string.saved_messages)) { finish() }
+        root.addView(toolbar, LinearLayout.LayoutParams(-1, SecondaryUi.px(this, R.dimen.appbar_height)))
+        search = SecondaryUi.search(this)
+        root.addView(search, LinearLayout.LayoutParams(-1, SecondaryUi.px(this, R.dimen.search_height)))
         val tabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(12), dp(4), dp(12), dp(8)) }
         allTab = tab(getString(R.string.saved_messages), R.drawable.ic_pin) { starredOnly = false; render() }
         starredTab = tab(getString(R.string.starred), R.drawable.ic_star) { starredOnly = true; render() }
@@ -49,7 +49,7 @@ class SavedMessagesActivity : BaseActivity() {
             onDelete = ::deleteOne, onSelection = { count -> toolbar.title = if (count > 0) Dates.count(this, count) else getString(R.string.saved_messages); invalidateOptionsMenu() }
         )
         frame.addView(RecyclerView(this).apply { layoutManager = LinearLayoutManager(this@SavedMessagesActivity); adapter = this@SavedMessagesActivity.adapter; clipToPadding = false; setPadding(dp(12), dp(4), dp(12), dp(88)) }, FrameLayout.LayoutParams(-1, -1))
-        empty = TextView(this).apply { gravity = Gravity.CENTER; textSize = 16f; setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_star, 0, 0); compoundDrawablePadding = dp(14); setPadding(dp(24), dp(60), dp(24), dp(60)) }
+        empty = SecondaryUi.empty(this, R.drawable.ic_star)
         frame.addView(empty, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER)); root.addView(frame, LinearLayout.LayoutParams(-1, 0, 1f))
         val compose = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(10), dp(6), dp(10), dp(6)); setBackgroundColor(ContextCompat.getColor(this@SavedMessagesActivity, R.color.card_bg)) }
         val note = EditText(this).apply { hint = getString(R.string.saved_note_hint); maxLines = 4; background = null }; compose.addView(note, LinearLayout.LayoutParams(0, -2, 1f))
@@ -83,15 +83,12 @@ class SavedMessagesActivity : BaseActivity() {
             fun action(icon: Int, description: Int) = MaterialButton(context).apply {
                 text = ""; setIconResource(icon); contentDescription = context.getString(description)
             }
-            val card = MaterialCardView(context).apply {
-                radius = dp(18).toFloat(); strokeWidth = dp(1)
-                layoutParams = RecyclerView.LayoutParams(-1, -2).apply { bottomMargin = dp(8) }
-            }
-            val box = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(12), dp(10), dp(8)) }
-            val title = TextView(context).apply { textSize = 16f; setTypeface(null, 1) }
-            val meta = TextView(context).apply { textSize = 12f; setTextColor(ContextCompat.getColor(context, R.color.text_secondary)) }
-            val body = TextView(context).apply { textSize = 16f; setPadding(dp(10), dp(8), dp(10), dp(8)); textDirection = View.TEXT_DIRECTION_FIRST_STRONG }
-            val note = TextView(context).apply { textSize = 14f; setPadding(dp(10), dp(6), dp(10), dp(6)); textDirection = View.TEXT_DIRECTION_FIRST_STRONG }
+            val card = SecondaryUi.listCard(context)
+            val box = SecondaryUi.cardContent(context)
+            val title = TextView(context).apply { setTextAppearance(R.style.TextAppearance_SmsGuard_Title) }
+            val meta = TextView(context).apply { setTextAppearance(R.style.TextAppearance_SmsGuard_Label) }
+            val body = TextView(context).apply { setTextAppearance(R.style.TextAppearance_SmsGuard_Body); setPadding(dp(8), dp(8), dp(8), dp(8)); textDirection = View.TEXT_DIRECTION_FIRST_STRONG }
+            val note = TextView(context).apply { setTextAppearance(R.style.TextAppearance_SmsGuard_Label); setPadding(dp(8), dp(4), dp(8), dp(4)); textDirection = View.TEXT_DIRECTION_FIRST_STRONG }
             val actions = LinearLayout(context)
             val star = action(R.drawable.ic_star, R.string.starred)
             val edit = action(R.drawable.ic_compose, R.string.note_optional)

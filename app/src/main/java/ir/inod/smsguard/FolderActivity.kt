@@ -45,20 +45,11 @@ class FolderActivity : BaseActivity() {
         val density = resources.displayMetrics.density
         fun dp(v: Int) = (v * density).toInt()
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val toolbar = MaterialToolbar(this).apply {
-            title = getString(if (folder == TRASH) R.string.tab_trash else R.string.archived)
-            setNavigationIcon(R.drawable.ic_chevron)
-            setNavigationOnClickListener { finish() }
-        }
-        root.addView(toolbar, LinearLayout.LayoutParams(-1, dp(64)))
-        search = EditText(this).apply {
-            hint = getString(R.string.search_hint)
-            setSingleLine(true)
-            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
-            compoundDrawablePadding = dp(10)
-            setPadding(dp(18), dp(8), dp(18), dp(8))
-        }
-        root.addView(search, LinearLayout.LayoutParams(-1, dp(54)))
+        val toolbar = SecondaryUi.toolbar(this,
+            getString(if (folder == TRASH) R.string.tab_trash else R.string.archived)) { finish() }
+        root.addView(toolbar, LinearLayout.LayoutParams(-1, SecondaryUi.px(this, R.dimen.appbar_height)))
+        search = SecondaryUi.search(this)
+        root.addView(search, LinearLayout.LayoutParams(-1, SecondaryUi.px(this, R.dimen.search_height)))
         val frame = FrameLayout(this)
         val recycler = androidx.recyclerview.widget.RecyclerView(this).apply {
             layoutManager = LinearLayoutManager(this@FolderActivity)
@@ -76,13 +67,8 @@ class FolderActivity : BaseActivity() {
             }
         ).also { it.applyLayout(ThemePrefs(this).snapshot()) }
         recycler.adapter = adapter
-        empty = android.widget.TextView(this).apply {
-            gravity = android.view.Gravity.CENTER
-            textSize = 16f
-            setCompoundDrawablesWithIntrinsicBounds(0, if (folder == TRASH) R.drawable.ic_tab_trash else R.drawable.ic_archive, 0, 0)
-            compoundDrawablePadding = dp(14)
-            setPadding(dp(24), dp(60), dp(24), dp(60))
-        }
+        empty = SecondaryUi.empty(this,
+            if (folder == TRASH) R.drawable.ic_tab_trash else R.drawable.ic_archive)
         frame.addView(recycler, FrameLayout.LayoutParams(-1, -1))
         frame.addView(empty, FrameLayout.LayoutParams(-1, -2, android.view.Gravity.CENTER))
         root.addView(frame, LinearLayout.LayoutParams(-1, 0, 1f))

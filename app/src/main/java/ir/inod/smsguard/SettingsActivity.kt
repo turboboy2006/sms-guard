@@ -6,11 +6,14 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.LocaleListCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.tabs.TabLayout
 import ir.inod.smsguard.databinding.ActivitySettingsBinding
 
@@ -150,8 +153,45 @@ class SettingsActivity : BaseActivity() {
         val appearance = ((binding.rowAppearance.parent as View).parent as View)
         val general = ((binding.spinnerLanguage.parent as View).parent as View)
         val management = ((binding.buttonCategories.parent as View).parent as View)
-        val managementHeader = column.getChildAt(column.indexOfChild(management) - 1)
-            as? android.widget.TextView
+        val managementHeader = column.getChildAt(column.indexOfChild(management) - 1) as TextView
+        managementHeader.setText(R.string.manage_categories)
+        val managementContent = binding.buttonCategories.parent as LinearLayout
+        fun dedicatedSection(title: Int, buttons: List<View>): List<View> {
+            val header = TextView(this).apply {
+                setText(title)
+                setTextAppearance(R.style.TextAppearance_SmsGuard_Group)
+                layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                    topMargin = resources.getDimensionPixelSize(R.dimen.space_16)
+                }
+            }
+            val content = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                val padding = resources.getDimensionPixelSize(R.dimen.space_8)
+                setPadding(padding, padding, padding, padding)
+            }
+            buttons.forEach { button ->
+                managementContent.removeView(button)
+                content.addView(button)
+            }
+            val card = MaterialCardView(this).apply {
+                radius = resources.getDimension(R.dimen.radius_lg)
+                cardElevation = 0f
+                strokeWidth = resources.getDimensionPixelSize(R.dimen.space_2)
+                strokeColor = androidx.core.content.ContextCompat.getColor(this@SettingsActivity, R.color.divider)
+                addView(content)
+                layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                    topMargin = resources.getDimensionPixelSize(R.dimen.space_8)
+                }
+            }
+            val insertion = column.indexOfChild(binding.buttonSave)
+            column.addView(header, insertion)
+            column.addView(card, insertion + 1)
+            return listOf(header, card)
+        }
+        val dataSection = dedicatedSection(R.string.settings_tab_data, listOf(
+            binding.buttonBrands, binding.buttonRules, binding.buttonScheduled, binding.buttonSavedMessages))
+        val backupSection = dedicatedSection(R.string.settings_tab_backup, listOf(
+            binding.buttonExportBackup, binding.buttonImportBackup))
         val quiet = (binding.switchQuiet.parent as View).parent as View
         val ai = (binding.switchAi.parent as View).parent as View
         fun section(card: View): List<View> {
@@ -164,10 +204,10 @@ class SettingsActivity : BaseActivity() {
         val groups = listOf(
             section(general) + listOf(quiet),
             section(appearance),
-            section(management),
+            listOf(managementHeader, management),
             listOf(ai, offline),
-            listOf(cache) + section(management),
-            section(management)
+            listOf(cache) + dataSection,
+            backupSection
         )
         val tabs = TabLayout(this).apply {
             tabMode = TabLayout.MODE_SCROLLABLE
@@ -186,29 +226,7 @@ class SettingsActivity : BaseActivity() {
         fun select(index: Int) {
             groups.flatten().distinct().forEach { it.visibility = View.GONE }
             groups[index].forEach { it.visibility = View.VISIBLE }
-            managementHeader?.setText(when (index) {
-                2 -> R.string.manage_categories
-                5 -> R.string.settings_tab_backup
-                else -> R.string.settings_tab_data
-            })
-            // The management card is shared structurally, but its controls are
-            // not: categories and backup each get a focused tab instead of a
-            // long mixed list of unrelated actions.
-            val managementButtons = listOf(
-                binding.buttonCategories, binding.buttonBrands, binding.buttonRules,
-                binding.buttonScheduled, binding.buttonSavedMessages,
-                binding.buttonExportBackup, binding.buttonImportBackup
-            )
-            managementButtons.forEach { it.visibility = View.VISIBLE }
-            if (index == 2) {
-                managementButtons.filter { it != binding.buttonCategories }.forEach { it.visibility = View.GONE }
-            } else if (index == 4) {
-                listOf(binding.buttonCategories, binding.buttonExportBackup, binding.buttonImportBackup)
-                    .forEach { it.visibility = View.GONE }
-            } else if (index == 5) {
-                listOf(binding.buttonCategories, binding.buttonBrands, binding.buttonRules,
-                    binding.buttonScheduled, binding.buttonSavedMessages).forEach { it.visibility = View.GONE }
-            }
+            // Each tab owns its own card; no controls are reused across tabs.
         }
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) = select(tab.position)

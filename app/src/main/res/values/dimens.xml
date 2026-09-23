@@ -19,6 +19,7 @@
     <dimen name="radius_md">12dp</dimen>
     <dimen name="radius_lg">16dp</dimen>
     <dimen name="radius_pill">999dp</dimen>
+    <dimen name="card_stroke">1dp</dimen>
 
     <!-- Minimum accessible touch target -->
     <dimen name="touch_target">48dp</dimen>
@@ -33,6 +34,7 @@
     <dimen name="row_min_height">84dp</dimen>
     <dimen name="row_max_height">96dp</dimen>
     <dimen name="appbar_height">64dp</dimen>
+    <dimen name="search_height">52dp</dimen>
     <dimen name="chip_height">46dp</dimen>
     <dimen name="chip_padding_h">18dp</dimen>
     <dimen name="badge_height">24dp</dimen>

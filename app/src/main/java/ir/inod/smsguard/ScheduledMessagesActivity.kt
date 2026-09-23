@@ -28,10 +28,11 @@ class ScheduledMessagesActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(ContextCompat.getColor(this@ScheduledMessagesActivity,R.color.screen_bg))}
-        root.addView(MaterialToolbar(this).apply{title=getString(R.string.scheduled_messages);setNavigationIcon(R.drawable.ic_chevron);setNavigationOnClickListener{finish()}},LinearLayout.LayoutParams(-1,dp(64)))
+        root.addView(SecondaryUi.toolbar(this, getString(R.string.scheduled_messages)) { finish() },
+            LinearLayout.LayoutParams(-1, SecondaryUi.px(this, R.dimen.appbar_height)))
         val frame=FrameLayout(this); adapter=ScheduledAdapter(::sendNow,::cancel)
         frame.addView(RecyclerView(this).apply{layoutManager=LinearLayoutManager(this@ScheduledMessagesActivity);adapter=this@ScheduledMessagesActivity.adapter;clipToPadding=false;setPadding(dp(12),dp(8),dp(12),dp(20))},FrameLayout.LayoutParams(-1,-1))
-        empty=TextView(this).apply{gravity=Gravity.CENTER;textSize=16f;setCompoundDrawablesWithIntrinsicBounds(0,R.drawable.ic_calendar,0,0);compoundDrawablePadding=dp(14);setPadding(dp(24),dp(60),dp(24),dp(60))};frame.addView(empty,FrameLayout.LayoutParams(-1,-2,Gravity.CENTER));root.addView(frame,LinearLayout.LayoutParams(-1,0,1f))
+        empty=SecondaryUi.empty(this,R.drawable.ic_calendar);frame.addView(empty,FrameLayout.LayoutParams(-1,-2,Gravity.CENTER));root.addView(frame,LinearLayout.LayoutParams(-1,0,1f))
         root.addView(MaterialButton(this).apply {
             text = if (Dates.isPersian(this@ScheduledMessagesActivity)) "پیام زمان‌دار جدید" else "New scheduled message"
             setIconResource(R.drawable.ic_calendar)
@@ -95,14 +96,11 @@ class ScheduledMessagesActivity : BaseActivity() {
             val context = parent.context
             val density = context.resources.displayMetrics.density
             fun dp(value: Int) = (value * density).toInt()
-            val card = MaterialCardView(context).apply {
-                radius = dp(18).toFloat(); strokeWidth = dp(1)
-                layoutParams = RecyclerView.LayoutParams(-1, -2).apply { bottomMargin = dp(8) }
-            }
-            val box = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(12), dp(10), dp(8)) }
-            val title = TextView(context).apply { textSize = 16f; setTypeface(null, 1) }
-            val whenText = TextView(context).apply { textSize = 13f; setTextColor(ContextCompat.getColor(context, R.color.text_secondary)) }
-            val body = TextView(context).apply { textSize = 15f; setPadding(dp(10), dp(8), dp(10), dp(8)); textDirection = View.TEXT_DIRECTION_FIRST_STRONG }
+            val card = SecondaryUi.listCard(context)
+            val box = SecondaryUi.cardContent(context)
+            val title = TextView(context).apply { setTextAppearance(R.style.TextAppearance_SmsGuard_Title) }
+            val whenText = TextView(context).apply { setTextAppearance(R.style.TextAppearance_SmsGuard_Label) }
+            val body = TextView(context).apply { setTextAppearance(R.style.TextAppearance_SmsGuard_Body); setPadding(dp(8), dp(8), dp(8), dp(8)); textDirection = View.TEXT_DIRECTION_FIRST_STRONG }
             val actions = LinearLayout(context)
             val send = MaterialButton(context).apply { text = ""; setIconResource(R.drawable.ic_send); contentDescription = context.getString(R.string.send) }
             val cancel = MaterialButton(context).apply { text = ""; setIconResource(R.drawable.ic_tab_trash); contentDescription = context.getString(R.string.cancel_scheduled) }
