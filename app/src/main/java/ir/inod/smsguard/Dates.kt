@@ -50,7 +50,7 @@ object Dates {
         if (age in 0 until 60_000L) return if (isPersian(context)) "چند لحظه پیش" else "Just now"
         if (age in 60_000L until 60L * 60_000L) {
             val minutes = (age / 60_000L).toInt()
-            return if (isPersian(context)) "${minutes} دقیقه پیش" else "${minutes} min"
+            return if (isPersian(context)) "${count(context, minutes)} دقیقه پیش" else "${minutes} min"
         }
         val today = Calendar.getInstance()
         val target = Calendar.getInstance().apply { timeInMillis = date }

@@ -178,6 +178,7 @@ class SmsRepository(private val context: Context) {
             Telephony.Sms._ID, Telephony.Sms.THREAD_ID, Telephony.Sms.ADDRESS,
             Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.READ,
             Telephony.Sms.TYPE,
+            Telephony.Sms.STATUS,
             "sub_id"
         )
         try {
@@ -212,6 +213,7 @@ class SmsRepository(private val context: Context) {
                 val iDate = c.getColumnIndexOrThrow(Telephony.Sms.DATE)
                 val iRead = c.getColumnIndexOrThrow(Telephony.Sms.READ)
                 val iType = c.getColumnIndexOrThrow(Telephony.Sms.TYPE)
+                val iStatus = c.getColumnIndex(Telephony.Sms.STATUS)
                 while (c.moveToNext() && out.size < resultLimit) {
                     val threadId = c.getLong(iThread)
                     val id = c.getLong(iId)
@@ -231,6 +233,9 @@ class SmsRepository(private val context: Context) {
                         ) 1 else 0,
                         categoryId = category,
                         colorHex = colorFor(address, category),
+                        delivery = if (c.getInt(iType) == Telephony.Sms.MESSAGE_TYPE_INBOX) null else
+                            deliveryState(c.getInt(iType),
+                                if (iStatus >= 0) c.getInt(iStatus) else Telephony.Sms.STATUS_NONE),
                         riskLabel = if (category == Cat.SUSPICIOUS) {
                             Classifier.riskLabel(context, address, body)
                         } else null

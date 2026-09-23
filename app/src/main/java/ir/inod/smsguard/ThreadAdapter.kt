@@ -310,6 +310,11 @@ class ThreadAdapter(
             DeliveryState.SENDING -> "…"
             else -> ""
         }
+        b.textDelivery.setTextColor(ContextCompat.getColor(context, when (item.delivery) {
+            DeliveryState.DELIVERED -> R.color.success
+            DeliveryState.FAILED -> R.color.danger
+            else -> R.color.text_muted
+        }))
         val persianUi = Dates.isPersian(context)
         // START is the physical right in an RTL row. END previously placed
         // several Persian previews on the left, especially mixed-script SMS.
