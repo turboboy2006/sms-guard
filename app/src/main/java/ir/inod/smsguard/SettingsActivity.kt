@@ -150,6 +150,8 @@ class SettingsActivity : BaseActivity() {
         val appearance = ((binding.rowAppearance.parent as View).parent as View)
         val general = ((binding.spinnerLanguage.parent as View).parent as View)
         val management = ((binding.buttonCategories.parent as View).parent as View)
+        val managementHeader = column.getChildAt(column.indexOfChild(management) - 1)
+            as? android.widget.TextView
         val quiet = (binding.switchQuiet.parent as View).parent as View
         val ai = (binding.switchAi.parent as View).parent as View
         fun section(card: View): List<View> {
@@ -160,22 +162,21 @@ class SettingsActivity : BaseActivity() {
         // These are real section tabs, not a second settings menu: each tab
         // exposes a focused group of cards and preserves the same controls.
         val groups = listOf(
-            section(general),
-            listOf(quiet),
+            section(general) + listOf(quiet),
             section(appearance),
             section(management),
             listOf(ai, offline),
-            listOf(cache),
+            listOf(cache) + section(management),
             section(management)
         )
         val tabs = TabLayout(this).apply {
             tabMode = TabLayout.MODE_SCROLLABLE
             setBackgroundColor(androidx.core.content.ContextCompat.getColor(this@SettingsActivity, R.color.card_bg))
         }
-        val names = listOf(R.string.settings_tab_general, R.string.settings_tab_notifications,
+        val names = listOf(R.string.settings_tab_general,
             R.string.group_appearance, R.string.settings_tab_categories, R.string.ai_section,
             R.string.settings_tab_data, R.string.settings_tab_backup)
-        val icons = listOf(R.drawable.ic_settings, R.drawable.ic_tab_service,
+        val icons = listOf(R.drawable.ic_settings,
             R.drawable.ic_cat_shop, R.drawable.ic_tab_all, R.drawable.ic_cat_security,
             R.drawable.ic_archive, R.drawable.ic_archive)
         names.indices.forEach { index ->
@@ -185,6 +186,11 @@ class SettingsActivity : BaseActivity() {
         fun select(index: Int) {
             groups.flatten().distinct().forEach { it.visibility = View.GONE }
             groups[index].forEach { it.visibility = View.VISIBLE }
+            managementHeader?.setText(when (index) {
+                2 -> R.string.manage_categories
+                5 -> R.string.settings_tab_backup
+                else -> R.string.settings_tab_data
+            })
             // The management card is shared structurally, but its controls are
             // not: categories and backup each get a focused tab instead of a
             // long mixed list of unrelated actions.
@@ -194,9 +200,12 @@ class SettingsActivity : BaseActivity() {
                 binding.buttonExportBackup, binding.buttonImportBackup
             )
             managementButtons.forEach { it.visibility = View.VISIBLE }
-            if (index == 3) {
-                listOf(binding.buttonExportBackup, binding.buttonImportBackup).forEach { it.visibility = View.GONE }
-            } else if (index == 6) {
+            if (index == 2) {
+                managementButtons.filter { it != binding.buttonCategories }.forEach { it.visibility = View.GONE }
+            } else if (index == 4) {
+                listOf(binding.buttonCategories, binding.buttonExportBackup, binding.buttonImportBackup)
+                    .forEach { it.visibility = View.GONE }
+            } else if (index == 5) {
                 listOf(binding.buttonCategories, binding.buttonBrands, binding.buttonRules,
                     binding.buttonScheduled, binding.buttonSavedMessages).forEach { it.visibility = View.GONE }
             }

@@ -298,8 +298,8 @@ class ThemePrefs(context: Context) {
 
     /** Keep enough surface opacity for SMS text to stay legible on busy photos. */
     var surfaceOpacity: Int
-        get() = prefs.getInt("surface_opacity", 90).coerceIn(85, 100)
-        set(v) = prefs.edit().putInt("surface_opacity", v.coerceIn(85, 100)).apply()
+        get() = prefs.getInt("surface_opacity", 90).coerceIn(0, 100)
+        set(v) = prefs.edit().putInt("surface_opacity", v.coerceIn(0, 100)).apply()
 
     fun hasWallpaper(): Boolean = backgroundImageUri != null || backgroundPreset != null
 

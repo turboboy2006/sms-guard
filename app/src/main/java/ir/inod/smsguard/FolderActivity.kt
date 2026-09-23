@@ -129,7 +129,11 @@ class FolderActivity : BaseActivity() {
                 senderStore.setCategory(row.address, Cat.OTHER); messageCats.set(row.messageId, Cat.OTHER)
             } else senderStore.setArchived(row.address, false)
         }
-        adapter.clearSelection(); Classifier.invalidateCaches(); ThreadCache.clear(this); load()
+        all = all.filterNot { row -> selected.any { it.threadId == row.threadId } }
+        adapter.clearSelection()
+        filter()
+        Classifier.invalidateCaches(); ThreadCache.clear(this)
+        load()
     }
 
     private fun deleteSelected() {

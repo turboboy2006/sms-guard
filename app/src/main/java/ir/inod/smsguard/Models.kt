@@ -145,8 +145,8 @@ object Categories {
             badgeBgColor = 0xFFDBEAFE.toInt(), badgeTextColor = 0xFF1E40AF.toInt()
         ),
         Category(
-            Cat.OTP, R.string.cat_otp, "", "#0F766E", true, false, true, true, 2,
-            badgeBgColor = 0xFFCCFBF1.toInt(), badgeTextColor = 0xFF115E59.toInt()
+            Cat.OTP, R.string.cat_otp, "", "#B45309", true, false, true, true, 2,
+            badgeBgColor = 0xFFFEF3C7.toInt(), badgeTextColor = 0xFF92400E.toInt()
         ),
         Category(
             Cat.NOTIFICATION, R.string.cat_notification, "", "#7C3AED", true, false, true, true, 3,

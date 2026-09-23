@@ -1,6 +1,6 @@
 name: Build APK
 
-# Builds a debug APK in the cloud so no Android Studio / SDK is needed locally.
+# Builds a signed release APK in the cloud so no Android Studio / SDK is needed locally.
 # Download the result from the run's "Artifacts" section.
 
 on:
@@ -46,18 +46,18 @@ jobs:
           test -n "$SIGNING_KEY"
           printf '%s' "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/smsguard-release.p12"
 
-      - name: Build debug APK
+      - name: Build signed release APK
         env:
           SMS_GUARD_KEYSTORE: ${{ runner.temp }}/smsguard-release.p12
           SMS_GUARD_STORE_PASSWORD: ${{ secrets.SMS_GUARD_STORE_PASSWORD }}
           SMS_GUARD_KEY_ALIAS: ${{ secrets.SMS_GUARD_KEY_ALIAS }}
           SMS_GUARD_KEY_PASSWORD: ${{ secrets.SMS_GUARD_KEY_PASSWORD }}
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: gradle assembleRelease --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: sms-guard-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: sms-guard-release-apk
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 30

@@ -73,7 +73,7 @@
     <string name="settings_tab_categories">دسته‌بندی</string>
     <string name="settings_tab_data">داده‌ها</string>
     <string name="settings_tab_backup">پشتیبان‌گیری</string>
-    <string name="ai_section">تحلیل هوش مصنوعی (اختیاری)</string>
+    <string name="ai_section">AI</string>
     <string name="ai_enable">اتصال به API هوش مصنوعی</string>
     <string name="ai_hint_off">خاموش است. هیچ پیامکی از گوشی خارج نمی‌شود و همه‌چیز آفلاین کار می‌کند.</string>
     <string name="ai_base">آدرس سرویس (مثلاً https://api.deepseek.com/v1)</string>

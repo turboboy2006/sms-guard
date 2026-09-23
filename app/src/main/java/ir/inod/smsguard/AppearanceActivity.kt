@@ -5,6 +5,11 @@ import android.content.Intent
 import android.view.MenuItem
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.view.View
+import android.view.ViewGroup
+import android.widget.LinearLayout
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.slider.Slider
 import ir.inod.smsguard.databinding.ActivityAppearanceBinding
 
@@ -51,7 +56,10 @@ class AppearanceActivity : BaseActivity() {
     ) {
         MODERN(RowStyle.CLASSIC, 8, 0, 0, 8, MessageStyle.FILLED, 2, 14, true, true),
         COMPACT(RowStyle.COMPACT, 6, 0, 0, 4, MessageStyle.CLEAN, 2, 12, false, true),
-        CARDS(RowStyle.CARD, 10, 8, 4, 12, MessageStyle.SOFT, 8, 18, false, true)
+        CARDS(RowStyle.CARD, 10, 8, 4, 12, MessageStyle.SOFT, 8, 18, false, true),
+        AIRY(RowStyle.SOFT, 14, 8, 2, 12, MessageStyle.SOFT, 9, 22, false, true),
+        MINIMAL(RowStyle.FLAT, 8, 0, 0, 4, MessageStyle.CLEAN, 3, 8, true, true),
+        VIBRANT(RowStyle.ACCENT, 12, 4, 2, 10, MessageStyle.FILLED, 6, 20, true, true)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,10 +74,103 @@ class AppearanceActivity : BaseActivity() {
         setUpSwitches()
         setUpPresets()
         setUpPalettes()
+        setUpStickyPreview()
+        setUpFontSliders()
+        setUpVisibleBackgrounds()
         binding.buttonBackground.setOnClickListener { chooseGlobalBackground() }
         binding.buttonReset.setOnClickListener { reset() }
         refresh()
     }
+
+    private fun setUpStickyPreview() {
+        val card = binding.preview.parent.parent as View
+        val original = card.parent as ViewGroup
+        original.removeView(card)
+        val root = binding.root as ViewGroup
+        root.addView(card, 1, LinearLayout.LayoutParams(-1, -2))
+        val content = binding.preview.parent as LinearLayout
+        val tabs = MaterialButtonToggleGroup(this).apply { isSingleSelection = true }
+        listOf(
+            (if (Dates.isPersian(this)) "فهرست و دسته‌ها" else "Inbox & categories") to true,
+            (if (Dates.isPersian(this)) "گفتگو" else "Conversation") to false
+        ).forEach { (label, inbox) ->
+            tabs.addView(MaterialButton(this).apply {
+                id = View.generateViewId()
+                text = label
+                setOnClickListener { binding.preview.showInboxPreview(inbox) }
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        content.addView(tabs, 1)
+        binding.preview.showInboxPreview(true)
+    }
+
+    private fun setUpFontSliders() {
+        fun replace(spinner: android.widget.Spinner, current: Float, write: (Float) -> Unit) {
+            val parent = spinner.parent as ViewGroup
+            val index = parent.indexOfChild(spinner)
+            spinner.visibility = View.GONE
+            val slider = Slider(this).apply {
+                valueFrom = 0.85f
+                valueTo = 1.5f
+                stepSize = 0.05f
+                value = (kotlin.math.round(current.coerceIn(0.85f, 1.5f) * 20f) / 20f)
+                addOnChangeListener { _, value, fromUser ->
+                    if (fromUser) { write(value); theme.touch(); refresh() }
+                }
+            }
+            parent.addView(slider, index + 1)
+        }
+        replace(binding.spinnerListFont, theme.listFontScale) { theme.listFontScale = it }
+        replace(binding.spinnerMessageFont, theme.messageFontScale) { theme.messageFontScale = it }
+    }
+
+    private fun setUpVisibleBackgrounds() {
+        val parent = binding.buttonBackground.parent as ViewGroup
+        val index = parent.indexOfChild(binding.buttonBackground)
+        val strip = android.widget.HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+        }
+        val items = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val labels = listOf(R.string.background_clean, R.string.background_mist,
+            R.string.background_aurora, R.string.background_dusk, R.string.background_bloom) +
+            listOf(R.string.wallpaper_mountains, R.string.wallpaper_eucalyptus,
+                R.string.wallpaper_lake, R.string.wallpaper_desert, R.string.wallpaper_lavender,
+                R.string.wallpaper_rain, R.string.wallpaper_ocean, R.string.wallpaper_pastel,
+                R.string.wallpaper_neon, R.string.wallpaper_coral)
+        labels.forEachIndexed { position, labelId ->
+            val item = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(8, 8, 8, 8)
+            }
+            val sample = View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(72.dp(), 105.dp())
+            }
+            if (position < BackgroundStyle.IDS.size)
+                BackgroundRenderer.apply(sample, this, BackgroundStyle.IDS[position])
+            else BackgroundRenderer.apply(sample, this, theme.backgroundStyle,
+                preset = BuiltInWallpaper.IDS[position - BackgroundStyle.IDS.size])
+            item.addView(sample)
+            item.addView(android.widget.TextView(this).apply {
+                text = getString(labelId)
+                maxLines = 1
+                textSize = 11f
+                gravity = android.view.Gravity.CENTER
+            }, LinearLayout.LayoutParams(72.dp(), -2))
+            item.setOnClickListener {
+                if (position < BackgroundStyle.IDS.size) {
+                    theme.backgroundStyle = BackgroundStyle.IDS[position]
+                    theme.backgroundPreset = null
+                } else theme.backgroundPreset = BuiltInWallpaper.IDS[position - BackgroundStyle.IDS.size]
+                theme.backgroundImageUri = null
+                theme.touch(); refresh()
+            }
+            items.addView(item)
+        }
+        strip.addView(items)
+        parent.addView(strip, index + 1)
+    }
+
+    private fun Int.dp(): Int = (this * resources.displayMetrics.density).toInt()
 
     // ------------------------------------------------------------- set-up
 
@@ -178,6 +279,19 @@ class AppearanceActivity : BaseActivity() {
             }
             applyPreset(preset)
         }
+        val extras = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        listOf(
+            (if (Dates.isPersian(this)) "آرام" else "Airy") to Preset.AIRY,
+            (if (Dates.isPersian(this)) "مینیمال" else "Minimal") to Preset.MINIMAL,
+            (if (Dates.isPersian(this)) "رنگی" else "Vibrant") to Preset.VIBRANT
+        ).forEach { (label, preset) ->
+            extras.addView(MaterialButton(this).apply {
+                text = label
+                setOnClickListener { applyPreset(preset) }
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        val parent = binding.presetGroup.parent as ViewGroup
+        parent.addView(extras, parent.indexOfChild(binding.presetGroup) + 1)
     }
 
     private fun setUpPalettes() {
@@ -302,13 +416,14 @@ class AppearanceActivity : BaseActivity() {
         binding.switchChips.isChecked = theme.showChips
         binding.presetGroup.clearChecked()
         presetForCurrent()?.let { preset ->
-            binding.presetGroup.check(
-                when (preset) {
+            if (preset in listOf(Preset.MODERN, Preset.COMPACT, Preset.CARDS)) {
+                binding.presetGroup.check(when (preset) {
                     Preset.MODERN -> R.id.buttonPresetModern
                     Preset.COMPACT -> R.id.buttonPresetCompact
                     Preset.CARDS -> R.id.buttonPresetCards
-                }
-            )
+                    else -> R.id.buttonPresetModern
+                })
+            }
         }
         binding.paletteGroup.check(
             when (theme.colorScheme) {

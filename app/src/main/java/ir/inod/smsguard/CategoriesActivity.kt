@@ -28,7 +28,11 @@ import java.util.Collections
 
 /** Visual category editor with direct enable, colour/icon preview and drag ordering. */
 class CategoriesActivity : BaseActivity() {
-    private companion object { const val MENU_AUTO_ORDER = 4101; const val MENU_AUTO_COLOR = 4102 }
+    companion object {
+        const val EXTRA_EDIT_CATEGORY = "edit_category"
+        private const val MENU_AUTO_ORDER = 4101
+        private const val MENU_AUTO_COLOR = 4102
+    }
     private lateinit var binding: ActivityCategoriesBinding
     private lateinit var adapter: CategoryAdapter
     private val store by lazy { CategoryStore(this) }
@@ -77,6 +81,11 @@ class CategoriesActivity : BaseActivity() {
             }
         }).attachToRecyclerView(binding.recyclerCategories)
         binding.buttonAddCategory.setOnClickListener { editCategory(null) }
+        intent.getStringExtra(EXTRA_EDIT_CATEGORY)?.let { id ->
+            store.byId(id)?.let { category ->
+                binding.recyclerCategories.post { editCategory(category) }
+            }
+        }
     }
 
     private fun chooseReassignment(category: Category) {

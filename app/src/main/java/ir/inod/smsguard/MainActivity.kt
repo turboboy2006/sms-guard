@@ -286,6 +286,13 @@ class MainActivity : BaseActivity() {
                 setEnsureMinTouchTargetSize(false)
             }
             idToCategory[chip.id] = entry.first
+            if (entry.first != null && entry.first != UNREAD_FILTER) {
+                chip.setOnLongClickListener {
+                    startActivity(Intent(this@MainActivity, CategoriesActivity::class.java)
+                        .putExtra(CategoriesActivity.EXTRA_EDIT_CATEGORY, entry.first))
+                    true
+                }
+            }
             binding.chipGroup.addView(chip)
         }
         binding.chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
@@ -685,19 +692,19 @@ class MainActivity : BaseActivity() {
             .setIcon(R.drawable.ic_settings)
         menu.add(0, MENU_MARK_READ, 0, R.string.mark_read)
             .setIcon(R.drawable.ic_mark_read)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
-        menu.add(0, MENU_BULK_SPAM, 1, R.string.mark_spam)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
+        menu.add(0, MENU_BULK_SPAM, 2, R.string.mark_spam)
             .setIcon(R.drawable.ic_tab_spam)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
-        menu.add(0, MENU_BULK_TRASH, 2, R.string.move_to_trash)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
+        menu.add(0, MENU_BULK_TRASH, 1, R.string.move_to_trash)
             .setIcon(R.drawable.ic_tab_trash)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
         menu.add(0, MENU_BULK_RESTORE, 3, R.string.restore_from_trash)
             .setIcon(R.drawable.ic_archive)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_SELECTION_MORE, 4, R.string.more_actions)
             .setIcon(R.drawable.ic_more)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_NEVER)
         menu.add(0, MENU_SELECTION_CLOSE, 5, R.string.cancel)
             .setIcon(R.drawable.ic_close)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
@@ -711,7 +718,7 @@ class MainActivity : BaseActivity() {
         }
         menu.findItem(MENU_BULK_RESTORE)?.isVisible = selecting && selectedCategoryId == Cat.TRASH
         menu.findItem(MENU_SELECTION_MORE)?.isVisible = selecting
-        menu.findItem(MENU_SELECTION_CLOSE)?.isVisible = selecting
+        menu.findItem(MENU_SELECTION_CLOSE)?.isVisible = false
         if (selectedCategoryId == Cat.TRASH) menu.findItem(MENU_BULK_TRASH)?.isVisible = false
         menu.findItem(MENU_SEARCH)?.isVisible = !selecting
         menu.findItem(MENU_MORE)?.isVisible = !selecting
@@ -746,6 +753,7 @@ class MainActivity : BaseActivity() {
             MENU_BULK_RESTORE -> bulkCategory(Cat.OTHER)
             MENU_SELECTION_MORE -> showSelectionMore()
             MENU_SELECTION_CLOSE -> adapter.clearSelection()
+            android.R.id.home -> if (adapter.selectionCount > 0) adapter.clearSelection() else return super.onOptionsItemSelected(item)
             else -> return super.onOptionsItemSelected(item)
         }
         return true
@@ -791,6 +799,8 @@ class MainActivity : BaseActivity() {
     }
 
     private fun updateSelectionUi(count: Int) {
+        supportActionBar?.setDisplayHomeAsUpEnabled(count > 0)
+        if (count > 0) supportActionBar?.setHomeAsUpIndicator(R.drawable.ic_close)
         supportActionBar?.title = if (count > 0) Dates.count(this, count) else
             getString(if (contactsOnly) R.string.tab_contacts else R.string.tab_messages)
         invalidateOptionsMenu()

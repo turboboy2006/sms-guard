@@ -31,6 +31,20 @@
         app:tabSelectedTextColor="@color/colorPrimary"
         app:tabTextColor="@color/text_secondary" />
 
+    <EditText
+        android:id="@+id/editFilter"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/row_ripple"
+        android:drawableStart="@drawable/ic_search"
+        android:drawablePadding="10dp"
+        android:hint="@string/search_hint"
+        android:singleLine="true"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp" />
+
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"

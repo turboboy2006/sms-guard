@@ -16,6 +16,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -69,6 +70,7 @@ class ManagerActivity : BaseActivity() {
         })
 
         binding.recycler.layoutManager = LinearLayoutManager(this)
+        binding.editFilter.doAfterTextChanged { load() }
         binding.recycler.adapter = RowAdapter { count ->
             supportActionBar?.title = if (count > 0) Dates.count(this, count)
                 else getString(R.string.manage_brands)
@@ -181,11 +183,15 @@ class ManagerActivity : BaseActivity() {
         } catch (t: Throwable) {
             emptyList()
         }
-        (binding.recycler.adapter as RowAdapter).submit(data)
+        val needle = binding.editFilter.text?.toString().orEmpty().trim()
+        val filtered = if (needle.isBlank()) data else data.filter {
+            it.title.contains(needle, true) || it.subtitle.contains(needle, true)
+        }
+        (binding.recycler.adapter as RowAdapter).submit(filtered)
         binding.textEmptyLabel.setText(
             if (tabIndex == 0) R.string.no_overrides else R.string.blocked_none
         )
-        binding.textEmpty.visibility = if (data.isEmpty()) View.VISIBLE else View.GONE
+        binding.textEmpty.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
     }
 
     private fun confirm(titleRes: Int, message: String, onYes: () -> Unit) {
@@ -393,9 +399,17 @@ class ManagerActivity : BaseActivity() {
                 )
                 layoutParams = RecyclerView.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-                )
+                ).apply {
+                    val h = (12 * density).toInt()
+                    setMargins(h, (4 * density).toInt(), h, (4 * density).toInt())
+                }
                 isClickable = true
-                setBackgroundResource(R.drawable.row_ripple)
+                background = GradientDrawable().apply {
+                    cornerRadius = 18 * density
+                    setColor(ContextCompat.getColor(parent.context, R.color.card_bg))
+                    setStroke((1 * density).toInt().coerceAtLeast(1),
+                        ContextCompat.getColor(parent.context, R.color.divider))
+                }
             }
             val circle = FrameLayout(parent.context).apply {
                 layoutParams = LinearLayout.LayoutParams(

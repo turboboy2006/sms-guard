@@ -3,6 +3,7 @@ package ir.inod.smsguard
 import android.content.Context
 import android.graphics.Typeface
 import android.graphics.Color
+import androidx.core.graphics.ColorUtils
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
@@ -208,8 +209,14 @@ class ThreadAdapter(
             items.removeAt(position)
             notifyItemRemoved(position)
         } else {
-            items[position] = items[position].copy(unreadCount = 0)
-            notifyItemChanged(position)
+            val updated = items[position].copy(unreadCount = 0)
+            // ItemTouchHelper keeps a completed swipe in its pending-cleanup
+            // set until the ViewHolder is detached. A simple change notification
+            // reuses that swiped holder and leaves its blue action exposed.
+            items.removeAt(position)
+            notifyItemRemoved(position)
+            items.add(position, updated)
+            notifyItemInserted(position)
         }
     }
 
@@ -308,12 +315,15 @@ class ThreadAdapter(
         b.textDate.text = Dates.listLabel(context, item.date)
         b.textDelivery.visibility = if (item.delivery == null) View.GONE else View.VISIBLE
         b.textDelivery.text = when (item.delivery) {
-            DeliveryState.DELIVERED -> "✓✓"
+            DeliveryState.DELIVERED -> ""
             DeliveryState.SENT -> "✓"
             DeliveryState.FAILED -> "!"
             DeliveryState.SENDING -> "…"
             else -> ""
         }
+        b.textDelivery.setCompoundDrawablesWithIntrinsicBounds(
+            if (item.delivery == DeliveryState.DELIVERED) R.drawable.ic_double_check else 0,
+            0, 0, 0)
         b.textDelivery.setTextColor(ContextCompat.getColor(context, when (item.delivery) {
             DeliveryState.DELIVERED -> R.color.success
             DeliveryState.FAILED -> R.color.danger
@@ -414,7 +424,14 @@ class ThreadAdapter(
         b.iconWarning.visibility = if (risk != null) View.VISIBLE else View.GONE
 
         // --- background -----------------------------------------------------
-        val background = RowStyler.background(context, layout, position, unread)
+        val background = if (item.pinned && !unread) {
+            GradientDrawable().apply {
+                cornerRadius = layout.bubbleRadius * density
+                setColor(ColorUtils.blendARGB(
+                    ContextCompat.getColor(context, R.color.surface_elevated),
+                    themeColor(context, item.colorHex), 0.045f))
+            }
+        } else RowStyler.background(context, layout, position, unread)
         val fallback = if (unread) {
             ContextCompat.getColor(context, R.color.unread_bg)
         } else {
@@ -501,16 +518,10 @@ class ThreadAdapter(
         } else {
             val category = categories(context)[item.categoryId] ?: return false
             label = category.label(context)
-            background = if (category.badgeBgColor != Category.NO_COLOR) {
-                category.badgeBgColor
-            } else {
-                ContextCompat.getColor(context, R.color.badge_bg)
-            }
-            foreground = if (category.badgeTextColor != Category.NO_COLOR) {
-                category.badgeTextColor
-            } else {
-                ContextCompat.getColor(context, R.color.badge_text)
-            }
+            foreground = runCatching { Color.parseColor(category.colorHex) }
+                .getOrDefault(ContextCompat.getColor(context, R.color.badge_text))
+            background = ColorUtils.blendARGB(
+                ContextCompat.getColor(context, R.color.card_bg), foreground, 0.13f)
         }
 
         // An empty label means an empty pill; that is never worth drawing.

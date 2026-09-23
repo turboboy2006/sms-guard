@@ -37,6 +37,14 @@ class AppearancePreviewView @JvmOverloads constructor(
     private val incomingBubble: TextView
     private val outgoingBubble: TextView
 
+    fun showInboxPreview(showInbox: Boolean) {
+        rowContent.visibility = if (showInbox) VISIBLE else GONE
+        divider.visibility = if (showInbox) VISIBLE else GONE
+        sectionLabel.visibility = if (showInbox) GONE else VISIBLE
+        incomingBubble.visibility = if (showInbox) GONE else VISIBLE
+        outgoingBubble.visibility = if (showInbox) GONE else VISIBLE
+    }
+
     init {
         orientation = VERTICAL
         setPadding(0, 0, 0, 0)
@@ -188,7 +196,7 @@ class AppearancePreviewView @JvmOverloads constructor(
         )
 
         badge.visibility = if (compact) GONE else VISIBLE
-        divider.visibility = if (layout.showDividers && layout.style != RowStyle.CARD) {
+        divider.visibility = if (rowContent.visibility == VISIBLE && layout.showDividers && layout.style != RowStyle.CARD) {
             VISIBLE
         } else {
             GONE

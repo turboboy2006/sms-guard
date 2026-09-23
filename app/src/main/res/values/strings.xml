@@ -82,7 +82,7 @@
     <string name="settings_tab_categories">Categories</string>
     <string name="settings_tab_data">Data</string>
     <string name="settings_tab_backup">Backup</string>
-    <string name="ai_section">AI analysis (optional)</string>
+    <string name="ai_section">AI</string>
     <string name="ai_enable">Connect to an AI API</string>
     <string name="ai_hint_off">Off. Nothing leaves this device and everything runs offline.</string>
     <string name="ai_base">Service URL (e.g. https://api.deepseek.com/v1)</string>

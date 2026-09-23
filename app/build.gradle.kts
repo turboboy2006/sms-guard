@@ -32,6 +32,7 @@ android {
         }
         release {
             isMinifyEnabled = false
+            stableSigning?.let { signingConfig = it }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
