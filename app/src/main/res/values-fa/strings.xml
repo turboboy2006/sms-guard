@@ -74,6 +74,16 @@
     <string name="settings_tab_categories">دسته‌بندی</string>
     <string name="settings_tab_data">داده‌ها</string>
     <string name="settings_tab_backup">پشتیبان‌گیری</string>
+    <string name="settings_language_desc">زبان رابط کاربری برنامه را انتخاب کنید</string>
+    <string name="settings_sim_desc">سیم‌کارت ارسال، مگر برای مخاطب تنظیم جداگانه‌ای باشد</string>
+    <string name="settings_swipe_desc">عمل کشیدن به چپ و راست را مشخص کنید</string>
+    <string name="settings_quiet_desc">محدود کردن اعلان‌ها در ساعت‌های مشخص</string>
+    <string name="settings_trash_desc">مدت نگهداری پیام‌های حذف‌شده</string>
+    <string name="settings_appearance_desc">تم، رنگ، پس‌زمینه و اندازهٔ نوشته‌ها</string>
+    <string name="settings_categories_desc">نام، رنگ، ترتیب و اعلان دسته‌ها</string>
+    <string name="settings_ai_desc">تشخیص آفلاین و اتصال اختیاری هوش مصنوعی</string>
+    <string name="settings_data_desc">مدیریت داده‌ها و ابزارهای پیام</string>
+    <string name="settings_backup_desc">انتقال تنظیمات و قواعد بین نسخه‌ها</string>
     <string name="ai_section">AI</string>
     <string name="ai_enable">اتصال به API هوش مصنوعی</string>
     <string name="ai_hint_off">خاموش است. هیچ پیامکی از گوشی خارج نمی‌شود و همه‌چیز آفلاین کار می‌کند.</string>

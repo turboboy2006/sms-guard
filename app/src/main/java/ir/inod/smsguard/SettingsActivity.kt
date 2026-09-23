@@ -7,6 +7,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.LinearLayout
+import android.widget.ImageView
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
@@ -111,7 +113,6 @@ class SettingsActivity : BaseActivity() {
         binding.spinnerTrashRetention.setSelection(retentionValues.indexOf(settings.trashRetentionDays).coerceAtLeast(0))
         setUpSimPicker()
         setUpSwipeActions()
-        decorateManagementRows()
 
         // --- appearance and cache ---
         binding.rowAppearance.setOnClickListener {
@@ -143,115 +144,181 @@ class SettingsActivity : BaseActivity() {
         binding.buttonImportBackup.setOnClickListener {
             importBackup.launch(arrayOf("application/json", "text/plain"))
         }
-        moveAdvancedSettingsToEnd()
         setUpTabs()
     }
 
     private fun setUpTabs() {
-        val column = binding.buttonSave.parent as ViewGroup
-        val offline = ((binding.sliderThreshold.parent as View).parent as View).parent as View
-        val appearance = ((binding.rowAppearance.parent as View).parent as View)
-        val appearanceContent = binding.rowAppearance.parent as LinearLayout
-        val cache = binding.rowCache
-        // The old combined card let the cache action leak into Appearance.
-        // Remove the divider; dedicatedSection moves the cache row below.
-        if (appearanceContent.childCount > 1) appearanceContent.removeViewAt(1)
-        val general = ((binding.spinnerLanguage.parent as View).parent as View)
-        val management = ((binding.buttonCategories.parent as View).parent as View)
-        val managementHeader = column.getChildAt(column.indexOfChild(management) - 1) as TextView
-        managementHeader.setText(R.string.manage_categories)
-        fun dedicatedSection(title: Int, buttons: List<View>): List<View> {
-            val header = TextView(this).apply {
-                setText(title)
-                setTextAppearance(R.style.TextAppearance_SmsGuard_Group)
-                layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
-                    topMargin = resources.getDimensionPixelSize(R.dimen.space_16)
-                }
-            }
+        val root = binding.root as LinearLayout
+        val oldScroll = root.getChildAt(1) as ScrollView
+        fun take(view: View): View {
+            (view.parent as? ViewGroup)?.removeView(view)
+            return view
+        }
+        val offline = take(findViewById(R.id.cardOffline))
+        val ai = take(findViewById(R.id.cardAi))
+        val quietSwitch = take(binding.switchQuiet)
+        val quietHours = take(binding.groupQuietHours)
+        val language = take(binding.spinnerLanguage)
+        val sim = take(binding.spinnerDefaultSim)
+        val swipeSwitch = take(binding.switchSwipe)
+        val swipeActions = take(binding.groupSwipeActions)
+        val retention = take(binding.spinnerTrashRetention)
+        val saveButton = take(binding.buttonSave)
+        val actions = listOf(binding.rowAppearance, binding.rowCache,
+            binding.buttonCategories, binding.buttonBrands, binding.buttonRules,
+            binding.buttonScheduled, binding.buttonSavedMessages,
+            binding.buttonExportBackup, binding.buttonImportBackup)
+        actions.forEach(::take)
+        root.removeView(oldScroll)
+
+        val pages = (0..5).map { LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val inset = px(18)
+            setPadding(inset, px(14), inset, px(24))
+        } }
+        fun tile(page: Int, title: String, detail: String, icon: Int,
+                 control: View? = null, click: (() -> Unit)? = null): LinearLayout {
             val content = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                val padding = resources.getDimensionPixelSize(R.dimen.space_8)
-                setPadding(padding, padding, padding, padding)
+                setPadding(px(14), px(14), px(14), px(14))
             }
-            buttons.forEach { button ->
-                (button.parent as? ViewGroup)?.removeView(button)
-                content.addView(button)
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutDirection = View.LAYOUT_DIRECTION_RTL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                minimumHeight = px(58)
             }
-            val card = MaterialCardView(this).apply {
-                radius = resources.getDimension(R.dimen.radius_lg)
-                cardElevation = 0f
-                strokeWidth = resources.getDimensionPixelSize(R.dimen.space_2)
-                strokeColor = androidx.core.content.ContextCompat.getColor(this@SettingsActivity, R.color.divider)
-                addView(content)
-                layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
-                    topMargin = resources.getDimensionPixelSize(R.dimen.space_8)
+            row.addView(ImageView(this).apply {
+                setImageResource(icon)
+                imageTintList = android.content.res.ColorStateList.valueOf(theme.accentColor())
+                background = AvatarHelper.circle(androidx.core.content.ContextCompat.getColor(
+                    this@SettingsActivity, R.color.selection_bg))
+                setPadding(px(11), px(11), px(11), px(11))
+            }, LinearLayout.LayoutParams(px(48), px(48)).apply { marginEnd = px(12) })
+            row.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(TextView(this@SettingsActivity).apply {
+                    text = title
+                    setTextAppearance(R.style.TextAppearance_SmsGuard_Body)
+                    setTextColor(androidx.core.content.ContextCompat.getColor(this@SettingsActivity, R.color.text_primary))
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                })
+                addView(TextView(this@SettingsActivity).apply {
+                    text = detail
+                    setTextAppearance(R.style.TextAppearance_SmsGuard_Label)
+                })
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            if (control != null) {
+                if (control is android.widget.Spinner) {
+                    row.addView(control, LinearLayout.LayoutParams(px(138), -2))
+                } else {
+                    if (control is com.google.android.material.materialswitch.MaterialSwitch) control.text = null
+                    row.addView(control, LinearLayout.LayoutParams(-2, -2))
                 }
+            } else if (click != null) {
+                row.addView(ImageView(this).apply {
+                    setImageResource(R.drawable.ic_chevron)
+                    imageTintList = android.content.res.ColorStateList.valueOf(
+                        androidx.core.content.ContextCompat.getColor(this@SettingsActivity, R.color.text_muted))
+                }, LinearLayout.LayoutParams(px(20), px(20)))
+                row.setOnClickListener { click() }
+                content.setOnClickListener { click() }
             }
-            val insertion = column.indexOfChild(binding.buttonSave)
-            column.addView(header, insertion)
-            column.addView(card, insertion + 1)
-            return listOf(header, card)
+            content.addView(row)
+            pages[page].addView(MaterialCardView(this).apply {
+                radius = px(22).toFloat()
+                cardElevation = px(1).toFloat()
+                strokeWidth = px(1)
+                strokeColor = androidx.core.content.ContextCompat.getColor(this@SettingsActivity, R.color.divider)
+                setCardBackgroundColor(androidx.core.content.ContextCompat.getColor(this@SettingsActivity, R.color.card_bg))
+                addView(content)
+            }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = px(12) })
+            return content
         }
-        val dataSection = dedicatedSection(R.string.settings_tab_data, listOf(
-            cache, binding.buttonBrands, binding.buttonRules, binding.buttonScheduled, binding.buttonSavedMessages))
-        val backupSection = dedicatedSection(R.string.settings_tab_backup, listOf(
-            binding.buttonExportBackup, binding.buttonImportBackup))
-        val quiet = (binding.switchQuiet.parent as View).parent as View
-        val ai = (binding.switchAi.parent as View).parent as View
-        fun section(card: View): List<View> {
-            val index = column.indexOfChild(card)
-            return listOfNotNull(column.getChildAt(index - 1), card)
+        tile(0, getString(R.string.language), getString(R.string.settings_language_desc), R.drawable.ic_settings, language)
+        tile(0, getString(R.string.default_sending_sim), getString(R.string.settings_sim_desc),
+            R.drawable.ic_cat_mobile, sim)
+        tile(0, getString(R.string.settings_tab_notifications),
+            getString(R.string.settings_categories_desc), R.drawable.ic_notification) {
+            startActivity(Intent(this, CategoriesActivity::class.java))
         }
-        val offlineHeader = column.getChildAt(column.indexOfChild(offline) - 1)
-        // These are real section tabs, not a second settings menu: each tab
-        // exposes a focused group of cards and preserves the same controls.
-        val groups = listOf(
-            section(general) + listOf(quiet),
-            section(appearance),
-            listOf(managementHeader, management),
-            listOf(offlineHeader, ai, offline),
-            dataSection,
-            backupSection
-        )
+        tile(0, getString(R.string.swipe_actions), getString(R.string.settings_swipe_desc),
+            R.drawable.ic_tab_all, swipeSwitch).addView(swipeActions)
+        tile(0, getString(R.string.quiet_enable), getString(R.string.settings_quiet_desc),
+            R.drawable.ic_notification_vibrate, quietSwitch).addView(quietHours)
+        tile(0, getString(R.string.trash_retention), getString(R.string.settings_trash_desc),
+            R.drawable.ic_tab_trash, retention)
+
+        tile(1, getString(R.string.group_appearance), getString(R.string.settings_appearance_desc),
+            R.drawable.ic_cat_shop) { binding.rowAppearance.performClick() }
+        tile(2, getString(R.string.manage_categories), getString(R.string.settings_categories_desc),
+            R.drawable.ic_tab_all) { binding.buttonCategories.performClick() }
+        tile(3, getString(R.string.local_section), getString(R.string.threshold_hint),
+            R.drawable.ic_cat_security).addView(offline)
+        tile(3, getString(R.string.ai_section), getString(R.string.settings_ai_desc),
+            R.drawable.ic_cat_security).addView(ai)
+        val aiDetails = listOf(binding.editBase.parent, binding.editKey.parent,
+            binding.editModel.parent, binding.editTimeout.parent,
+            binding.buttonTest, binding.buttonAiScan, binding.textTestResult).map { it as View }
+        aiDetails.forEach { it.visibility = View.GONE }
+        (binding.switchAi.parent as? ViewGroup)?.getChildAt(0)?.setOnClickListener {
+            val visible = aiDetails.first().visibility != View.VISIBLE
+            aiDetails.forEach { it.visibility = if (visible) View.VISIBLE else View.GONE }
+        }
+        val dataRows = listOf(
+            Triple(binding.buttonBrands, R.drawable.ic_person, R.string.manage_brands),
+            Triple(binding.buttonRules, R.drawable.ic_cat_security, R.string.rules),
+            Triple(binding.buttonScheduled, R.drawable.ic_send, R.string.scheduled_messages),
+            Triple(binding.buttonSavedMessages, R.drawable.ic_cat_receipt, R.string.saved_messages),
+            Triple(binding.rowCache, R.drawable.ic_tab_trash, R.string.inbox_cache))
+        dataRows.forEach { (button, icon, title) ->
+            tile(4, getString(title), getString(R.string.settings_data_desc), icon) { button.performClick() }
+        }
+        tile(5, getString(R.string.export_backup), getString(R.string.settings_backup_desc),
+            R.drawable.ic_archive) { binding.buttonExportBackup.performClick() }
+        tile(5, getString(R.string.import_backup), getString(R.string.settings_backup_desc),
+            R.drawable.ic_archive) { binding.buttonImportBackup.performClick() }
+
         val tabs = TabLayout(this).apply {
             tabMode = TabLayout.MODE_SCROLLABLE
             setBackgroundColor(androidx.core.content.ContextCompat.getColor(this@SettingsActivity, R.color.card_bg))
         }
-        val names = listOf(R.string.settings_tab_general,
-            R.string.group_appearance, R.string.settings_tab_categories, R.string.ai_section,
-            R.string.settings_tab_data, R.string.settings_tab_backup)
-        val icons = listOf(R.drawable.ic_settings,
-            R.drawable.ic_cat_shop, R.drawable.ic_tab_all, R.drawable.ic_cat_security,
-            R.drawable.ic_archive, R.drawable.ic_archive)
-        names.indices.forEach { index ->
-            tabs.addTab(tabs.newTab().setText(names[index]).setIcon(icons[index]))
+        val names = listOf(R.string.settings_tab_general, R.string.group_appearance,
+            R.string.settings_tab_categories, R.string.ai_section, R.string.settings_tab_data,
+            R.string.settings_tab_backup)
+        val icons = listOf(R.drawable.ic_settings, R.drawable.ic_cat_shop,
+            R.drawable.ic_tab_all, R.drawable.ic_cat_security, R.drawable.ic_cat_card, R.drawable.ic_archive)
+        names.indices.forEach { index -> tabs.addTab(tabs.newTab().setText(names[index]).setIcon(icons[index])) }
+        tabs.setSelectedTabIndicatorColor(theme.accentColor())
+        tabs.setTabTextColors(androidx.core.content.ContextCompat.getColor(this, R.color.text_secondary),
+            theme.accentColor())
+        root.addView(tabs, 1)
+        val scroll = ScrollView(this).apply { clipToPadding = false; fillViewport = true }
+        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        saveButton.minimumHeight = px(56)
+        (saveButton as? com.google.android.material.button.MaterialButton)?.apply {
+            cornerRadius = px(18)
+            setIconResource(R.drawable.ic_save)
+            iconGravity = com.google.android.material.button.MaterialButton.ICON_GRAVITY_TEXT_START
+            iconPadding = px(10)
         }
-        (binding.root as ViewGroup).addView(tabs, 1)
+        root.addView(saveButton, LinearLayout.LayoutParams(-1, -2).apply {
+            marginStart = px(18); marginEnd = px(18); bottomMargin = px(12); topMargin = px(8)
+        })
         fun select(index: Int) {
-            groups.flatten().distinct().forEach { it.visibility = View.GONE }
-            groups[index].forEach { it.visibility = View.VISIBLE }
-            binding.buttonSave.visibility = if (index == 0 || index == 3) View.VISIBLE else View.GONE
-            (column.parent as android.widget.ScrollView).post {
-                (column.parent as android.widget.ScrollView).scrollTo(0, 0)
-            }
-            // Each tab owns its own card; no controls are reused across tabs.
+            scroll.removeAllViews()
+            scroll.addView(pages[index])
+            scroll.scrollTo(0, 0)
         }
-        var currentTab = 0
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab) {
-                if (tab.position == 2) {
-                    tabs.getTabAt(currentTab)?.select()
-                    startActivity(Intent(this@SettingsActivity, CategoriesActivity::class.java))
-                } else {
-                    currentTab = tab.position
-                    select(tab.position)
-                }
-            }
+            override fun onTabSelected(tab: TabLayout.Tab) = select(tab.position)
             override fun onTabUnselected(tab: TabLayout.Tab) = Unit
             override fun onTabReselected(tab: TabLayout.Tab) = Unit
         })
         select(0)
     }
+
+    private fun px(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private fun moveAdvancedSettingsToEnd() {
         val column = binding.buttonSave.parent as ViewGroup

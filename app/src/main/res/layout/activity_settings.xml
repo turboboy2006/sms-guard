@@ -49,6 +49,7 @@
                 android:textAppearance="@style/TextAppearance.SmsGuard.Group" />
 
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardOffline"
                 style="@style/Widget.SmsGuard.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -101,6 +102,7 @@
 
             <!-- ===================== Detection: AI ======================= -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardAi"
                 style="@style/Widget.SmsGuard.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -223,6 +225,7 @@
 
             <!-- ====================== Quiet hours ======================== -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardQuiet"
                 style="@style/Widget.SmsGuard.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -300,6 +303,7 @@
                 android:textAppearance="@style/TextAppearance.SmsGuard.Group" />
 
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardAppearance"
                 style="@style/Widget.SmsGuard.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -401,6 +405,7 @@
                 android:textAppearance="@style/TextAppearance.SmsGuard.Group" />
 
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardGeneral"
                 style="@style/Widget.SmsGuard.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -479,6 +484,7 @@
                 android:textAppearance="@style/TextAppearance.SmsGuard.Group" />
 
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardManagement"
                 style="@style/Widget.SmsGuard.Card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

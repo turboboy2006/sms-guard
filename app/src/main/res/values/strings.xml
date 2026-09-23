@@ -83,6 +83,16 @@
     <string name="settings_tab_categories">Categories</string>
     <string name="settings_tab_data">Data</string>
     <string name="settings_tab_backup">Backup</string>
+    <string name="settings_language_desc">Choose the app language</string>
+    <string name="settings_sim_desc">SIM used when no contact preference is set</string>
+    <string name="settings_swipe_desc">Choose actions for left and right swipes</string>
+    <string name="settings_quiet_desc">Limit alerts during selected hours</string>
+    <string name="settings_trash_desc">Choose how long deleted messages stay</string>
+    <string name="settings_appearance_desc">Themes, colors, backgrounds and text size</string>
+    <string name="settings_categories_desc">Names, colors, order and alerts</string>
+    <string name="settings_ai_desc">Offline detection and optional AI connection</string>
+    <string name="settings_data_desc">Manage stored data and message tools</string>
+    <string name="settings_backup_desc">Move settings and rules between versions</string>
     <string name="ai_section">AI</string>
     <string name="ai_enable">Connect to an AI API</string>
     <string name="ai_hint_off">Off. Nothing leaves this device and everything runs offline.</string>
