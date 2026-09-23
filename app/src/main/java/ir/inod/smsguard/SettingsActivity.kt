@@ -153,9 +153,8 @@ class SettingsActivity : BaseActivity() {
         val appearance = ((binding.rowAppearance.parent as View).parent as View)
         val appearanceContent = binding.rowAppearance.parent as LinearLayout
         val cache = binding.rowCache
-        appearanceContent.removeView(cache)
         // The old combined card let the cache action leak into Appearance.
-        // Keep only the appearance row in that card.
+        // Remove the divider; dedicatedSection moves the cache row below.
         if (appearanceContent.childCount > 1) appearanceContent.removeViewAt(1)
         val general = ((binding.spinnerLanguage.parent as View).parent as View)
         val management = ((binding.buttonCategories.parent as View).parent as View)
@@ -175,7 +174,7 @@ class SettingsActivity : BaseActivity() {
                 setPadding(padding, padding, padding, padding)
             }
             buttons.forEach { button ->
-                (button.parent as ViewGroup).removeView(button)
+                (button.parent as? ViewGroup)?.removeView(button)
                 content.addView(button)
             }
             val card = MaterialCardView(this).apply {

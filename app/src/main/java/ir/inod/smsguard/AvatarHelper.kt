@@ -52,7 +52,15 @@ object AvatarHelper {
         "#EDE9FE" to "#5B21B6",
         "#CFFAFE" to "#155E75",
         "#FFEDD5" to "#9A3412",
-        "#F1F5F9" to "#334155"
+        "#F1F5F9" to "#334155",
+        "#E0F2FE" to "#075985",
+        "#FEE2E2" to "#991B1B",
+        "#E7F7D9" to "#3F6212",
+        "#F5E8FF" to "#6B21A8",
+        "#FFE8D6" to "#9A3412",
+        "#DDEFE9" to "#115E59",
+        "#FCE7D6" to "#92400E",
+        "#E4E9FF" to "#3730A3"
     )
 
     fun softPair(key: String): Pair<Int, Int> {

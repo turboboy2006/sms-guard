@@ -45,6 +45,7 @@ class ConversationActivity : BaseActivity() {
         private const val MENU_ADD_RECIPIENT = 1013
         private const val MENU_SEND_WITH_SIM = 1014
         private const val MENU_SAVED = 1015
+        private const val MENU_CALL = 1016
     }
 
     private lateinit var binding: ActivityConversationBinding
@@ -118,6 +119,7 @@ class ConversationActivity : BaseActivity() {
         }
 
         supportActionBar?.title = ContactNames.displayNameUi(address)
+        updateToolbarContact()
 
         adapter = MessageAdapter(
             context = this,
@@ -332,6 +334,7 @@ class ConversationActivity : BaseActivity() {
                 } else {
                     ContactNames.displayNameUi(address)
                 }
+                updateToolbarContact()
                 updateEmptyState()
                 if (binding.editMessage.text.isNullOrEmpty() && address.isNotBlank()) {
                     binding.editMessage.setText(drafts.getString(address, "").orEmpty())
@@ -444,6 +447,9 @@ class ConversationActivity : BaseActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menu.add(0, MENU_CALL, 0, R.string.call_sender)
+            .setIcon(R.drawable.ic_cat_mobile)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_NEW_MESSAGE, 0, R.string.compose)
         menu.add(0, MENU_BLOCK_SENDER, 1, R.string.block_sender)
         menu.add(0, MENU_SPAM_SELECTED, 0, R.string.mark_spam)
@@ -468,11 +474,29 @@ class ConversationActivity : BaseActivity() {
         return true
     }
 
+    private fun updateToolbarContact() {
+        if (address.isBlank()) {
+            binding.toolbar.logo = null
+            return
+        }
+        val photo = ContactsIndex.photo(this, address)
+        if (photo != null) {
+            val size = (32 * resources.displayMetrics.density).toInt()
+            val scaled = android.graphics.Bitmap.createScaledBitmap(photo, size, size, true)
+            binding.toolbar.logo = androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
+                .create(resources, scaled).apply { isCircular = true }
+        } else {
+            binding.toolbar.setLogo(R.drawable.ic_person)
+        }
+        binding.toolbar.logoDescription = ContactNames.displayNameUi(address)
+        invalidateOptionsMenu()
+    }
+
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         val selecting = ::adapter.isInitialized && adapter.selectionCount > 0
         val iconInk = android.content.res.ColorStateList.valueOf(
             ContextCompat.getColor(this, R.color.text_primary))
-        listOf(MENU_SPAM_SELECTED, MENU_DELETE_SELECTED, MENU_TRASH_THREAD).forEach { id ->
+        listOf(MENU_CALL, MENU_SPAM_SELECTED, MENU_DELETE_SELECTED, MENU_TRASH_THREAD).forEach { id ->
             menu.findItem(id)?.iconTintList = iconInk
         }
         menu.findItem(MENU_NEW_MESSAGE)?.isVisible = !selecting
@@ -490,6 +514,7 @@ class ConversationActivity : BaseActivity() {
         menu.findItem(MENU_ADD_RECIPIENT)?.isVisible = !selecting && address.isNotBlank()
         menu.findItem(MENU_SEND_WITH_SIM)?.isVisible = !selecting && address.isNotBlank()
         menu.findItem(MENU_SAVED)?.isVisible = !selecting
+        menu.findItem(MENU_CALL)?.isVisible = !selecting && address.isNotBlank()
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -537,6 +562,11 @@ class ConversationActivity : BaseActivity() {
             MENU_ADD_RECIPIENT -> { addGroupRecipient(); return true }
             MENU_SEND_WITH_SIM -> { chooseSimForCurrentSend(); return true }
             MENU_SAVED -> { startActivity(Intent(this, SavedMessagesActivity::class.java)); return true }
+            MENU_CALL -> {
+                if (address.isNotBlank()) startActivity(Intent(Intent.ACTION_DIAL,
+                    android.net.Uri.parse("tel:${android.net.Uri.encode(address)}")))
+                return true
+            }
         }
         return super.onOptionsItemSelected(item)
     }

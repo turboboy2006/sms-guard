@@ -3,6 +3,10 @@ package ir.inod.smsguard
 import android.text.Spannable
 import android.text.method.LinkMovementMethod
 import android.text.style.URLSpan
+import android.text.style.ClickableSpan
+import android.text.style.BackgroundColorSpan
+import android.text.style.StyleSpan
+import android.graphics.Typeface
 import android.text.util.Linkify
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -41,6 +45,7 @@ class MessageAdapter(
     private val expandedMetaIds = linkedSetOf<Long>()
     private val latestMetaIds = linkedSetOf<Long>()
     private val attachedMessages = linkedSetOf<MsgVH>()
+    private val animatedEmojiIds = linkedSetOf<Long>()
 
     val selectionCount: Int get() = selectedIds.size
 
@@ -127,7 +132,9 @@ class MessageAdapter(
         if (next == layout) return
         layout = next
         attachedMessages.forEach { holder ->
-            holder.binding.textBubble.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f * next.fontScale)
+            val message = (rows.getOrNull(holder.bindingAdapterPosition) as? Row.Msg)?.message
+            holder.binding.textBubble.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP,
+                (if (message != null && isEmojiOnly(message.body)) 27f else 15f) * next.fontScale)
             holder.binding.textTime.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10.5f * next.fontScale.coerceAtMost(1.3f))
             holder.binding.textStatus.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f * next.fontScale.coerceAtMost(1.3f))
         }
@@ -212,6 +219,31 @@ class MessageAdapter(
 
         bubble.text = item.body
         applySafeLinks(context, bubble, item)
+        applyOtpHighlight(context, bubble, item)
+        bubble.maxWidth = (context.resources.displayMetrics.widthPixels * 0.8f).toInt()
+        val preview = holder.binding.textLinkPreview
+        preview.tag = item.id
+        preview.visibility = View.GONE
+        SafeLinkPreview.candidate(context, item)?.let { url ->
+            fun show(card: SafeLinkPreview.Card) {
+                if (preview.tag != item.id) return
+                preview.text = buildString {
+                    append(card.title)
+                    if (card.description.isNotBlank()) append("\n${card.description}")
+                    append("\n${card.host}")
+                }
+                preview.maxWidth = bubble.maxWidth
+                preview.background = MessageStyler.background(context, layout.style, layout.radius,
+                    !item.isIncoming)
+                preview.setTextColor(MessageStyler.textColor(context, !item.isIncoming))
+                preview.visibility = View.VISIBLE
+            }
+            val ready = SafeLinkPreview.cached(url)
+            if (ready != null) show(ready)
+            else SafeLinkPreview.request(url) { card ->
+                if (card != null) preview.post { show(card) }
+            }
+        }
         time.text = Dates.full(context, item.date)
         val showMeta = item.id in latestMetaIds || item.id in expandedMetaIds || selectedIds.isNotEmpty()
         time.visibility = if (showMeta) View.VISIBLE else View.GONE
@@ -232,7 +264,8 @@ class MessageAdapter(
                 DeliveryState.RECEIVED -> ""
             }
             status.setTextColor(when (item.delivery) {
-                DeliveryState.DELIVERED -> android.graphics.Color.parseColor("#16A34A")
+                DeliveryState.SENT, DeliveryState.DELIVERED ->
+                    androidx.core.content.ContextCompat.getColor(context, R.color.delivery_check)
                 DeliveryState.FAILED -> androidx.core.content.ContextCompat.getColor(context, R.color.danger)
                 else -> androidx.core.content.ContextCompat.getColor(context, R.color.text_muted)
             })
@@ -254,8 +287,18 @@ class MessageAdapter(
         // force a particular bubble style.
         bubble.setTextSize(
             android.util.TypedValue.COMPLEX_UNIT_SP,
-            15f * layout.fontScale
+            (if (isEmojiOnly(item.body)) 27f else 15f) * layout.fontScale
         )
+        bubble.animate().cancel()
+        bubble.scaleX = 1f
+        bubble.scaleY = 1f
+        if (isEmojiOnly(item.body) && animatedEmojiIds.add(item.id) &&
+            android.provider.Settings.Global.getFloat(context.contentResolver,
+                android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f) {
+            bubble.scaleX = 0.82f
+            bubble.scaleY = 0.82f
+            bubble.animate().scaleX(1f).scaleY(1f).setDuration(300).start()
+        }
         time.setTextSize(
             android.util.TypedValue.COMPLEX_UNIT_SP,
             10.5f * layout.fontScale.coerceAtMost(1.3f)
@@ -288,6 +331,11 @@ class MessageAdapter(
         val vertical = if (half < 1) 1 else half
         row.setPadding((12 * density).toInt(), vertical, (12 * density).toInt(), vertical)
         bubble.layoutParams = params
+        (preview.layoutParams as LinearLayout.LayoutParams).also { previewParams ->
+            previewParams.leftMargin = params.leftMargin
+            previewParams.rightMargin = params.rightMargin
+            preview.layoutParams = previewParams
+        }
         row.setBackgroundColor(
             androidx.core.content.ContextCompat.getColor(
                 context,
@@ -305,9 +353,61 @@ class MessageAdapter(
         }
 
         holder.itemView.setOnLongClickListener {
+            holder.itemView.animate().alpha(0.88f).setDuration(70).withEndAction {
+                holder.itemView.animate().alpha(1f).setDuration(120).start()
+            }.start()
             onLongClick(item)
             true
         }
+    }
+
+    private fun isEmojiOnly(body: String): Boolean {
+        val trimmed = body.trim()
+        if (trimmed.isEmpty() || trimmed.codePointCount(0, trimmed.length) > 6) return false
+        var hasEmoji = false
+        var index = 0
+        while (index < trimmed.length) {
+            val point = trimmed.codePointAt(index)
+            if (point >= 0x1F000) hasEmoji = true
+            else if (point != 0x200D && point != 0xFE0F && point != 0x20E3 &&
+                !Character.isWhitespace(point) && Character.getType(point) != Character.OTHER_SYMBOL.toInt()) return false
+            index += Character.charCount(point)
+        }
+        return hasEmoji
+    }
+
+    private fun applyOtpHighlight(context: android.content.Context, bubble: android.widget.TextView,
+                                  item: SmsMessage) {
+        if (item.categoryId != Cat.OTP) return
+        val candidates = Regex("(?<![0-9۰-۹٠-٩])[0-9۰-۹٠-٩]{4,8}(?![0-9۰-۹٠-٩])")
+            .findAll(item.body).toList()
+        val match = candidates.firstOrNull { candidate ->
+            val before = item.body.substring(0, candidate.range.first).takeLast(35)
+            Regex("(?i)(کد|رمز|پویا|تایید|تأیید|code|otp|verify|password)").containsMatchIn(before)
+        } ?: candidates.singleOrNull() ?: return
+        val code = match.value.map { char ->
+            when (char) {
+                in '۰'..'۹' -> '0' + (char - '۰')
+                in '٠'..'٩' -> '0' + (char - '٠')
+                else -> char
+            }
+        }.joinToString("")
+        val text = android.text.SpannableString(bubble.text)
+        val start = match.range.first
+        val end = match.range.last + 1
+        text.setSpan(BackgroundColorSpan(androidx.core.content.ContextCompat.getColor(context,
+            R.color.selection_bg)), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        text.setSpan(StyleSpan(Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        text.setSpan(object : ClickableSpan() {
+            override fun onClick(widget: View) {
+                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                    as android.content.ClipboardManager
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OTP", code))
+                android.widget.Toast.makeText(context, R.string.copied, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }, start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        bubble.text = text
+        bubble.movementMethod = LinkMovementMethod.getInstance()
     }
 
     /** Enables ordinary web links while leaving spam and risky domains inert. */

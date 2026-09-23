@@ -329,7 +329,7 @@ class ThreadAdapter(
             },
             0, 0, 0)
         b.textDelivery.setTextColor(ContextCompat.getColor(context, when (item.delivery) {
-            DeliveryState.SENT, DeliveryState.DELIVERED -> R.color.success
+            DeliveryState.SENT, DeliveryState.DELIVERED -> R.color.delivery_check
             DeliveryState.FAILED -> R.color.danger
             else -> R.color.text_muted
         }))

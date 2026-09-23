@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="delivery_check">#83BE9B</color>
     <color name="blue_50">#16233A</color>
     <color name="blue_100">#1B2A45</color>
     <color name="blue_300">#6D9BF0</color>

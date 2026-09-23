@@ -1013,6 +1013,11 @@ class MainActivity : BaseActivity() {
         }
         Classifier.invalidateCaches()
         ThreadCache.clear(this)
+        val movedIds = rows.mapTo(HashSet()) { it.threadId }
+        allThreads = allThreads.map { row ->
+            if (row.threadId in movedIds) row.copy(categoryId = categoryId) else row
+        }
+        applyFilter()
         loadThreads()
         showUndo {
             rows.forEach { row ->
@@ -1409,6 +1414,10 @@ class MainActivity : BaseActivity() {
 
         Classifier.invalidateCaches()
         ThreadCache.clear(this)
+        allThreads = allThreads.map { row ->
+            if (row.threadId == thread.threadId) row.copy(categoryId = categoryId) else row
+        }
+        applyFilter()
         loadThreads()
 
         showUndo {

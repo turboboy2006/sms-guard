@@ -168,24 +168,32 @@
             android:textColorHint="@color/text_muted"
             android:textSize="15sp" />
 
-        <TextView
-            android:id="@+id/textCharacterCount"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="92dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="6dp"
-            android:textColor="@color/text_muted"
-            android:textSize="10sp" />
+            android:gravity="center"
+            android:orientation="vertical">
 
-        <ImageButton
-            android:id="@+id/buttonSend"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="@drawable/send_circle"
-            android:contentDescription="@string/send"
-            android:padding="13dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/ic_send"
-            app:tint="@android:color/white" />
+            <ImageButton
+                android:id="@+id/buttonSend"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/send_circle"
+                android:contentDescription="@string/send"
+                android:padding="13dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_send"
+                app:tint="@android:color/white" />
+
+            <TextView
+                android:id="@+id/textCharacterCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:maxLines="2"
+                android:textColor="@color/text_muted"
+                android:textSize="9sp" />
+        </LinearLayout>
     </LinearLayout>
 
 </LinearLayout>
