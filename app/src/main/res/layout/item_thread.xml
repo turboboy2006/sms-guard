@@ -119,6 +119,16 @@
                         android:orientation="horizontal">
 
                         <TextView
+                            android:id="@+id/textDelivery"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="3dp"
+                            android:textColor="#168B5A"
+                            android:textDirection="ltr"
+                            android:textSize="12sp"
+                            android:visibility="gone" />
+
+                        <TextView
                             android:id="@+id/textDate"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -130,11 +140,14 @@
 
                         <TextView
                             android:id="@+id/textUnread"
-                            android:layout_width="18dp"
+                            android:layout_width="wrap_content"
+                            android:minWidth="20dp"
                             android:layout_height="18dp"
                             android:layout_marginStart="4dp"
                             android:background="@drawable/unread_dot"
                             android:gravity="center"
+                            android:paddingStart="3dp"
+                            android:paddingEnd="3dp"
                             android:textColor="@android:color/white"
                             android:textSize="10sp"
                             android:textStyle="bold"

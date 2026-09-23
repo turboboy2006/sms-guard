@@ -38,10 +38,11 @@ class SmsRepository(private val context: Context) {
     fun loadThreads(
         scanLimit: Int = Int.MAX_VALUE,
         progressEvery: Int = 0,
-        onProgress: ((List<ThreadSummary>) -> Unit)? = null
+        onProgress: ((List<ThreadSummary>) -> Unit)? = null,
+        useCache: Boolean = true
     ): List<ThreadSummary> {
         val activeCategories = CategoryStore(context).active().mapTo(HashSet()) { it.id }
-        val cached = ThreadCache.read(context)
+        val cached = if (useCache) ThreadCache.read(context) else emptyList()
         val cachedById = HashMap<Long, CachedThread>(cached.size * 2)
         for (row in cached) cachedById[row.threadId] = row
         // Taken before the scan: if the receiver patches in a message while the
@@ -55,7 +56,8 @@ class SmsRepository(private val context: Context) {
             Telephony.Sms.BODY,
             Telephony.Sms.DATE,
             Telephony.Sms.READ,
-            Telephony.Sms.TYPE
+            Telephony.Sms.TYPE,
+            Telephony.Sms.STATUS
         )
         val byThread = LinkedHashMap<Long, ThreadSummary>()
 
@@ -72,10 +74,11 @@ class SmsRepository(private val context: Context) {
                 val iDate = c.getColumnIndexOrThrow(Telephony.Sms.DATE)
                 val iRead = c.getColumnIndexOrThrow(Telephony.Sms.READ)
                 val iType = c.getColumnIndexOrThrow(Telephony.Sms.TYPE)
+                val iStatus = c.getColumnIndex(Telephony.Sms.STATUS)
 
                 // The newest row decides for the whole pass: if the cache
                 // already knows it, nothing above it in the list can be new.
-                val cacheCurrent = c.moveToFirst() && ThreadCache.newestMessageId(context) == c.getLong(iId)
+                val cacheCurrent = c.moveToFirst() && useCache && ThreadCache.newestMessageId(context) == c.getLong(iId)
 
                 while (!c.isAfterLast && scanned < scanLimit) {
                     scanned++
@@ -106,7 +109,9 @@ class SmsRepository(private val context: Context) {
                                 } else {
                                     null
                                 },
-                            known = true
+                            known = true,
+                            delivery = if (type == Telephony.Sms.MESSAGE_TYPE_INBOX) null else
+                                deliveryState(type, if (iStatus >= 0) c.getInt(iStatus) else Telephony.Sms.STATUS_NONE)
                         )
                     } else if (unread) {
                         byThread[threadId] = existing.copy(unreadCount = existing.unreadCount + 1)
@@ -127,7 +132,7 @@ class SmsRepository(private val context: Context) {
         }
 
         val fresh = byThread.values.toList()
-        if (fresh.isNotEmpty()) {
+        if (fresh.isNotEmpty() && scanLimit == Int.MAX_VALUE) {
             ThreadCache.writeUnlessChanged(context, stamp, fresh.map { row ->
                 val cachedRaw = cachedById[row.threadId]
                 if (row.categoryId == Cat.OTHER && cachedRaw != null &&
@@ -158,10 +163,12 @@ class SmsRepository(private val context: Context) {
         resultLimit: Int = Int.MAX_VALUE,
         categoryId: String? = null,
         since: Long = 0L,
-        subscriptionId: Int = -1
+        subscriptionId: Int = -1,
+        onProgress: ((List<ThreadSummary>) -> Unit)? = null
     ): List<ThreadSummary> {
         val needle = query.trim()
         val out = ArrayList<ThreadSummary>()
+        val activeCategories = CategoryStore(context).active().mapTo(HashSet()) { it.id }
         val projection = arrayOf(
             Telephony.Sms._ID, Telephony.Sms.THREAD_ID, Telephony.Sms.ADDRESS,
             Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.READ,
@@ -206,6 +213,7 @@ class SmsRepository(private val context: Context) {
                     val address = c.getString(iAddr) ?: ""
                     val body = c.getString(iBody) ?: ""
                     val category = categoryFor(address, body, id)
+                    if (category !in activeCategories) continue
                     if (categoryId != null && category != categoryId) continue
                     out += ThreadSummary(
                         threadId = threadId,
@@ -223,6 +231,9 @@ class SmsRepository(private val context: Context) {
                             Classifier.riskLabel(context, address, body)
                         } else null
                     )
+                    if (out.size == 25 || out.size == 100 || out.size % 300 == 0) {
+                        onProgress?.invoke(out.toList())
+                    }
                 }
             }
         } catch (_: Exception) {
@@ -457,7 +468,8 @@ class SmsRepository(private val context: Context) {
         categoryId = categoryId,
         colorHex = colorHex,
         riskLabel = riskLabel,
-        known = known
+        known = known,
+        delivery = delivery
     )
 
 

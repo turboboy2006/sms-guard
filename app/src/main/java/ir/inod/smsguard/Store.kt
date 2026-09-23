@@ -765,6 +765,15 @@ class SenderStore(context: Context) {
         put(sender, entry(sender).apply { put("cat", categoryId) })
     }
 
+    fun reassignCategory(from: String, to: String) {
+        val entries = load()
+        var changed = false
+        entries.values.forEach { entry ->
+            if (entry.optString("cat") == from) { entry.put("cat", to); changed = true }
+        }
+        if (changed) save(entries)
+    }
+
     fun policyFor(sender: String): SenderPolicy {
         val v = entry(sender).optString("policy", "")
         return runCatching { SenderPolicy.valueOf(v) }.getOrDefault(SenderPolicy.UNKNOWN)

@@ -219,7 +219,8 @@ data class ThreadSummary(
      * the provider pass has confirmed it.
      */
     val known: Boolean = true,
-    val pinned: Boolean = false
+    val pinned: Boolean = false,
+    val delivery: DeliveryState? = null
 )
 
 /** One message inside a conversation. */

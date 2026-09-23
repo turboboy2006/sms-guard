@@ -80,6 +80,7 @@ class SmsReceiver : BroadcastReceiver() {
         // The stored inbox is patched here, inside the receiver, so the next
         // launch is correct even if the app itself is never opened in between.
         repo.patchCacheForNewMessage(address, body, timestamp, messageId)
+        MessageBus.notifyChanged()
 
         // Quiet hours. Off unless the user turned it on, and even then it can
         // only ever silence promotional, suspicious or spam traffic — banking,

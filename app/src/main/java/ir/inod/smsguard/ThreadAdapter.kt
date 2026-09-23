@@ -2,6 +2,10 @@ package ir.inod.smsguard
 
 import android.content.Context
 import android.graphics.Typeface
+import android.graphics.Color
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.BackgroundColorSpan
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -86,6 +90,11 @@ class ThreadAdapter(
     override fun getItemId(position: Int): Long = key(items[position])
 
     private val items = mutableListOf<ThreadSummary>()
+    private var highlightQuery: String = ""
+    fun setHighlightQuery(query: String) {
+        highlightQuery = query.trim()
+        notifyDataSetChanged()
+    }
     private val selectedIds = linkedSetOf<Long>()
     private var categoryCache: Map<String, Category>? = null
     private var nameCache: HashMap<String, String> = HashMap()
@@ -171,6 +180,11 @@ class ThreadAdapter(
         if (items.isNotEmpty()) notifyItemRangeChanged(0, items.size)
     }
 
+    fun refreshContactNames() {
+        nameCache.clear()
+        if (items.isNotEmpty()) notifyItemRangeChanged(0, items.size)
+    }
+
     val selectionCount: Int get() = selectedIds.size
 
     fun itemAt(position: Int): ThreadSummary? = items.getOrNull(position)
@@ -250,10 +264,25 @@ class ThreadAdapter(
         b.textAddress.text = display
         b.iconPinned.visibility = if (item.pinned) View.VISIBLE else View.GONE
         b.iconPinned.setColorFilter(themeColor(context, item.colorHex))
-        b.textSnippet.text = if (draft.isNotBlank()) {
+        val preview = if (draft.isNotBlank()) {
             context.getString(R.string.draft_preview, draft)
         } else item.snippet
+        if (highlightQuery.length >= 2) {
+            val index = preview.indexOf(highlightQuery, ignoreCase = true)
+            b.textSnippet.text = if (index >= 0) SpannableString(preview).apply {
+                setSpan(BackgroundColorSpan(Color.argb(52, 255, 195, 63)),
+                    index, index + highlightQuery.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            } else preview
+        } else b.textSnippet.text = preview
         b.textDate.text = Dates.listLabel(context, item.date)
+        b.textDelivery.visibility = if (item.delivery == null) View.GONE else View.VISIBLE
+        b.textDelivery.text = when (item.delivery) {
+            DeliveryState.DELIVERED -> "✓✓"
+            DeliveryState.SENT -> "✓"
+            DeliveryState.FAILED -> "!"
+            DeliveryState.SENDING -> "…"
+            else -> ""
+        }
         val persianUi = Dates.isPersian(context)
         // START is the physical right in an RTL row. END previously placed
         // several Persian previews on the left, especially mixed-script SMS.
@@ -356,11 +385,7 @@ class ThreadAdapter(
         // one, which the tint alone cannot say.
         if (unread) {
             b.textUnread.visibility = View.VISIBLE
-            b.textUnread.text = if (item.unreadCount > 1) {
-                Dates.count(context, item.unreadCount)
-            } else {
-                ""
-            }
+            b.textUnread.text = Dates.count(context, item.unreadCount)
         } else {
             b.textUnread.visibility = View.GONE
         }

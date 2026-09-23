@@ -35,6 +35,13 @@ class SearchActivity : BaseActivity() {
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.title = ""
+        binding.buttonClearSearch.setOnClickListener { binding.editSearch.setText("") }
+        binding.editSearch.setOnEditorActionListener { _, _, _ ->
+            main.removeCallbacks(searchRunnable)
+            search(binding.editSearch.text?.toString().orEmpty())
+            true
+        }
 
         adapter = ThreadAdapter(
             onClick = { row ->
@@ -51,8 +58,7 @@ class SearchActivity : BaseActivity() {
             },
             onLongClick = { row -> adapter.toggleSelection(row) },
             onSelectionChanged = { count ->
-                supportActionBar?.title = if (count > 0) Dates.count(this, count)
-                    else getString(R.string.search_all_messages)
+                supportActionBar?.title = if (count > 0) Dates.count(this, count) else ""
                 invalidateOptionsMenu()
             },
             identityByMessage = true
@@ -61,6 +67,7 @@ class SearchActivity : BaseActivity() {
         binding.recyclerResults.layoutManager = LinearLayoutManager(this)
         binding.recyclerResults.adapter = adapter
         binding.editSearch.doAfterTextChanged {
+            binding.buttonClearSearch.visibility = if (it.isNullOrEmpty()) View.INVISIBLE else View.VISIBLE
             main.removeCallbacks(searchRunnable)
             main.postDelayed(searchRunnable, 250)
         }
@@ -78,18 +85,30 @@ class SearchActivity : BaseActivity() {
         val sim = simIds.getOrElse(binding.spinnerSim.selectedItemPosition) { -1 }
         if (query.length < 2 && category == null && since == 0L && sim < 0) {
             adapter.submit(emptyList())
+            binding.textResultCount.visibility = View.GONE
             binding.progress.visibility = View.GONE
             binding.textEmpty.setText(R.string.search_start_hint)
             binding.textEmpty.visibility = View.VISIBLE
             return
         }
         binding.progress.visibility = View.VISIBLE
+        adapter.setHighlightQuery(query)
         worker.execute {
-            val rows = repo.searchThreads(query, categoryId = category, since = since, subscriptionId = sim)
+            val rows = repo.searchThreads(query, categoryId = category, since = since,
+                subscriptionId = sim, onProgress = { partial ->
+                    main.post {
+                        if (token != generation || isFinishing || isDestroyed) return@post
+                        binding.progress.visibility = View.GONE
+                        adapter.submit(partial)
+                        showCount(partial.size, true)
+                        binding.textEmpty.visibility = View.GONE
+                    }
+                })
             main.post {
                 if (token != generation || isFinishing || isDestroyed) return@post
                 binding.progress.visibility = View.GONE
                 adapter.submit(rows)
+                showCount(rows.size, false)
                 binding.textEmpty.setText(R.string.search_no_results)
                 binding.textEmpty.visibility = if (rows.isEmpty()) View.VISIBLE else View.GONE
             }
@@ -97,7 +116,7 @@ class SearchActivity : BaseActivity() {
     }
 
     private fun setUpFilters() {
-        categories = listOf(null) + CategoryStore(this).all()
+        categories = listOf(null) + CategoryStore(this).active()
         binding.spinnerCategory.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
             listOf(getString(R.string.filter_all_categories)) + categories.drop(1).map { it!!.label(this) })
         binding.spinnerDate.adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item,
@@ -112,6 +131,15 @@ class SearchActivity : BaseActivity() {
             override fun onNothingSelected(p: android.widget.AdapterView<*>?) = Unit
         }
         binding.spinnerCategory.onItemSelectedListener = listener; binding.spinnerDate.onItemSelectedListener = listener; binding.spinnerSim.onItemSelectedListener = listener
+    }
+
+    private fun showCount(count: Int, searching: Boolean) {
+        binding.textResultCount.visibility = View.VISIBLE
+        binding.textResultCount.text = if (Dates.isPersian(this)) {
+            if (searching) "${Dates.count(this, count)}+ نتیجه" else "${Dates.count(this, count)} نتیجه"
+        } else {
+            if (searching) "$count+ results" else "$count results"
+        }
     }
 
     override fun onDestroy() {

@@ -22,7 +22,8 @@ data class CachedThread(
     val colorHex: String,
     val riskLabel: String?,
     /** false only for rows written by a background patch that never saw the provider. */
-    val known: Boolean = true
+    val known: Boolean = true,
+    val delivery: DeliveryState? = null
 ) {
 
     fun toSummary(): ThreadSummary = ThreadSummary(
@@ -35,7 +36,8 @@ data class CachedThread(
         categoryId = categoryId,
         colorHex = colorHex,
         riskLabel = riskLabel,
-        known = known
+        known = known,
+        delivery = delivery
     )
 }
 
@@ -107,8 +109,8 @@ object ThreadCache {
         synchronized(lock) {
             memory = threads
             memoryNewestId = threads.firstOrNull()?.messageId ?: -1L
+            persist(context, threads)
         }
-        persist(context, threads)
     }
 
     /**
@@ -121,14 +123,13 @@ object ThreadCache {
      * provider pass. This closes that window.
      */
     fun update(context: Context, transform: (List<CachedThread>) -> List<CachedThread>) {
-        val updated = synchronized(lock) {
+        synchronized(lock) {
             val current = readLocked(context)
             val next = transform(current)
             memory = next
             memoryNewestId = next.firstOrNull()?.messageId ?: -1L
-            next
+            persist(context, next)
         }
-        persist(context, updated)
     }
 
     fun clear(context: Context) {
@@ -162,16 +163,33 @@ object ThreadCache {
      */
     fun writeUnlessChanged(context: Context, stamp: Long, threads: List<CachedThread>) {
         synchronized(lock) {
-            if (memory != null && memoryNewestId != stamp) return
+            val current = readLocked(context)
+            val byThread = LinkedHashMap<Long, CachedThread>(threads.size + 8)
+            threads.forEach { byThread[it.threadId] = it }
+            if (memoryNewestId != stamp) {
+                // A receiver patched in a new message while the full provider
+                // scan ran. Keep that newer row, but never discard the full
+                // scan and leave the next cold start with only one conversation.
+                current.forEach { latest ->
+                    val scanned = byThread[latest.threadId]
+                    if (scanned == null || latest.date > scanned.date ||
+                        (latest.date == scanned.date && latest.messageId > scanned.messageId)
+                    ) byThread[latest.threadId] = latest
+                }
+            }
+            val complete = byThread.values.sortedByDescending { it.date }
+            memory = complete
+            memoryNewestId = complete.firstOrNull()?.messageId ?: -1L
+            persist(context, complete)
         }
-        write(context, threads)
     }
 
     private fun file(context: Context) = File(context.applicationContext.filesDir, FILE_NAME)
 
     /**
-     * Writes the file, outside the lock so a slow disk cannot stall the SMS
-     * receiver. Write beside the real file and swap, so a crash mid-write
+     * Writes the file under the same lock as the in-memory snapshot, so an
+     * older background write cannot replace a newer receiver update.
+     * Write beside the real file and swap, so a crash mid-write
      * leaves the previous cache intact instead of a truncated one.
      */
     private fun persist(context: Context, threads: List<CachedThread>) {
@@ -198,7 +216,8 @@ object ThreadCache {
                 .append(if (t.known) "1" else "0").append(SEP)
                 .append(escape(t.address)).append(SEP)
                 .append(escape(t.snippet)).append(SEP)
-                .append(escape(t.riskLabel.orEmpty()))
+                .append(escape(t.riskLabel.orEmpty())).append(SEP)
+                .append(t.delivery?.name.orEmpty())
                 .append('\n')
         }
         return sb.toString()
@@ -228,7 +247,10 @@ object ThreadCache {
                     categoryId = f[4],
                     colorHex = f[5],
                     riskLabel = unescape(f[9]).ifBlank { null },
-                    known = f[6] != "0"
+                    known = f[6] != "0",
+                    delivery = f.getOrNull(10)?.takeIf { it.isNotBlank() }?.let {
+                        runCatching { DeliveryState.valueOf(it) }.getOrNull()
+                    }
                 )
             )
         }

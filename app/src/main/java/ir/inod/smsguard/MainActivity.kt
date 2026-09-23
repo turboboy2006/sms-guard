@@ -47,6 +47,8 @@ class MainActivity : BaseActivity() {
         const val MENU_SETTINGS = 2009
         const val MENU_MORE = 2010
         const val MENU_READ_ALL = 2011
+        const val MENU_SELECTION_MORE = 2110
+        const val MENU_SELECTION_CLOSE = 2111
         const val UNREAD_FILTER = "__unread__"
 
         /** Tab order, matching the chips built in [setUpFilterChips]. */
@@ -93,10 +95,11 @@ class MainActivity : BaseActivity() {
     private var archiveMode = false
 
     private val worker = Executors.newSingleThreadExecutor()
+    private val previewWorker = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private var skeletonPulse: android.animation.ObjectAnimator? = null
 
-    private val refresh: () -> Unit = { loadThreads() }
+    private val refresh: () -> Unit = { refreshFromCache(); loadThreads() }
 
     private val roleLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -144,6 +147,7 @@ class MainActivity : BaseActivity() {
     }
 
     private fun scheduleReload() {
+        refreshFromCache()
         if (reloadScheduled) return
         reloadScheduled = true
         main.postDelayed(reloadRunnable, 400)
@@ -159,12 +163,19 @@ class MainActivity : BaseActivity() {
             onClick = { thread ->
                 if (adapter.selectionCount > 0) adapter.toggleSelection(thread) else openThread(thread)
             },
-            onLongClick = { thread -> showOptions(thread) },
+            onLongClick = { thread -> adapter.toggleSelection(thread) },
             onCategoryClick = { thread -> showCategoryPicker(thread) },
             onSelectionChanged = { count -> updateSelectionUi(count) }
         )
         binding.recyclerThreads.layoutManager = LinearLayoutManager(this)
         binding.recyclerThreads.adapter = adapter
+        binding.recyclerThreads.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                binding.fabScrollTop.visibility = if (recyclerView.computeVerticalScrollOffset() > 700)
+                    View.VISIBLE else View.GONE
+            }
+        })
+        binding.fabScrollTop.setOnClickListener { binding.recyclerThreads.smoothScrollToPosition(0) }
         // Updating read state or a draft should not fade the entire inbox.
         binding.recyclerThreads.itemAnimator = null
         attachSwipeActions()
@@ -207,6 +218,7 @@ class MainActivity : BaseActivity() {
             applyFilter()
         }
         loadCachedThreads()
+        if (preview.size < 10) loadRecentPreview()
         // Request the default-SMS role before sensitive SMS permissions. This
         // ordering matters for modern Android's restricted-setting checks.
         if (isDefaultSmsApp()) ensurePermissions() else refreshBanner()
@@ -337,6 +349,7 @@ class MainActivity : BaseActivity() {
         BackgroundRenderer.apply(binding.root, this, theme.backgroundStyle, theme.backgroundImageUri, theme.backgroundPreset)
         applyGlassSurfaces()
 
+        refreshFromCache()
         loadThreads()
     }
 
@@ -480,6 +493,48 @@ class MainActivity : BaseActivity() {
         }
     }
 
+    /** A damaged or one-row cache still gets a useful first page promptly. */
+    private fun loadRecentPreview() {
+        previewWorker.execute {
+            val recent = runCatching {
+                SmsRepository(this).loadThreads(scanLimit = 350, useCache = false)
+            }.getOrDefault(emptyList())
+            if (recent.isEmpty()) return@execute
+            main.post {
+                if (isFinishing || isDestroyed) return@post
+                val merged = LinkedHashMap<Long, ThreadSummary>()
+                allThreads.forEach { merged[it.threadId] = it }
+                recent.forEach { row ->
+                    val old = merged[row.threadId]
+                    if (old == null || row.date >= old.date) merged[row.threadId] = row
+                }
+                allThreads = merged.values.sortedByDescending { it.date }
+                showSkeleton(false)
+                applyFilter()
+            }
+        }
+    }
+
+    /** The receiver patches this snapshot before notifying the open inbox. */
+    private fun refreshFromCache() {
+        if (!::adapter.isInitialized) return
+        val recent = ThreadCache.readPreview(this, 80)
+        if (recent.isEmpty()) return
+        val active = CategoryStore(this).active().mapTo(HashSet()) { it.id }
+        val merged = LinkedHashMap<Long, ThreadSummary>()
+        allThreads.forEach { merged[it.threadId] = it }
+        recent.forEach { cached ->
+            val row = cached.toSummary().let {
+                if (it.categoryId in active) it else it.copy(categoryId = Cat.OTHER)
+            }
+            val old = merged[row.threadId]
+            if (old == null || row.date >= old.date) merged[row.threadId] = row
+        }
+        allThreads = merged.values.sortedByDescending { it.date }
+        showSkeleton(false)
+        applyFilter()
+    }
+
     /**
      * Provider work: reading the mailbox and classifying senders is far too
      * heavy for the main thread — doing it there produced
@@ -500,6 +555,7 @@ class MainActivity : BaseActivity() {
             // the Contacts tab recovers after the permission is granted.
             try {
                 ContactsIndex.ensure(this)
+                main.post { if (!isFinishing && !isDestroyed) adapter.refreshContactNames() }
             } catch (t: Throwable) {
                 // no contacts permission: an empty index is fine
             }
@@ -519,7 +575,13 @@ class MainActivity : BaseActivity() {
             runOnUiThread {
                 syncRunning = false
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                if (threads.isNotEmpty()) allThreads = threads
+                if (threads.isNotEmpty()) {
+                    val latest = ThreadCache.readPreview(this, 80).map { it.toSummary() }
+                    val byId = LinkedHashMap<Long, ThreadSummary>()
+                    threads.forEach { byId[it.threadId] = it }
+                    latest.forEach { if ((byId[it.threadId]?.date ?: 0L) < it.date) byId[it.threadId] = it }
+                    allThreads = byId.values.sortedByDescending { it.date }
+                }
                 cleanExpiredTrash(allThreads)
                 showSkeleton(false)
                 applyFilter()
@@ -578,6 +640,7 @@ class MainActivity : BaseActivity() {
     override fun onDestroy() {
         skeletonPulse?.cancel()
         worker.shutdownNow()
+        previewWorker.shutdownNow()
         super.onDestroy()
     }
 
@@ -624,6 +687,12 @@ class MainActivity : BaseActivity() {
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         menu.add(0, MENU_BULK_RESTORE, 3, R.string.restore_from_trash)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        menu.add(0, MENU_SELECTION_MORE, 4, R.string.more_actions)
+            .setIcon(R.drawable.ic_more)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
+        menu.add(0, MENU_SELECTION_CLOSE, 5, R.string.cancel)
+            .setIcon(R.drawable.ic_close)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
         return true
     }
 
@@ -633,6 +702,8 @@ class MainActivity : BaseActivity() {
             menu.findItem(it)?.isVisible = selecting
         }
         menu.findItem(MENU_BULK_RESTORE)?.isVisible = selecting && selectedCategoryId == Cat.TRASH
+        menu.findItem(MENU_SELECTION_MORE)?.isVisible = selecting
+        menu.findItem(MENU_SELECTION_CLOSE)?.isVisible = selecting
         if (selectedCategoryId == Cat.TRASH) menu.findItem(MENU_BULK_TRASH)?.isVisible = false
         menu.findItem(MENU_SEARCH)?.isVisible = !selecting
         menu.findItem(MENU_MORE)?.isVisible = !selecting
@@ -665,6 +736,8 @@ class MainActivity : BaseActivity() {
             MENU_BULK_SPAM -> bulkCategory(Cat.SPAM)
             MENU_BULK_TRASH -> bulkCategory(Cat.TRASH)
             MENU_BULK_RESTORE -> bulkCategory(Cat.OTHER)
+            MENU_SELECTION_MORE -> showSelectionMore()
+            MENU_SELECTION_CLOSE -> adapter.clearSelection()
             else -> return super.onOptionsItemSelected(item)
         }
         return true
@@ -713,6 +786,24 @@ class MainActivity : BaseActivity() {
         supportActionBar?.title = if (count > 0) Dates.count(this, count) else
             getString(if (contactsOnly) R.string.tab_contacts else R.string.tab_messages)
         invalidateOptionsMenu()
+    }
+
+    private fun showSelectionMore() {
+        val selected = adapter.selectedItems()
+        if (selected.isEmpty()) return
+        ChoiceSheet.show(this, Dates.count(this, selected.size), listOf(
+            ChoiceSheet.Option(getString(R.string.archive), R.drawable.ic_archive),
+            ChoiceSheet.Option(getString(R.string.pin), R.drawable.ic_pin),
+            ChoiceSheet.Option(getString(R.string.change_category), R.drawable.ic_tab_all)
+        )) { which ->
+            when (which) {
+                0 -> selected.forEach { senderStore.setArchived(it.address, true) }
+                1 -> selected.forEach { senderStore.setPinned(it.address, true) }
+                2 -> { if (selected.size == 1) showOptions(selected.first()); return@show }
+            }
+            adapter.clearSelection()
+            applyFilter()
+        }
     }
 
     private fun attachSwipeActions() {

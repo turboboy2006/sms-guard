@@ -55,10 +55,7 @@ class CategoriesActivity : BaseActivity() {
 
         adapter = CategoryAdapter(store.all().toMutableList(), ::editCategory) { category, enabled ->
             if (category.id != Cat.OTHER) {
-                store.updateAny(category.copy(enabled = enabled))
-                Classifier.invalidateCaches()
-                ThreadCache.clear(this)
-                reload()
+                if (enabled) setEnabled(category, true) else chooseReassignment(category)
             }
         }
         binding.recyclerCategories.layoutManager = LinearLayoutManager(this)
@@ -80,6 +77,32 @@ class CategoriesActivity : BaseActivity() {
             }
         }).attachToRecyclerView(binding.recyclerCategories)
         binding.buttonAddCategory.setOnClickListener { editCategory(null) }
+    }
+
+    private fun chooseReassignment(category: Category) {
+        val destinations = store.active().filter { it.id != category.id }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(if (Dates.isPersian(this)) "انتقال پیام‌های این دسته" else "Move messages in this category")
+            .setSingleChoiceItems(destinations.map { it.label(this) }.toTypedArray(),
+                destinations.indexOfFirst { it.id == Cat.OTHER }.coerceAtLeast(0)) { dialog, selected ->
+                val target = destinations[selected].id
+                SenderStore(this).reassignCategory(category.id, target)
+                val overrides = MessageCategoryStore(this)
+                val migrated = overrides.all().mapValues { (_, value) -> if (value == category.id) target else value }
+                overrides.replaceAll(migrated)
+                setEnabled(category, false)
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.cancel) { _, _ -> reload() }
+            .setOnCancelListener { reload() }
+            .show()
+    }
+
+    private fun setEnabled(category: Category, enabled: Boolean) {
+        store.updateAny(category.copy(enabled = enabled))
+        Classifier.invalidateCaches()
+        ThreadCache.clear(this)
+        reload()
     }
 
     private fun reload() = adapter.replace(store.all())
