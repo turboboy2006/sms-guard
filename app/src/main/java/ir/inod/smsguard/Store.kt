@@ -107,6 +107,11 @@ class SettingsStore(context: Context) {
         get() = prefs.getString("language", "") ?: ""
         set(v) = prefs.edit().putString("language", v).apply()
 
+    /** Master switch for new-message notifications; enabled for existing installs. */
+    var notificationsEnabled: Boolean
+        get() = prefs.getBoolean("notifications_enabled", true)
+        set(v) = prefs.edit().putBoolean("notifications_enabled", v).apply()
+
     /** -1 follows Android's current default SMS subscription. */
     var defaultSimId: Int
         get() = prefs.getInt("default_sim_id", -1)

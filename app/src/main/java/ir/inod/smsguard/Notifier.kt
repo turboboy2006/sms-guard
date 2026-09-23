@@ -21,6 +21,7 @@ class Notifier(private val context: Context) {
     private val nm = NotificationManagerCompat.from(context)
 
     fun notifyIncoming(threadId: Long, address: String, body: String, categoryId: String) {
+        if (!SettingsStore(context).notificationsEnabled) return
         if (SenderStore(context).notificationsMuted(address)) return
         val senderSettings = SenderStore(context)
         val categorySettings = CategoryNotificationStore(context).get(categoryId).let {

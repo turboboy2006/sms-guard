@@ -75,6 +75,7 @@
     <string name="settings_tab_data">داده‌ها</string>
     <string name="settings_tab_backup">پشتیبان‌گیری</string>
     <string name="settings_language_desc">زبان رابط کاربری برنامه را انتخاب کنید</string>
+    <string name="settings_notifications_desc">نمایش اعلان پیام‌های جدید</string>
     <string name="settings_sim_desc">سیم‌کارت ارسال، مگر برای مخاطب تنظیم جداگانه‌ای باشد</string>
     <string name="settings_swipe_desc">عمل کشیدن به چپ و راست را مشخص کنید</string>
     <string name="settings_quiet_desc">محدود کردن اعلان‌ها در ساعت‌های مشخص</string>

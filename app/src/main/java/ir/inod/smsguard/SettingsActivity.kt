@@ -41,6 +41,7 @@ class SettingsActivity : BaseActivity() {
     private val langs = listOf("", "fa", "en")
     private var simIds: List<Int> = listOf(-1)
     private val retentionValues = listOf(0, 7, 30, 90)
+    private lateinit var notificationsSwitch: com.google.android.material.materialswitch.MaterialSwitch
 
     private val exportBackup = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -154,8 +155,10 @@ class SettingsActivity : BaseActivity() {
             (view.parent as? ViewGroup)?.removeView(view)
             return view
         }
-        val offline = take(findViewById(R.id.cardOffline))
-        val ai = take(findViewById(R.id.cardAi))
+        val offlineCard = take(findViewById(R.id.cardOffline)) as MaterialCardView
+        val aiCard = take(findViewById(R.id.cardAi)) as MaterialCardView
+        val offline = take(offlineCard.getChildAt(0))
+        val ai = take(aiCard.getChildAt(0))
         val quietSwitch = take(binding.switchQuiet)
         val quietHours = take(binding.groupQuietHours)
         val language = take(binding.spinnerLanguage)
@@ -238,10 +241,13 @@ class SettingsActivity : BaseActivity() {
         tile(0, getString(R.string.language), getString(R.string.settings_language_desc), R.drawable.ic_settings, language)
         tile(0, getString(R.string.default_sending_sim), getString(R.string.settings_sim_desc),
             R.drawable.ic_cat_mobile, sim)
-        tile(0, getString(R.string.settings_tab_notifications),
-            getString(R.string.settings_categories_desc), R.drawable.ic_notification) {
-            startActivity(Intent(this, CategoriesActivity::class.java))
+        notificationsSwitch = com.google.android.material.materialswitch.MaterialSwitch(this).apply {
+            isChecked = settings.notificationsEnabled
+            contentDescription = getString(R.string.settings_tab_notifications)
         }
+        tile(0, getString(R.string.settings_tab_notifications),
+            getString(R.string.settings_notifications_desc), R.drawable.ic_notification,
+            notificationsSwitch)
         tile(0, getString(R.string.swipe_actions), getString(R.string.settings_swipe_desc),
             R.drawable.ic_tab_all, swipeSwitch).addView(swipeActions)
         tile(0, getString(R.string.quiet_enable), getString(R.string.settings_quiet_desc),
@@ -481,6 +487,7 @@ class SettingsActivity : BaseActivity() {
         settings.threshold = binding.textThreshold.text?.toString()?.toIntOrNull()
             ?.coerceIn(10, 95) ?: 40
         settings.language = langs[binding.spinnerLanguage.selectedItemPosition.coerceIn(0, 2)]
+        settings.notificationsEnabled = notificationsSwitch.isChecked
         settings.defaultSimId = simIds.getOrElse(binding.spinnerDefaultSim.selectedItemPosition) { -1 }
         settings.trashRetentionDays = retentionValues.getOrElse(binding.spinnerTrashRetention.selectedItemPosition) { 0 }
         settings.swipeEnabled = binding.switchSwipe.isChecked

@@ -84,6 +84,7 @@
     <string name="settings_tab_data">Data</string>
     <string name="settings_tab_backup">Backup</string>
     <string name="settings_language_desc">Choose the app language</string>
+    <string name="settings_notifications_desc">Show alerts for new messages</string>
     <string name="settings_sim_desc">SIM used when no contact preference is set</string>
     <string name="settings_swipe_desc">Choose actions for left and right swipes</string>
     <string name="settings_quiet_desc">Limit alerts during selected hours</string>
