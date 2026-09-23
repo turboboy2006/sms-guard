@@ -293,7 +293,7 @@ class SettingsActivity : BaseActivity() {
         tabs.setTabTextColors(androidx.core.content.ContextCompat.getColor(this, R.color.text_secondary),
             theme.accentColor())
         root.addView(tabs, 1)
-        val scroll = ScrollView(this).apply { clipToPadding = false; fillViewport = true }
+        val scroll = ScrollView(this).apply { clipToPadding = false; isFillViewport = true }
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         saveButton.minimumHeight = px(56)
         (saveButton as? com.google.android.material.button.MaterialButton)?.apply {
