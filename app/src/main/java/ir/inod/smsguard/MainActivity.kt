@@ -194,13 +194,15 @@ class MainActivity : BaseActivity() {
                 }
                 R.id.nav_contacts -> {
                     archiveMode = false
-                    contactsOnly = true
+                    contactsOnly = false
+                    selectCategoryChip(Cat.PERSONAL)
                     applyFilter()
                     true
                 }
                 else -> {
                     archiveMode = false
                     contactsOnly = false
+                    selectCategoryChip(null)
                     applyFilter()
                     true
                 }
@@ -240,8 +242,7 @@ class MainActivity : BaseActivity() {
         // The public inbox taxonomy is intentionally compact. Archive and Trash
         // are destinations in the More menu, not categories competing for room
         // with real messages; unread stays at the far edge as a quick filter.
-        val visible = listOf(Cat.PERSONAL, Cat.BANKING, Cat.OTP, Cat.NOTIFICATION, Cat.SPAM, Cat.OTHER)
-            .mapNotNull { id -> CategoryStore(this).byId(id)?.takeIf { it.enabled } }
+        val visible = CategoryStore(this).active().filter { it.id != Cat.TRASH }
         val entries = listOf<Pair<String?, String>>(null to getString(R.string.tab_all)) +
             visible.map { it.id to it.label(this) } +
             listOf(UNREAD_FILTER to getString(R.string.tab_unread))
@@ -286,6 +287,7 @@ class MainActivity : BaseActivity() {
                 setEnsureMinTouchTargetSize(false)
             }
             idToCategory[chip.id] = entry.first
+            chip.tag = entry.first ?: "__all__"
             if (entry.first != null && entry.first != UNREAD_FILTER) {
                 chip.setOnLongClickListener {
                     startActivity(Intent(this@MainActivity, CategoriesActivity::class.java)
@@ -305,6 +307,13 @@ class MainActivity : BaseActivity() {
         categorySignature = CategoryStore(this).all().joinToString("|") {
             "${it.id}:${it.label(this)}:${it.colorHex}:${it.iconId}:${it.order}:${it.enabled}"
         }
+    }
+
+    private fun selectCategoryChip(categoryId: String?) {
+        val key = categoryId ?: "__all__"
+        val chip = (0 until binding.chipGroup.childCount).map { binding.chipGroup.getChildAt(it) }
+            .firstOrNull { it.tag == key } as? com.google.android.material.chip.Chip
+        chip?.let { binding.chipGroup.check(it.id) }
     }
 
     /** Hides the parts of the screen the user asked not to see. */
