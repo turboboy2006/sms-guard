@@ -9,6 +9,7 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
+import android.widget.HorizontalScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 
@@ -36,8 +37,10 @@ class AppearancePreviewView @JvmOverloads constructor(
     private val sectionLabel: TextView
     private val incomingBubble: TextView
     private val outgoingBubble: TextView
+    private val categoryStrip: HorizontalScrollView
 
     fun showInboxPreview(showInbox: Boolean) {
+        categoryStrip.visibility = if (showInbox) VISIBLE else GONE
         rowContent.visibility = if (showInbox) VISIBLE else GONE
         divider.visibility = if (showInbox) VISIBLE else GONE
         sectionLabel.visibility = if (showInbox) GONE else VISIBLE
@@ -48,6 +51,36 @@ class AppearancePreviewView @JvmOverloads constructor(
     init {
         orientation = VERTICAL
         setPadding(0, 0, 0, 0)
+
+        categoryStrip = HorizontalScrollView(context).apply {
+            isHorizontalScrollBarEnabled = false
+            val chips = LinearLayout(context).apply {
+                orientation = HORIZONTAL
+                setPadding(dp(10), dp(3), dp(10), dp(5))
+            }
+            listOf(
+                R.string.tab_all to "#0F766E",
+                R.string.cat_personal to "#15803D",
+                R.string.cat_banking to "#1D4ED8",
+                R.string.cat_otp to "#B45309",
+                R.string.cat_notification to "#7C3AED"
+            ).forEach { (label, hex) ->
+                val color = Color.parseColor(hex)
+                chips.addView(TextView(context).apply {
+                    text = context.getString(label)
+                    textSize = 11f
+                    gravity = Gravity.CENTER
+                    setTextColor(color)
+                    setPadding(dp(10), dp(5), dp(10), dp(5))
+                    background = pill(androidx.core.graphics.ColorUtils.blendARGB(
+                        ContextCompat.getColor(context, R.color.card_bg), color, 0.13f))
+                }, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                    marginEnd = dp(5)
+                })
+            }
+            addView(chips)
+        }
+        addView(categoryStrip)
 
         rowContent = LinearLayout(context).apply {
             orientation = HORIZONTAL

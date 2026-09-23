@@ -49,6 +49,7 @@
     <string name="scroll_to_top">Scroll to top</string>
     <string name="alert_vibrate_only">Vibrate only</string>
     <string name="notification_silent">Notifications silenced</string>
+    <string name="sender_address_hint">Sender name or number</string>
     <string name="cleared">Cleared</string>
     <string name="close">Close</string>
     <string name="delete">Delete</string>

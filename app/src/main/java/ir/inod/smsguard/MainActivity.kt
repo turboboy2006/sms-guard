@@ -817,7 +817,29 @@ class MainActivity : BaseActivity() {
             when (which) {
                 0 -> selected.forEach { senderStore.setArchived(it.address, true) }
                 1 -> selected.forEach { senderStore.setPinned(it.address, true) }
-                2 -> { if (selected.size == 1) showOptions(selected.first()); return@show }
+                2 -> {
+                    val categories = CategoryStore(this).active().filter { it.id != Cat.TRASH }
+                    ChoiceSheet.show(this, getString(R.string.change_category), categories.map { cat ->
+                        ChoiceSheet.Option(cat.label(this),
+                            (IconCatalog.byId(cat.iconId) ?: IconCatalog.forCategory(cat.id)).drawable,
+                            runCatching { Color.parseColor(cat.colorHex) }.getOrNull())
+                    }) { index ->
+                        val id = categories[index].id
+                        selected.forEach { row ->
+                            senderStore.setCategory(row.address, id)
+                            messageCats.set(row.messageId, id)
+                        }
+                        Classifier.invalidateCaches()
+                        ThreadCache.clear(this)
+                        allThreads = allThreads.map { row ->
+                            if (selected.any { it.threadId == row.threadId }) row.copy(categoryId = id)
+                            else row
+                        }
+                        adapter.clearSelection()
+                        applyFilter()
+                    }
+                    return@show
+                }
             }
             adapter.clearSelection()
             applyFilter()

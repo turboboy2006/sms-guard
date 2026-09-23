@@ -20,6 +20,7 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.tabs.TabLayout
 import ir.inod.smsguard.databinding.ActivityManagerBinding
 
@@ -38,6 +39,7 @@ class ManagerActivity : BaseActivity() {
     private val senders by lazy { SenderStore(this) }
     private val blocks by lazy { BlockStore(this) }
     private var tabIndex = 0
+    private lateinit var addButton: MaterialButton
 
     private data class Row(
         val key: String,
@@ -71,6 +73,15 @@ class ManagerActivity : BaseActivity() {
 
         binding.recycler.layoutManager = LinearLayoutManager(this)
         binding.editFilter.doAfterTextChanged { load() }
+        addButton = MaterialButton(this).apply {
+            setIconResource(R.drawable.ic_compose)
+            setOnClickListener { addEntry() }
+        }
+        (binding.root as LinearLayout).addView(addButton, 3,
+            LinearLayout.LayoutParams(-1, -2).apply {
+                val margin = (16 * resources.displayMetrics.density).toInt()
+                setMargins(margin, margin / 3, margin, margin / 3)
+            })
         binding.recycler.adapter = RowAdapter { count ->
             supportActionBar?.title = if (count > 0) Dates.count(this, count)
                 else getString(R.string.manage_brands)
@@ -178,6 +189,8 @@ class ManagerActivity : BaseActivity() {
     }
 
     private fun load() {
+        addButton.text = if (tabIndex == 0) getString(R.string.manage_brands)
+            else getString(R.string.blocked_numbers)
         val data = try {
             rows()
         } catch (t: Throwable) {
@@ -192,6 +205,34 @@ class ManagerActivity : BaseActivity() {
             if (tabIndex == 0) R.string.no_overrides else R.string.blocked_none
         )
         binding.textEmpty.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    private fun addEntry() {
+        if (tabIndex == 0) {
+            InputSheet.show(this, getString(R.string.manage_brands),
+                getString(R.string.sender_address_hint), icon = R.drawable.ic_person) { address ->
+                if (address.isNotBlank()) {
+                    senders.setName(address.trim(), address.trim())
+                    load()
+                }
+            }
+        } else {
+            ChoiceSheet.show(this, getString(R.string.blocked_numbers), listOf(
+                ChoiceSheet.Option(getString(R.string.blocked_number_hint), R.drawable.ic_person),
+                ChoiceSheet.Option(getString(R.string.blocked_domain_hint), R.drawable.ic_cat_security)
+            )) { kind ->
+                InputSheet.show(this, getString(R.string.blocked_numbers),
+                    if (kind == 0) getString(R.string.blocked_number_hint)
+                    else getString(R.string.blocked_domain_hint),
+                    icon = if (kind == 0) R.drawable.ic_person else R.drawable.ic_cat_security) { value ->
+                    if (value.isNotBlank()) {
+                        if (kind == 0) blocks.blockPrefix(value.trim())
+                        else blocks.blockDomain(value.trim())
+                        load()
+                    }
+                }
+            }
+        }
     }
 
     private fun confirm(titleRes: Int, message: String, onYes: () -> Unit) {
