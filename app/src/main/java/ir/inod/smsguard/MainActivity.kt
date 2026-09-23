@@ -238,6 +238,7 @@ class MainActivity : BaseActivity() {
      * an icon on every chip turns the strip into noise.
      */
     private fun setUpFilterChips() {
+        val previousSelection = selectedCategoryId
         binding.chipGroup.removeAllViews()
         // The public inbox taxonomy is intentionally compact. Archive and Trash
         // are destinations in the More menu, not categories competing for room
@@ -302,8 +303,7 @@ class MainActivity : BaseActivity() {
             selectedCategoryId = idToCategory[first]
             applyFilter()
         }
-        (binding.chipGroup.getChildAt(0) as? com.google.android.material.chip.Chip)
-            ?.isChecked = true
+        selectCategoryChip(previousSelection)
         categorySignature = CategoryStore(this).all().joinToString("|") {
             "${it.id}:${it.label(this)}:${it.colorHex}:${it.iconId}:${it.order}:${it.enabled}"
         }
@@ -313,7 +313,8 @@ class MainActivity : BaseActivity() {
         val key = categoryId ?: "__all__"
         val chip = (0 until binding.chipGroup.childCount).map { binding.chipGroup.getChildAt(it) }
             .firstOrNull { it.tag == key } as? com.google.android.material.chip.Chip
-        chip?.let { binding.chipGroup.check(it.id) }
+        val target = chip ?: binding.chipGroup.getChildAt(0) as? com.google.android.material.chip.Chip
+        target?.let { binding.chipGroup.check(it.id) }
     }
 
     /** Hides the parts of the screen the user asked not to see. */
