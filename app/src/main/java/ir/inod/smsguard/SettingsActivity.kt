@@ -151,11 +151,16 @@ class SettingsActivity : BaseActivity() {
         val column = binding.buttonSave.parent as ViewGroup
         val offline = ((binding.sliderThreshold.parent as View).parent as View).parent as View
         val appearance = ((binding.rowAppearance.parent as View).parent as View)
+        val appearanceContent = binding.rowAppearance.parent as LinearLayout
+        val cache = binding.rowCache
+        appearanceContent.removeView(cache)
+        // The old combined card let the cache action leak into Appearance.
+        // Keep only the appearance row in that card.
+        if (appearanceContent.childCount > 1) appearanceContent.removeViewAt(1)
         val general = ((binding.spinnerLanguage.parent as View).parent as View)
         val management = ((binding.buttonCategories.parent as View).parent as View)
         val managementHeader = column.getChildAt(column.indexOfChild(management) - 1) as TextView
         managementHeader.setText(R.string.manage_categories)
-        val managementContent = binding.buttonCategories.parent as LinearLayout
         fun dedicatedSection(title: Int, buttons: List<View>): List<View> {
             val header = TextView(this).apply {
                 setText(title)
@@ -170,7 +175,7 @@ class SettingsActivity : BaseActivity() {
                 setPadding(padding, padding, padding, padding)
             }
             buttons.forEach { button ->
-                managementContent.removeView(button)
+                (button.parent as ViewGroup).removeView(button)
                 content.addView(button)
             }
             val card = MaterialCardView(this).apply {
@@ -189,7 +194,7 @@ class SettingsActivity : BaseActivity() {
             return listOf(header, card)
         }
         val dataSection = dedicatedSection(R.string.settings_tab_data, listOf(
-            binding.buttonBrands, binding.buttonRules, binding.buttonScheduled, binding.buttonSavedMessages))
+            cache, binding.buttonBrands, binding.buttonRules, binding.buttonScheduled, binding.buttonSavedMessages))
         val backupSection = dedicatedSection(R.string.settings_tab_backup, listOf(
             binding.buttonExportBackup, binding.buttonImportBackup))
         val quiet = (binding.switchQuiet.parent as View).parent as View
@@ -198,15 +203,15 @@ class SettingsActivity : BaseActivity() {
             val index = column.indexOfChild(card)
             return listOfNotNull(column.getChildAt(index - 1), card)
         }
-        val cache = ((binding.rowCache.parent as View).parent as View)
+        val offlineHeader = column.getChildAt(column.indexOfChild(offline) - 1)
         // These are real section tabs, not a second settings menu: each tab
         // exposes a focused group of cards and preserves the same controls.
         val groups = listOf(
             section(general) + listOf(quiet),
             section(appearance),
             listOf(managementHeader, management),
-            listOf(ai, offline),
-            listOf(cache) + dataSection,
+            listOf(offlineHeader, ai, offline),
+            dataSection,
             backupSection
         )
         val tabs = TabLayout(this).apply {

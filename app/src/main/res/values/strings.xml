@@ -447,6 +447,10 @@
     <string name="notification_summary_off">Notifications off</string>
     <string name="restricted_sms_title">Could not set default SMS app</string>
     <string name="restricted_sms_help_action">Default SMS access denied? See steps</string>
+    <string name="scheduled_new">New scheduled message</string>
+    <string name="scheduled_recipient_hint">Recipient number</string>
+    <string name="scheduled_message_hint">Message</string>
+    <string name="scheduled_validation">Enter a recipient, message and future time</string>
     <string name="open_app_settings">Open app settings</string>
     <string name="open_android_help">Open Android help</string>
     <string name="try_again">Try again</string>

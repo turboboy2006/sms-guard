@@ -1,6 +1,8 @@
 package ir.inod.smsguard
 
 import android.content.Context
+import android.content.res.ColorStateList
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -28,12 +30,19 @@ object SecondaryUi {
         hint = context.getString(R.string.search_hint)
         isSingleLine = true
         setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
+        compoundDrawableTintList = ColorStateList.valueOf(
+            ContextCompat.getColor(context, R.color.text_secondary))
         compoundDrawablePadding = px(context, R.dimen.space_12)
         val gutter = px(context, R.dimen.gutter)
         setPadding(gutter, px(context, R.dimen.space_8), gutter, px(context, R.dimen.space_8))
         setTextColor(ContextCompat.getColor(context, R.color.text_primary))
         setHintTextColor(ContextCompat.getColor(context, R.color.text_muted))
         textSize = context.resources.getDimension(R.dimen.text_body) / context.resources.displayMetrics.scaledDensity
+        background = GradientDrawable().apply {
+            cornerRadius = context.resources.getDimension(R.dimen.radius_md)
+            setColor(ContextCompat.getColor(context, R.color.card_bg))
+            setStroke(px(context, R.dimen.card_stroke), ContextCompat.getColor(context, R.color.divider))
+        }
     }
 
     fun empty(context: Context, icon: Int): TextView = TextView(context).apply {

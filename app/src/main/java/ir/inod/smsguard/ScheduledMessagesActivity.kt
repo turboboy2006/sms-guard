@@ -17,6 +17,8 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import java.util.Calendar
 
 /** Scheduled messages rendered as a scalable list, with immediate send and undoable cancel. */
@@ -34,7 +36,7 @@ class ScheduledMessagesActivity : BaseActivity() {
         frame.addView(RecyclerView(this).apply{layoutManager=LinearLayoutManager(this@ScheduledMessagesActivity);adapter=this@ScheduledMessagesActivity.adapter;clipToPadding=false;setPadding(dp(12),dp(8),dp(12),dp(20))},FrameLayout.LayoutParams(-1,-1))
         empty=SecondaryUi.empty(this,R.drawable.ic_calendar);frame.addView(empty,FrameLayout.LayoutParams(-1,-2,Gravity.CENTER));root.addView(frame,LinearLayout.LayoutParams(-1,0,1f))
         root.addView(MaterialButton(this).apply {
-            text = if (Dates.isPersian(this@ScheduledMessagesActivity)) "پیام زمان‌دار جدید" else "New scheduled message"
+            text = getString(R.string.scheduled_new)
             setIconResource(R.drawable.ic_calendar)
             setOnClickListener { createScheduled() }
         }, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(16), dp(4), dp(16), dp(16)) })
@@ -46,13 +48,12 @@ class ScheduledMessagesActivity : BaseActivity() {
     private fun cancel(item:ScheduledSms){store.remove(item.id);render();Snackbar.make(empty,R.string.applied,Snackbar.LENGTH_LONG).setAction(R.string.undo){store.schedule(item.address,item.body,item.at);render()}.show()}
     private fun createScheduled() {
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), 0) }
-        val recipient = EditText(this).apply {
-            hint = if (Dates.isPersian(this@ScheduledMessagesActivity)) "شماره گیرنده" else "Recipient number"
+        val recipient = TextInputEditText(this).apply {
             inputType = android.text.InputType.TYPE_CLASS_PHONE
         }
-        val message = EditText(this).apply {
-            hint = if (Dates.isPersian(this@ScheduledMessagesActivity)) "متن پیام" else "Message"
+        val message = TextInputEditText(this).apply {
             minLines = 3
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
         }
         val whenButton = MaterialButton(this).apply {
             setIconResource(R.drawable.ic_calendar)
@@ -71,16 +72,25 @@ class ScheduledMessagesActivity : BaseActivity() {
                 }, date.get(Calendar.HOUR_OF_DAY), date.get(Calendar.MINUTE), true).show()
             }, date.get(Calendar.YEAR), date.get(Calendar.MONTH), date.get(Calendar.DAY_OF_MONTH)).show()
         }
-        box.addView(recipient); box.addView(message); box.addView(whenButton)
-        val dialog = MaterialAlertDialogBuilder(this).setTitle(
-            if (Dates.isPersian(this)) "پیام زمان‌دار جدید" else "New scheduled message")
+        box.addView(TextInputLayout(this).apply {
+            hint = getString(R.string.scheduled_recipient_hint)
+            boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
+            addView(recipient)
+        })
+        box.addView(TextInputLayout(this).apply {
+            hint = getString(R.string.scheduled_message_hint)
+            boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
+            addView(message)
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = SecondaryUi.px(this@ScheduledMessagesActivity, R.dimen.space_12) })
+        box.addView(whenButton)
+        val dialog = MaterialAlertDialogBuilder(this).setTitle(R.string.scheduled_new)
             .setView(box).setNegativeButton(R.string.cancel, null).setPositiveButton(R.string.save, null).create()
         dialog.setOnShowListener {
             dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val number = recipient.text.toString().trim()
                 val body = message.text.toString().trim()
                 if (number.isBlank() || body.isBlank() || date.timeInMillis <= System.currentTimeMillis()) {
-                    Toast.makeText(this, if (Dates.isPersian(this)) "شماره، متن و زمان آینده را وارد کنید" else "Enter a recipient, message and future time", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, R.string.scheduled_validation, Toast.LENGTH_SHORT).show()
                 } else {
                     if (store.schedule(number, body, date.timeInMillis)) {
                         render(); dialog.dismiss()

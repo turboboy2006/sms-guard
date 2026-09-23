@@ -327,10 +327,9 @@ class CategoriesActivity : BaseActivity() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
             val d = parent.resources.displayMetrics.density
-            val card = MaterialCardView(parent.context).apply {
-                radius = 18f * d; cardElevation = 0f; strokeWidth = 1
-                layoutParams = RecyclerView.LayoutParams(-1, -2).apply { setMargins(0, (5*d).toInt(), 0, (5*d).toInt()) }
-            }
+            val card = SecondaryUi.listCard(parent.context)
+            val gap = SecondaryUi.px(parent.context, R.dimen.space_4)
+            (card.layoutParams as RecyclerView.LayoutParams).setMargins(0, gap, 0, gap)
             val row = LinearLayout(parent.context).apply {
                 orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
                 setPadding((14*d).toInt(), (12*d).toInt(), (10*d).toInt(), (12*d).toInt())
@@ -342,8 +341,8 @@ class CategoriesActivity : BaseActivity() {
                 orientation = LinearLayout.VERTICAL
                 layoutParams = LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = (12*d).toInt() }
             }
-            val title = TextView(parent.context).apply { textSize = 16f; setTextColor(ContextCompat.getColor(context, R.color.text_primary)) }
-            val subtitle = TextView(parent.context).apply { textSize = 12.5f; setTextColor(ContextCompat.getColor(context, R.color.text_secondary)) }
+            val title = TextView(parent.context).apply { setTextAppearance(R.style.TextAppearance_SmsGuard_Title) }
+            val subtitle = TextView(parent.context).apply { setTextAppearance(R.style.TextAppearance_SmsGuard_Label) }
             texts.addView(title); texts.addView(subtitle)
             val toggle = SwitchMaterial(parent.context).apply { showText = false }
             val drag = TextView(parent.context).apply { text = "≡"; textSize = 25f; gravity = Gravity.CENTER; setTextColor(ContextCompat.getColor(context, R.color.text_muted)); contentDescription = getString(R.string.categories_drag_hint) }

@@ -409,6 +409,10 @@
     <string name="notification_summary_off">اعلان خاموش</string>
     <string name="restricted_sms_title">برنامهٔ پیش‌فرض پیامک تنظیم نشد</string>
     <string name="restricted_sms_help_action">دسترسی پیش‌فرض رد شد؟ راهنما</string>
+    <string name="scheduled_new">پیام زمان‌دار جدید</string>
+    <string name="scheduled_recipient_hint">شمارهٔ گیرنده</string>
+    <string name="scheduled_message_hint">متن پیام</string>
+    <string name="scheduled_validation">شماره، متن و زمانی در آینده وارد کنید</string>
     <string name="open_app_settings">بازکردن تنظیمات برنامه</string>
     <string name="open_android_help">راهنمای رسمی اندروید</string>
     <string name="try_again">تلاش دوباره</string>

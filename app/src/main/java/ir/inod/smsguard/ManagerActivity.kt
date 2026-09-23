@@ -446,9 +446,9 @@ class ManagerActivity : BaseActivity() {
                 }
                 isClickable = true
                 background = GradientDrawable().apply {
-                    cornerRadius = 18 * density
+                    cornerRadius = parent.resources.getDimension(R.dimen.radius_lg)
                     setColor(ContextCompat.getColor(parent.context, R.color.card_bg))
-                    setStroke((1 * density).toInt().coerceAtLeast(1),
+                    setStroke(SecondaryUi.px(parent.context, R.dimen.card_stroke),
                         ContextCompat.getColor(parent.context, R.color.divider))
                 }
             }
@@ -482,12 +482,10 @@ class ManagerActivity : BaseActivity() {
                     .apply { marginStart = (12 * density).toInt() }
             }
             val title = TextView(parent.context).apply {
-                setTextColor(ContextCompat.getColor(parent.context, R.color.text_primary))
-                textSize = 16f
+                setTextAppearance(R.style.TextAppearance_SmsGuard_Title)
             }
             val subtitle = TextView(parent.context).apply {
-                setTextColor(ContextCompat.getColor(parent.context, R.color.text_secondary))
-                textSize = 13f
+                setTextAppearance(R.style.TextAppearance_SmsGuard_Label)
             }
             texts.addView(title)
             texts.addView(subtitle)
