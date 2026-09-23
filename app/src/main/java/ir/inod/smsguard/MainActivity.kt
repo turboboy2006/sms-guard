@@ -82,6 +82,7 @@ class MainActivity : BaseActivity() {
     private var syncPending = false
     private var categorySignature = ""
     private var trashCleanupDone = false
+    private val roleHelpPrefs by lazy { getSharedPreferences("sms_role_help", MODE_PRIVATE) }
 
     /**
      * The bottom navigation's Contacts destination.
@@ -105,8 +106,14 @@ class MainActivity : BaseActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {
         refreshBanner()
-        if (isDefaultSmsApp()) ensurePermissions()
-        else if (Build.VERSION.SDK_INT >= 35) showRestrictedRoleHelp()
+        if (isDefaultSmsApp()) {
+            roleHelpPrefs.edit().remove("role_request_denied").apply()
+            ensurePermissions()
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            roleHelpPrefs.edit().putBoolean("role_request_denied", true).apply()
+            refreshBanner()
+            showRestrictedRoleHelp()
+        }
     }
 
     private val permissionLauncher = registerForActivityResult(
@@ -185,6 +192,7 @@ class MainActivity : BaseActivity() {
         applyAppearance()
 
         binding.buttonMakeDefault.setOnClickListener { requestDefaultRole() }
+        binding.buttonRoleHelp.setOnClickListener { showRestrictedRoleHelp() }
         binding.fabCompose.setOnClickListener { startCompose() }
         binding.bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
@@ -481,7 +489,12 @@ class MainActivity : BaseActivity() {
     }
 
     private fun refreshBanner() {
-        binding.cardDefaultBanner.visibility = if (isDefaultSmsApp()) View.GONE else View.VISIBLE
+        val isDefault = isDefaultSmsApp()
+        if (isDefault) roleHelpPrefs.edit().remove("role_request_denied").apply()
+        binding.cardDefaultBanner.visibility = if (isDefault) View.GONE else View.VISIBLE
+        binding.buttonRoleHelp.visibility = if (!isDefault &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            roleHelpPrefs.getBoolean("role_request_denied", false)) View.VISIBLE else View.GONE
     }
 
     // ------------------------------------------------------------------ data

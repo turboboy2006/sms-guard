@@ -48,6 +48,15 @@
                 android:layout_marginTop="@dimen/space_8"
                 android:minHeight="@dimen/touch_target"
                 android:text="@string/make_default" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonRoleHelp"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/touch_target"
+                android:text="@string/restricted_sms_help_action"
+                android:visibility="gone" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
