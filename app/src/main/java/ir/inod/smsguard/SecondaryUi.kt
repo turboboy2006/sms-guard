@@ -21,7 +21,7 @@ object SecondaryUi {
             this.title = title
             setTitleTextColor(ContextCompat.getColor(context, R.color.text_primary))
             setBackgroundColor(ContextCompat.getColor(context, R.color.card_bg))
-            setNavigationIcon(R.drawable.ic_chevron)
+            setNavigationIcon(R.drawable.ic_arrow_back)
             setNavigationOnClickListener { onBack() }
             minimumHeight = px(context, R.dimen.appbar_height)
         }

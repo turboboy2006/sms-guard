@@ -82,6 +82,9 @@
             android:layout_gravity="center"
             android:gravity="center"
             android:padding="@dimen/space_24"
+            android:drawableTop="@drawable/ic_search"
+            android:drawablePadding="@dimen/space_16"
+            android:drawableTint="@color/text_muted"
             android:text="@string/search_start_hint"
             android:textAppearance="@style/TextAppearance.SmsGuard.Body" />
 
