@@ -38,6 +38,7 @@
         <activity
             android:name=".SearchActivity"
             android:exported="false" />
+        <activity android:name=".ContactDetailsActivity" android:exported="false" />
         <activity android:name=".ScheduledMessagesActivity" android:exported="false" />
         <activity android:name=".SavedMessagesActivity" android:exported="false" />
         <activity android:name=".FolderActivity" android:exported="false" android:parentActivityName=".MainActivity" />

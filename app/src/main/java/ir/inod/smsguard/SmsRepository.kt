@@ -213,7 +213,7 @@ class SmsRepository(private val context: Context) {
                     val address = c.getString(iAddr) ?: ""
                     val body = c.getString(iBody) ?: ""
                     val category = categoryFor(address, body, id)
-                    if (category !in activeCategories) continue
+                        .takeIf { it in activeCategories } ?: Cat.OTHER
                     if (categoryId != null && category != categoryId) continue
                     out += ThreadSummary(
                         threadId = threadId,

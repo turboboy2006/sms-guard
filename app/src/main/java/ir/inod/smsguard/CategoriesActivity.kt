@@ -168,6 +168,7 @@ class CategoriesActivity : BaseActivity() {
         val alertModes = listOf(
             CategoryAlertMode.DEFAULT to R.string.alert_default,
             CategoryAlertMode.SILENT to R.string.alert_silent,
+            CategoryAlertMode.VIBRATE_ONLY to R.string.alert_vibrate_only,
             CategoryAlertMode.CUSTOM to R.string.alert_custom,
             CategoryAlertMode.OFF to R.string.alert_off
         )
@@ -349,6 +350,7 @@ class CategoriesActivity : BaseActivity() {
             val alertLabel = getString(when (alert.mode) {
                 CategoryAlertMode.DEFAULT -> R.string.notification_summary_default
                 CategoryAlertMode.SILENT -> R.string.notification_summary_silent
+                CategoryAlertMode.VIBRATE_ONLY -> R.string.alert_vibrate_only
                 CategoryAlertMode.CUSTOM -> R.string.notification_summary_custom
                 CategoryAlertMode.OFF -> R.string.notification_summary_off
             })

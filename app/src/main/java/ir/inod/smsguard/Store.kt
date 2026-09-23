@@ -672,7 +672,7 @@ class CategoryStore(context: Context) {
     private companion object { const val KEY = "custom"; const val SYSTEM_KEY = "system_overrides" }
 }
 
-enum class CategoryAlertMode { DEFAULT, SILENT, CUSTOM, OFF }
+enum class CategoryAlertMode { DEFAULT, SILENT, VIBRATE_ONLY, CUSTOM, OFF }
 
 data class CategoryNotificationSettings(
     val mode: CategoryAlertMode = CategoryAlertMode.DEFAULT,
@@ -792,6 +792,8 @@ class SenderStore(context: Context) {
     }
 
     fun notificationsMuted(sender: String): Boolean = entry(sender).optBoolean("muted", false)
+
+    fun mutedAddresses(): Set<String> = load().filterValues { it.optBoolean("muted", false) }.keys
 
     fun setNotificationsMuted(sender: String, muted: Boolean) {
         put(sender, entry(sender).apply { put("muted", muted) })

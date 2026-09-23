@@ -57,6 +57,7 @@ class SearchActivity : BaseActivity() {
                 }
             },
             onLongClick = { row -> adapter.toggleSelection(row) },
+            onAvatarClick = { row -> ContactPreview.show(this, row.address) },
             onSelectionChanged = { count ->
                 supportActionBar?.title = if (count > 0) Dates.count(this, count) else ""
                 invalidateOptionsMenu()

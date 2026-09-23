@@ -41,6 +41,8 @@
     <string name="blocked_empty">هنوز پیامکی مسدود نشده است.</string>
     <string name="clear">پاک کردن</string>
     <string name="scroll_to_top">رفتن به بالای فهرست</string>
+    <string name="alert_vibrate_only">فقط لرزش</string>
+    <string name="notification_silent">اعلان‌ها بی‌صدا</string>
     <string name="cleared">پاک شد</string>
     <string name="close">بستن</string>
     <string name="delete">حذف</string>

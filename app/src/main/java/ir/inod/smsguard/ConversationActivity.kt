@@ -186,7 +186,10 @@ class ConversationActivity : BaseActivity() {
             startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:${android.net.Uri.encode(address)}")))
         }
         binding.textRisk.setOnClickListener { showRiskDetails() }
-        binding.toolbar.setOnClickListener { if (address.isNotBlank()) showSenderMenu() }
+        binding.toolbar.setOnClickListener {
+            if (address.isNotBlank()) startActivity(Intent(this, ContactDetailsActivity::class.java)
+                .putExtra(ContactDetailsActivity.EXTRA_ADDRESS, address))
+        }
         binding.editMessage.doAfterTextChanged { editable ->
             if (address.isNotBlank()) drafts.edit().putString(address, editable?.toString().orEmpty()).apply()
             val count = editable?.length ?: 0

@@ -164,6 +164,7 @@ class MainActivity : BaseActivity() {
                 if (adapter.selectionCount > 0) adapter.toggleSelection(thread) else openThread(thread)
             },
             onLongClick = { thread -> adapter.toggleSelection(thread) },
+            onAvatarClick = { thread -> ContactPreview.show(this, thread.address) },
             onCategoryClick = { thread -> showCategoryPicker(thread) },
             onSelectionChanged = { count -> updateSelectionUi(count) }
         )
@@ -324,6 +325,7 @@ class MainActivity : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (::adapter.isInitialized) adapter.refreshNotificationState()
         if (::adapter.isInitialized) adapter.refreshDrafts()
         refreshBanner()
         applyChipVisibility()
@@ -560,14 +562,14 @@ class MainActivity : BaseActivity() {
                 // no contacts permission: an empty index is fine
             }
             val threads = try {
-                repo.loadThreads(progressEvery = Int.MAX_VALUE) { partial ->
+                repo.loadThreads(progressEvery = Int.MAX_VALUE, onProgress = { partial ->
                     main.post {
                         if (isFinishing || isDestroyed || partial.isEmpty()) return@post
                         allThreads = partial
                         showSkeleton(false)
                         applyFilter()
                     }
-                }
+                })
             } catch (t: Throwable) {
                 emptyList()
             }

@@ -123,9 +123,10 @@ class Notifier(private val context: Context) {
                 if (settings.mode == CategoryAlertMode.SILENT) NotificationManager.IMPORTANCE_LOW
                 else NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                if (settings.mode == CategoryAlertMode.SILENT) setSound(null, null)
+                if (settings.mode == CategoryAlertMode.SILENT || settings.mode == CategoryAlertMode.VIBRATE_ONLY) setSound(null, null)
                 else if (!sound.isNullOrBlank()) setSound(Uri.parse(sound), attrs)
-                enableVibration(settings.vibrate && settings.mode != CategoryAlertMode.SILENT)
+                enableVibration(settings.mode == CategoryAlertMode.VIBRATE_ONLY ||
+                    (settings.vibrate && settings.mode != CategoryAlertMode.SILENT))
                 enableLights(settings.mode != CategoryAlertMode.SILENT)
                 lockscreenVisibility = if (settings.showOnLockScreen)
                     android.app.Notification.VISIBILITY_PRIVATE else android.app.Notification.VISIBILITY_SECRET

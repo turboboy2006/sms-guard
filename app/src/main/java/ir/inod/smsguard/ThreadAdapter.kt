@@ -80,6 +80,7 @@ object TextDir {
 class ThreadAdapter(
     private val onClick: (ThreadSummary) -> Unit,
     private val onLongClick: (ThreadSummary) -> Unit,
+    private val onAvatarClick: (ThreadSummary) -> Unit = {},
     private val onCategoryClick: (ThreadSummary) -> Unit = {},
     private val onSelectionChanged: (Int) -> Unit = {},
     private val identityByMessage: Boolean = false
@@ -97,6 +98,8 @@ class ThreadAdapter(
     }
     private val selectedIds = linkedSetOf<Long>()
     private var categoryCache: Map<String, Category>? = null
+    private var notificationModes: MutableMap<String, CategoryAlertMode> = HashMap()
+    private var mutedAddresses: Set<String>? = null
     private var nameCache: HashMap<String, String> = HashMap()
     private var layout = RowLayout(
         style = RowStyle.CLASSIC,
@@ -185,6 +188,12 @@ class ThreadAdapter(
         if (items.isNotEmpty()) notifyItemRangeChanged(0, items.size)
     }
 
+    fun refreshNotificationState() {
+        notificationModes.clear()
+        mutedAddresses = null
+        if (items.isNotEmpty()) notifyItemRangeChanged(0, items.size)
+    }
+
     val selectionCount: Int get() = selectedIds.size
 
     fun itemAt(position: Int): ThreadSummary? = items.getOrNull(position)
@@ -264,6 +273,24 @@ class ThreadAdapter(
         b.textAddress.text = display
         b.iconPinned.visibility = if (item.pinned) View.VISIBLE else View.GONE
         b.iconPinned.setColorFilter(themeColor(context, item.colorHex))
+        val muted = (mutedAddresses ?: SenderStore(context).mutedAddresses()
+            .also { mutedAddresses = it }).contains(item.address)
+        val notificationMode = notificationModes.getOrPut(item.categoryId) {
+            CategoryNotificationStore(context).get(item.categoryId).mode
+        }
+        val notificationIcon = when {
+            muted || notificationMode == CategoryAlertMode.OFF ||
+                notificationMode == CategoryAlertMode.SILENT -> R.drawable.ic_notification_silent
+            notificationMode == CategoryAlertMode.VIBRATE_ONLY -> R.drawable.ic_notification_vibrate
+            else -> 0
+        }
+        b.iconNotificationMode.visibility = if (notificationIcon == 0) View.GONE else View.VISIBLE
+        if (notificationIcon != 0) {
+            b.iconNotificationMode.setImageResource(notificationIcon)
+            b.iconNotificationMode.contentDescription = context.getString(
+                if (notificationMode == CategoryAlertMode.VIBRATE_ONLY && !muted)
+                    R.string.alert_vibrate_only else R.string.notification_silent)
+        }
         val preview = if (draft.isNotBlank()) {
             context.getString(R.string.draft_preview, draft)
         } else item.snippet
@@ -415,6 +442,7 @@ class ThreadAdapter(
             if (layout.showDividers && layout.style != RowStyle.CARD) View.VISIBLE else View.GONE
 
         holder.itemView.setOnClickListener { onClick(item) }
+        b.avatar.setOnClickListener { onAvatarClick(item) }
         holder.itemView.setOnLongClickListener {
             onLongClick(item)
             true
