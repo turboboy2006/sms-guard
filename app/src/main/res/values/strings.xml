@@ -31,6 +31,7 @@
     <!-- Conversation actions -->
     <string name="thread_options">Conversation options</string>
     <string name="change_category">Change category</string>
+    <string name="category">Category</string>
     <string name="pick_color">Pick a colour</string>
     <string name="mark_spam">Mark as spam</string>
     <string name="mark_not_spam">Not spam</string>

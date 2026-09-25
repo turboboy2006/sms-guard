@@ -32,8 +32,6 @@ import ir.inod.smsguard.databinding.ItemThreadBinding
  */
 object TextDir {
 
-    private val RTL = Regex("[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]")
-
     /** Numbers, punctuation and whitespace: no letters, so direction is arbitrary. */
     private val NOT_LETTERS = Regex("^[\\d\\s\\p{Punct}]+$")
 
@@ -45,7 +43,10 @@ object TextDir {
             "|[\\d۰-۹]{3,}[\\s,،]*(تومان|ریال|ریال)"
     )
 
-    fun isRtl(text: String): Boolean = RTL.containsMatchIn(text)
+    fun isRtl(text: String): Boolean = text.any { char ->
+        char.isLetter() && (char in '\u0600'..'\u06FF' || char in '\u0750'..'\u077F' ||
+            char in '\uFB50'..'\uFDFF' || char in '\uFE70'..'\uFEFF')
+    }
 
     /**
      * True when the whole string is a "technical" value that should not be
@@ -61,10 +62,13 @@ object TextDir {
 
     fun apply(view: TextView, text: String) {
         view.textDirection = when {
-            isDirectionNeutral(text) -> View.TEXT_DIRECTION_LTR
             isRtl(text) -> View.TEXT_DIRECTION_RTL
+            isDirectionNeutral(text) -> View.TEXT_DIRECTION_LTR
             else -> View.TEXT_DIRECTION_LTR
         }
+        view.gravity = (view.gravity and Gravity.VERTICAL_GRAVITY_MASK) or
+            if (isRtl(text)) Gravity.RIGHT else Gravity.LEFT
+        view.textAlignment = View.TEXT_ALIGNMENT_GRAVITY
     }
 }
 
@@ -148,20 +152,13 @@ class ThreadAdapter(
         // DiffUtil's move detection can take seconds in a very large mailbox.
         // Stable IDs preserve the visible anchor without calculating thousands
         // of moves on the UI thread after returning from a conversation.
-        if (old.size + list.size > 800) {
-            items.clear()
-            items.addAll(list)
-            selectedIds.retainAll(items.mapTo(HashSet()) { key(it) })
-            notifyDataSetChanged()
-            return
-        }
         val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
             override fun getOldListSize() = old.size
             override fun getNewListSize() = list.size
             override fun areItemsTheSame(oldPos: Int, newPos: Int) =
                 key(old[oldPos]) == key(list[newPos])
             override fun areContentsTheSame(oldPos: Int, newPos: Int) = old[oldPos] == list[newPos]
-        }, true)
+        }, old.size + list.size <= 800)
         items.clear()
         items.addAll(list)
         selectedIds.retainAll(items.mapTo(HashSet()) { key(it) })

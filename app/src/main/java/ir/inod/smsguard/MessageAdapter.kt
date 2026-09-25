@@ -14,6 +14,7 @@ import android.view.ViewGroup
 import android.view.View
 import android.widget.LinearLayout
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
 import ir.inod.smsguard.databinding.ItemDayHeaderBinding
 import ir.inod.smsguard.databinding.ItemMessageBinding
 import java.util.Calendar
@@ -88,7 +89,9 @@ class MessageAdapter(
     )
 
     fun submit(list: List<SmsMessage>) {
-        rows.clear()
+        val old = rows.toList()
+        val previousLatest = latestMetaIds.toSet()
+        val next = mutableListOf<Row>()
         latestMetaIds.clear()
         list.asReversed().take(2).forEach { latestMetaIds += it.id }
         var lastDay = Int.MIN_VALUE
@@ -97,21 +100,43 @@ class MessageAdapter(
         for (message in list) {
             val year = Dates.year(context, message.date)
             if (lastYear != Int.MIN_VALUE && year != lastYear) {
-                rows.add(Row.Day(message.date, yearHeader = true))
+                next.add(Row.Day(message.date, yearHeader = true))
             }
             lastYear = year
             val day = dayKey(message.date)
             if (day != lastDay) {
-                rows.add(Row.Day(message.date))
+                next.add(Row.Day(message.date))
                 lastDay = day
             }
             if (!message.isIncoming && message.subscriptionId != lastOutgoingSim) {
-                rows.add(Row.Sim(message.subscriptionId))
+                next.add(Row.Sim(message.subscriptionId))
                 lastOutgoingSim = message.subscriptionId
             }
-            rows.add(Row.Msg(message))
+            next.add(Row.Msg(message))
         }
-        notifyDataSetChanged()
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = old.size
+            override fun getNewListSize() = next.size
+            override fun areItemsTheSame(oldPos: Int, newPos: Int): Boolean {
+                val before = old[oldPos]
+                val after = next[newPos]
+                return when {
+                    before is Row.Msg && after is Row.Msg -> before.message.id == after.message.id
+                    before is Row.Day && after is Row.Day ->
+                        before.yearHeader == after.yearHeader && dayKey(before.millis) == dayKey(after.millis)
+                    before is Row.Sim && after is Row.Sim -> before.subscriptionId == after.subscriptionId
+                    else -> false
+                }
+            }
+            override fun areContentsTheSame(oldPos: Int, newPos: Int) = old[oldPos] == next[newPos]
+        }, false)
+        rows.clear()
+        rows.addAll(next)
+        diff.dispatchUpdatesTo(this)
+        (previousLatest + latestMetaIds).forEach { id ->
+            val index = positionOf(id)
+            if (index >= 0 && (id in previousLatest) != (id in latestMetaIds)) notifyItemChanged(index)
+        }
     }
 
     /**

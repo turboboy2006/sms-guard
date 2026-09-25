@@ -75,7 +75,7 @@
     <color name="bubble_in_text">@color/text_primary</color>
     <color name="bubble_out_text">@color/blue_900</color>
 
-    <color name="ic_launcher_background">#4338CA</color>
+    <color name="ic_launcher_background">#1765D7</color>
 
     <!-- Navigation bar: white surface, blue active item on a very light pill -->
     <color name="nav_active_pill">#EAF2FF</color>

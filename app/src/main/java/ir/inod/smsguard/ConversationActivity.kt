@@ -60,6 +60,7 @@ class ConversationActivity : BaseActivity() {
     private var targetMessageId = -1L
     private var targetDate = -1L
     private var loadingMessages = false
+    private var reloadAfterLoad = false
     private var lastMessages: List<SmsMessage> = emptyList()
     private val additionalRecipients = linkedSetOf<String>()
     private val drafts by lazy { getSharedPreferences("conversation_drafts", MODE_PRIVATE) }
@@ -153,7 +154,6 @@ class ConversationActivity : BaseActivity() {
                     theme.messageFontScale = scale
                     theme.listFontScale = scale
                     theme.touch()
-                    Toast.makeText(this@ConversationActivity, getString(R.string.text_size_saved), Toast.LENGTH_SHORT).show()
                 }
             })
         binding.recyclerMessages.setOnTouchListener { _, event ->
@@ -190,7 +190,9 @@ class ConversationActivity : BaseActivity() {
         binding.textRisk.setOnClickListener { showRiskDetails() }
         binding.toolbar.setOnClickListener {
             if (address.isNotBlank()) startActivity(Intent(this, ContactDetailsActivity::class.java)
-                .putExtra(ContactDetailsActivity.EXTRA_ADDRESS, address))
+                .putExtra(ContactDetailsActivity.EXTRA_ADDRESS, address)
+                .putExtra(ContactDetailsActivity.EXTRA_CATEGORY_ID,
+                    lastMessages.lastOrNull { it.isIncoming }?.categoryId ?: Cat.OTHER))
         }
         binding.editMessage.doAfterTextChanged { editable ->
             if (address.isNotBlank()) drafts.edit().putString(address, editable?.toString().orEmpty()).apply()
@@ -207,6 +209,7 @@ class ConversationActivity : BaseActivity() {
 
     override fun onStart() {
         super.onStart()
+        MessageBus.register(inboxChanged)
         ContextCompat.registerReceiver(
             this, deliveryReceiver, IntentFilter(DeliveryStatusReceiver.ACTION_UPDATED),
             ContextCompat.RECEIVER_NOT_EXPORTED
@@ -214,6 +217,7 @@ class ConversationActivity : BaseActivity() {
     }
 
     override fun onStop() {
+        MessageBus.unregister(inboxChanged)
         try { unregisterReceiver(deliveryReceiver) } catch (_: Exception) { }
         super.onStop()
     }
@@ -285,6 +289,12 @@ class ConversationActivity : BaseActivity() {
     }
 
     private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private val inboxChanged: () -> Unit = {
+        if (loadingMessages) reloadAfterLoad = true
+        else if (!isFinishing && !isDestroyed) {
+            load(scrollToEnd = !binding.recyclerMessages.canScrollVertically(1))
+        }
+    }
 
     /**
      * Reading and classifying a thread is real work (provider query plus one
@@ -356,6 +366,13 @@ class ConversationActivity : BaseActivity() {
                     val added = (adapter.itemCount - preserveFromEnd).coerceAtLeast(0)
                     (binding.recyclerMessages.layoutManager as? LinearLayoutManager)
                         ?.scrollToPositionWithOffset(added + 2, 0)
+                }
+                if (reloadAfterLoad) {
+                    reloadAfterLoad = false
+                    binding.recyclerMessages.post {
+                        if (!isFinishing && !isDestroyed)
+                            load(scrollToEnd = !binding.recyclerMessages.canScrollVertically(1))
+                    }
                 }
             }
         }

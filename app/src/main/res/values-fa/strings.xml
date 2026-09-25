@@ -26,6 +26,7 @@
 
     <string name="thread_options">گزینه‌های گفتگو</string>
     <string name="change_category">تغییر دسته</string>
+    <string name="category">دسته‌بندی</string>
     <string name="pick_color">انتخاب رنگ</string>
     <string name="mark_spam">اسپم است</string>
     <string name="mark_not_spam">اسپم نیست</string>

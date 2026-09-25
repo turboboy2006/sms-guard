@@ -21,7 +21,10 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /** The same sender destination is used by the conversation header and inbox avatar. */
 class ContactDetailsActivity : BaseActivity() {
-    companion object { const val EXTRA_ADDRESS = "address" }
+    companion object {
+        const val EXTRA_ADDRESS = "address"
+        const val EXTRA_CATEGORY_ID = "category_id"
+    }
     private lateinit var address: String
     private val sender by lazy { SenderStore(this) }
     private lateinit var panel: LinearLayout
@@ -100,13 +103,14 @@ class ContactDetailsActivity : BaseActivity() {
                 if (sender.vibrateOnly(address)) "On" else "Off")) {
             sender.setVibrateOnly(address, !sender.vibrateOnly(address)); draw()
         }
-        val currentCategory = CategoryStore(this).byId(sender.categoryFor(address) ?: Cat.OTHER)
-        action(getString(R.string.change_category),
+        val currentCategory = CategoryStore(this).byId(sender.categoryFor(address)
+            ?: intent.getStringExtra(EXTRA_CATEGORY_ID) ?: Cat.OTHER)
+        action(getString(R.string.category),
             (currentCategory?.let { IconCatalog.byId(it.iconId) ?: IconCatalog.forCategory(it.id) }
                 ?: IconCatalog.forCategory(Cat.OTHER)).drawable,
             currentCategory?.label(this) ?: getString(R.string.cat_other)) {
             val cats = CategoryStore(this).active()
-            ChoiceSheet.show(this, getString(R.string.change_category), cats.map {
+            ChoiceSheet.show(this, getString(R.string.category), cats.map {
                 ChoiceSheet.Option(it.label(this), (IconCatalog.byId(it.iconId)
                     ?: IconCatalog.forCategory(it.id)).drawable)
             }) { index -> sender.setCategory(address, cats[index].id); Classifier.invalidateCaches();

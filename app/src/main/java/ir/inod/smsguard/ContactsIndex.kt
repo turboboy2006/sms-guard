@@ -12,6 +12,7 @@ import java.io.InputStream
 data class ContactEntry(
     val name: String,
     val photoId: Long,
+    val contactId: Long,
     /** The number as the address book stores it, digits only. */
     val digits: String
 )
@@ -200,9 +201,9 @@ object ContactsIndex {
     fun photo(context: Context, address: String): Bitmap? {
         val entry = entryFor(context, address) ?: return null
         if (entry.photoId <= 0) return null
-        synchronized(photoCache) { photoCache[entry.photoId]?.let { return it } }
-        val bitmap = loadPhoto(context, entry.photoId)
-        synchronized(photoCache) { photoCache[entry.photoId] = bitmap }
+        synchronized(photoCache) { photoCache[entry.contactId]?.let { return it } }
+        val bitmap = loadPhoto(context, entry.contactId)
+        synchronized(photoCache) { photoCache[entry.contactId] = bitmap }
         return bitmap
     }
 
@@ -232,7 +233,8 @@ object ContactsIndex {
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
             ContactsContract.CommonDataKinds.Phone.NUMBER,
-            ContactsContract.CommonDataKinds.Phone.PHOTO_ID
+            ContactsContract.CommonDataKinds.Phone.PHOTO_ID,
+            ContactsContract.CommonDataKinds.Phone.CONTACT_ID
         )
         var cursor: Cursor? = null
         try {
@@ -248,6 +250,7 @@ object ContactsIndex {
             val iName = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
             val iNumber = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
             val iPhoto = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.PHOTO_ID)
+            val iContact = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
 
             while (cursor.moveToNext()) {
                 val name = cursor.getString(iName)?.trim().orEmpty()
@@ -258,7 +261,8 @@ object ContactsIndex {
                 // re-reading the same contact never overwrites a filled entry.
                 val existing = byNumber[key]
                 if (existing == null || existing.name.isBlank()) {
-                    byNumber[key] = ContactEntry(name, cursor.getLong(iPhoto), digits)
+                    byNumber[key] = ContactEntry(name, cursor.getLong(iPhoto),
+                        cursor.getLong(iContact), digits)
                 }
             }
         } catch (e: Exception) {

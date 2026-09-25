@@ -4,19 +4,18 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- A clear shield silhouette stays legible even on small launchers. -->
+    <!-- Clean shield and conversation bubble; no check mark. -->
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M54,22 L78,31 V49 C78,65 68,77 54,85 C40,77 30,65 30,49 V31 Z" />
     <!-- Message bubble: the product purpose remains obvious at a glance. -->
     <path
-        android:fillColor="#4F46E5"
+        android:fillColor="#1558C0"
         android:pathData="M41,39 C41,36.8 42.8,35 45,35 H65 C67.2,35 69,36.8 69,39 V54 C69,56.2 67.2,58 65,58 H55 L47,65 V58 H45 C42.8,58 41,56.2 41,54 Z" />
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M47,42 H63 V45 H47 Z M47,49 H59 V52 H47 Z" />
-    <!-- Mint check adds a distinctive trusted-message accent. -->
     <path
-        android:fillColor="#5EEAD4"
-        android:pathData="M58,68 L62,72 L70,63 L73,66 L62,78 L55,71 Z" />
+        android:fillColor="#7DD3FC"
+        android:pathData="M56,67 C60,65 64,62 67,58 C64,65 59,70 54,73 C49,70 44,65 41,59 C45,63 50,66 56,67 Z" />
 </vector>

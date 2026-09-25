@@ -177,6 +177,12 @@ class MainActivity : BaseActivity() {
         )
         binding.recyclerThreads.layoutManager = LinearLayoutManager(this)
         binding.recyclerThreads.adapter = adapter
+        binding.recyclerThreads.itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator().apply {
+            supportsChangeAnimations = false
+            removeDuration = 180L
+            moveDuration = 180L
+            addDuration = 120L
+        }
         binding.recyclerThreads.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 binding.fabScrollTop.visibility = if (recyclerView.computeVerticalScrollOffset() > 700)
@@ -184,8 +190,6 @@ class MainActivity : BaseActivity() {
             }
         })
         binding.fabScrollTop.setOnClickListener { binding.recyclerThreads.smoothScrollToPosition(0) }
-        // Updating read state or a draft should not fade the entire inbox.
-        binding.recyclerThreads.itemAnimator = null
         attachSwipeActions()
 
         setUpFilterChips()
@@ -562,7 +566,7 @@ class MainActivity : BaseActivity() {
                 if (it.categoryId in active) it else it.copy(categoryId = Cat.OTHER)
             }
             val old = merged[row.threadId]
-            if (old == null || row.date >= old.date) merged[row.threadId] = row
+            if (old == null || row.date > old.date) merged[row.threadId] = row
         }
         allThreads = merged.values.sortedByDescending { it.date }
         showSkeleton(false)
@@ -731,6 +735,35 @@ class MainActivity : BaseActivity() {
         menu.add(0, MENU_SELECTION_CLOSE, 5, R.string.cancel)
             .setIcon(R.drawable.ic_close)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
+        listOf(
+            Triple(MENU_MARK_READ, R.drawable.ic_mark_read, R.string.mark_read),
+            Triple(MENU_BULK_TRASH, R.drawable.ic_tab_trash, R.string.tab_trash),
+            Triple(MENU_BULK_SPAM, R.drawable.ic_tab_spam, R.string.mark_spam)
+        ).forEach { (id, icon, label) ->
+            menu.findItem(id)?.let { item ->
+                val ink = ContextCompat.getColor(this, R.color.text_primary)
+                item.actionView = android.widget.LinearLayout(this).apply {
+                    orientation = android.widget.LinearLayout.VERTICAL
+                    gravity = android.view.Gravity.CENTER
+                    minimumWidth = (58 * resources.displayMetrics.density).toInt()
+                    contentDescription = getString(label)
+                    addView(android.widget.ImageView(this@MainActivity).apply {
+                        setImageResource(icon)
+                        imageTintList = ColorStateList.valueOf(ink)
+                    }, android.widget.LinearLayout.LayoutParams(
+                        (21 * resources.displayMetrics.density).toInt(),
+                        (21 * resources.displayMetrics.density).toInt()))
+                    addView(android.widget.TextView(this@MainActivity).apply {
+                        setText(label)
+                        textSize = 10f
+                        maxLines = 1
+                        gravity = android.view.Gravity.CENTER
+                        setTextColor(ink)
+                    })
+                    setOnClickListener { onOptionsItemSelected(item) }
+                }
+            }
+        }
         return true
     }
 
@@ -1078,7 +1111,7 @@ class MainActivity : BaseActivity() {
         }
         val filtered = filteredBase.map { row -> row.copy(pinned = inboxFlags[row.address]?.first == true) }
 
-        if (rendered.isEmpty()) adapter.submit(filtered) else adapter.merge(filtered)
+        adapter.merge(filtered)
         rendered = filtered
 
         binding.textEmptyLabel.setText(

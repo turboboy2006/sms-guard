@@ -316,8 +316,17 @@ class SettingsActivity : BaseActivity() {
             scroll.addView(pages[index])
             scroll.scrollTo(0, 0)
         }
+        var currentTab = 0
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab) = select(tab.position)
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                if (tab.position == 2) {
+                    tabs.getTabAt(currentTab)?.select()
+                    startActivity(Intent(this@SettingsActivity, CategoriesActivity::class.java))
+                } else {
+                    currentTab = tab.position
+                    select(tab.position)
+                }
+            }
             override fun onTabUnselected(tab: TabLayout.Tab) = Unit
             override fun onTabReselected(tab: TabLayout.Tab) = Unit
         })
