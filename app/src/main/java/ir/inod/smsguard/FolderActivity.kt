@@ -98,7 +98,9 @@ class FolderActivity : BaseActivity() {
             it.address.lowercase().contains(needle) || it.snippet.lowercase().contains(needle) ||
                 ContactNames.displayNameUi(it.address).lowercase().contains(needle)
         }
-        adapter.submit(visible)
+        // Keep the existing rows and scroll anchor when an archived/trash item
+        // changes; a full data-set refresh visibly flashes the entire folder.
+        adapter.merge(visible)
         empty.text = getString(if (folder == TRASH) R.string.trash_empty else R.string.no_threads)
         empty.visibility = if (visible.isEmpty()) View.VISIBLE else View.GONE
     }
