@@ -1,6 +1,7 @@
 package ir.inod.smsguard
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.view.View
@@ -17,6 +18,22 @@ import androidx.core.graphics.ColorUtils
  * exactly the way users expect, including text inside adapters and dialogs.
  */
 open class BaseActivity : AppCompatActivity() {
+
+    override fun startActivity(intent: Intent) {
+        super.startActivity(intent)
+        if (intent.component?.packageName == packageName && UiMotion.enabled()) {
+            @Suppress("DEPRECATION")
+            overridePendingTransition(R.anim.nav_enter, R.anim.nav_exit)
+        }
+    }
+
+    override fun finish() {
+        super.finish()
+        if (UiMotion.enabled()) {
+            @Suppress("DEPRECATION")
+            overridePendingTransition(R.anim.nav_pop_enter, R.anim.nav_pop_exit)
+        }
+    }
 
     /**
      * The font-scale revision this instance was built with. A `fontScale` is

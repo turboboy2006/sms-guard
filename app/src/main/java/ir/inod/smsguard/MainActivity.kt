@@ -177,16 +177,11 @@ class MainActivity : BaseActivity() {
         )
         binding.recyclerThreads.layoutManager = LinearLayoutManager(this)
         binding.recyclerThreads.adapter = adapter
-        binding.recyclerThreads.itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator().apply {
-            supportsChangeAnimations = false
-            removeDuration = 180L
-            moveDuration = 180L
-            addDuration = 120L
-        }
+        UiMotion.list(binding.recyclerThreads)
         binding.recyclerThreads.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                binding.fabScrollTop.visibility = if (recyclerView.computeVerticalScrollOffset() > 700)
-                    View.VISIBLE else View.GONE
+                if (recyclerView.computeVerticalScrollOffset() > 700) binding.fabScrollTop.show()
+                else binding.fabScrollTop.hide()
             }
         })
         binding.fabScrollTop.setOnClickListener { binding.recyclerThreads.smoothScrollToPosition(0) }
@@ -663,16 +658,6 @@ class MainActivity : BaseActivity() {
             binding.skeleton.alpha = 1f
             null
         }
-    }
-
-    /**
-     * One override covers every forward navigation, so the 220ms transition
-     * cannot be forgotten at a call site.
-     */
-    override fun startActivity(intent: Intent) {
-        super.startActivity(intent)
-        @Suppress("DEPRECATION")
-        overridePendingTransition(R.anim.nav_enter, R.anim.nav_exit)
     }
 
     override fun onDestroy() {

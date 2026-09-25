@@ -69,14 +69,18 @@ class MessageAdapter(
 
     fun clearSelection() {
         if (selectedIds.isEmpty()) return
+        val previous = selectedIds.toSet()
         selectedIds.clear()
-        notifyDataSetChanged()
+        rows.forEachIndexed { index, row ->
+            if (row is Row.Msg && row.message.id in previous) notifyItemChanged(index)
+        }
         onSelectionChanged(0)
     }
 
     fun selectAll() {
-        rows.forEach { row -> if (row is Row.Msg) selectedIds.add(row.message.id) }
-        notifyDataSetChanged()
+        rows.forEachIndexed { index, row ->
+            if (row is Row.Msg && selectedIds.add(row.message.id)) notifyItemChanged(index)
+        }
         onSelectionChanged(selectedIds.size)
     }
 

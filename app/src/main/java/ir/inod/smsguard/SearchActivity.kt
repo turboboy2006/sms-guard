@@ -72,6 +72,7 @@ class SearchActivity : BaseActivity() {
         adapter.applyLayout(ThemePrefs(this).snapshot())
         binding.recyclerResults.layoutManager = LinearLayoutManager(this)
         binding.recyclerResults.adapter = adapter
+        UiMotion.list(binding.recyclerResults)
         binding.editSearch.doAfterTextChanged {
             binding.buttonClearSearch.visibility = if (it.isNullOrEmpty()) View.INVISIBLE else View.VISIBLE
             main.removeCallbacks(searchRunnable)

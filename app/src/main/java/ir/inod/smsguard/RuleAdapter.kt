@@ -26,15 +26,14 @@ class RuleAdapter(
 
     fun clearSelection() {
         if (selectedIds.isEmpty()) return
+        val previous = selectedIds.toSet()
         selectedIds.clear()
-        notifyDataSetChanged()
+        items.forEachIndexed { index, rule -> if (rule.id in previous) notifyItemChanged(index) }
         onSelectionChanged(0)
     }
 
     fun submit(list: List<Rule>) {
-        items.clear()
-        items.addAll(list)
-        notifyDataSetChanged()
+        UiMotion.update(this, items, list, { a, b -> a.id == b.id })
     }
 
     class VH(val binding: ItemRuleBinding) : RecyclerView.ViewHolder(binding.root)

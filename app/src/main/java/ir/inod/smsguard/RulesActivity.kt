@@ -52,6 +52,7 @@ class RulesActivity : BaseActivity() {
         )
         binding.recyclerRules.layoutManager = LinearLayoutManager(this)
         binding.recyclerRules.adapter = adapter
+        UiMotion.list(binding.recyclerRules)
 
         binding.buttonAddRule.setOnClickListener { showAddDialog() }
         binding.buttonBlockedLog.setOnClickListener { showBlockedLog() }

@@ -33,7 +33,7 @@ class ScheduledMessagesActivity : BaseActivity() {
         root.addView(SecondaryUi.toolbar(this, getString(R.string.scheduled_messages)) { finish() },
             LinearLayout.LayoutParams(-1, SecondaryUi.px(this, R.dimen.appbar_height)))
         val frame=FrameLayout(this); adapter=ScheduledAdapter(::sendNow,::cancel)
-        frame.addView(RecyclerView(this).apply{layoutManager=LinearLayoutManager(this@ScheduledMessagesActivity);adapter=this@ScheduledMessagesActivity.adapter;clipToPadding=false;setPadding(dp(12),dp(8),dp(12),dp(20))},FrameLayout.LayoutParams(-1,-1))
+        frame.addView(RecyclerView(this).apply{layoutManager=LinearLayoutManager(this@ScheduledMessagesActivity);adapter=this@ScheduledMessagesActivity.adapter;UiMotion.list(this);clipToPadding=false;setPadding(dp(12),dp(8),dp(12),dp(20))},FrameLayout.LayoutParams(-1,-1))
         empty=SecondaryUi.empty(this,R.drawable.ic_calendar);frame.addView(empty,FrameLayout.LayoutParams(-1,-2,Gravity.CENTER));root.addView(frame,LinearLayout.LayoutParams(-1,0,1f))
         root.addView(MaterialButton(this).apply {
             text = getString(R.string.scheduled_new)
@@ -119,6 +119,6 @@ class ScheduledMessagesActivity : BaseActivity() {
             card.addView(box)
             return H(card, title, whenText, body, send, cancel)
         }
-        override fun getItemCount()=items.size;override fun onBindViewHolder(h:H,p:Int){val i=items[p];h.title.text=ContactNames.displayNameUi(i.address);h.whenText.text=Dates.full(h.c.context,i.at);h.body.text=i.body;h.send.setOnClickListener{onSend(i)};h.cancel.setOnClickListener{onCancel(i)}};fun submit(next:List<ScheduledSms>){items.clear();items.addAll(next);notifyDataSetChanged()}
+        override fun getItemCount()=items.size;override fun onBindViewHolder(h:H,p:Int){val i=items[p];h.title.text=ContactNames.displayNameUi(i.address);h.whenText.text=Dates.full(h.c.context,i.at);h.body.text=i.body;h.send.setOnClickListener{onSend(i)};h.cancel.setOnClickListener{onCancel(i)}};fun submit(next:List<ScheduledSms>){UiMotion.update(this,items,next,{a,b->a.id==b.id})}
     }
 }

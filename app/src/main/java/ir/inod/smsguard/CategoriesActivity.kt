@@ -64,7 +64,7 @@ class CategoriesActivity : BaseActivity() {
         }
         binding.recyclerCategories.layoutManager = LinearLayoutManager(this)
         binding.recyclerCategories.adapter = adapter
-        binding.recyclerCategories.itemAnimator = null
+        UiMotion.list(binding.recyclerCategories)
         ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
         ) {
@@ -384,6 +384,8 @@ class CategoriesActivity : BaseActivity() {
             Collections.swap(items, from, to); notifyItemMoved(from, to)
         }
         fun ids() = items.map { it.id }
-        fun replace(next: List<Category>) { items.clear(); items.addAll(next); notifyDataSetChanged() }
+        fun replace(next: List<Category>) {
+            UiMotion.update(this, items, next, { a, b -> a.id == b.id })
+        }
     }
 }

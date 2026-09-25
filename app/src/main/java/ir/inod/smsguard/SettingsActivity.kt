@@ -315,6 +315,7 @@ class SettingsActivity : BaseActivity() {
             scroll.removeAllViews()
             scroll.addView(pages[index])
             scroll.scrollTo(0, 0)
+            UiMotion.reveal(pages[index])
         }
         var currentTab = 0
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {

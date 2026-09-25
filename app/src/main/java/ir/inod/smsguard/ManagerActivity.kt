@@ -87,6 +87,7 @@ class ManagerActivity : BaseActivity() {
                 else getString(R.string.manage_brands)
             invalidateOptionsMenu()
         }
+        UiMotion.list(binding.recycler)
         load()
     }
 
@@ -413,15 +414,17 @@ class ManagerActivity : BaseActivity() {
 
         fun clearSelection() {
             if (selected.isEmpty()) return
+            val previous = selected.toSet()
             selected.clear()
-            notifyDataSetChanged()
+            items.forEachIndexed { index, row -> if (row.key in previous) notifyItemChanged(index) }
             onSelectionChanged(0)
         }
 
         fun submit(list: List<Row>) {
-            items.clear()
-            items.addAll(list)
-            notifyDataSetChanged()
+            UiMotion.update(this, items, list, { a, b -> a.key == b.key }) { a, b ->
+                a.title == b.title && a.subtitle == b.subtitle &&
+                    a.iconRes == b.iconRes && a.colorHex == b.colorHex
+            }
         }
 
         class VH(val root: LinearLayout, val circle: FrameLayout,

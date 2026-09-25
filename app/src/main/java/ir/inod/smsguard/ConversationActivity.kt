@@ -134,6 +134,7 @@ class ConversationActivity : BaseActivity() {
         binding.recyclerMessages.layoutManager =
             LinearLayoutManager(this).apply { stackFromEnd = true }
         binding.recyclerMessages.adapter = adapter
+        UiMotion.list(binding.recyclerMessages)
         val scaleDetector = android.view.ScaleGestureDetector(this,
             object : android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
                 override fun onScaleBegin(detector: android.view.ScaleGestureDetector): Boolean {

@@ -67,6 +67,7 @@ class FolderActivity : BaseActivity() {
             }
         ).also { it.applyLayout(ThemePrefs(this).snapshot()) }
         recycler.adapter = adapter
+        UiMotion.list(recycler)
         empty = SecondaryUi.empty(this,
             if (folder == TRASH) R.drawable.ic_tab_trash else R.drawable.ic_archive)
         frame.addView(recycler, FrameLayout.LayoutParams(-1, -1))

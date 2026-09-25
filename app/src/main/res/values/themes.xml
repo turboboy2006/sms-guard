@@ -26,6 +26,7 @@
 
         <item name="android:colorBackground">@color/screen_bg</item>
         <item name="android:windowBackground">@color/screen_bg</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.SmsGuard.Dialog</item>
 
         <!-- Vazirmatn app-wide: correct Persian shaping and a real bold weight -->
         <item name="fontFamily">@font/vazirmatn</item>
@@ -44,6 +45,15 @@
         <!-- Hairline elevation only: no heavy legacy shadows -->
         <item name="elevationOverlayEnabled">true</item>
         <item name="elevationOverlayColor">@color/blue_500</item>
+    </style>
+
+    <style name="ThemeOverlay.SmsGuard.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="android:windowAnimationStyle">@style/Animation.SmsGuard.Dialog</item>
+    </style>
+
+    <style name="Animation.SmsGuard.Dialog">
+        <item name="android:windowEnterAnimation">@anim/dialog_enter</item>
+        <item name="android:windowExitAnimation">@anim/dialog_exit</item>
     </style>
 
     <style name="Shape.SmsGuard.Small" parent="ShapeAppearance.Material3.Corner.Small">

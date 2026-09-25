@@ -48,7 +48,7 @@ class SavedMessagesActivity : BaseActivity() {
             onStar = { item -> store.setStarred(item.id, !item.starred); render() }, onNote = ::editNote,
             onDelete = ::deleteOne, onSelection = { count -> toolbar.title = if (count > 0) Dates.count(this, count) else getString(R.string.saved_messages); invalidateOptionsMenu() }
         )
-        frame.addView(RecyclerView(this).apply { layoutManager = LinearLayoutManager(this@SavedMessagesActivity); adapter = this@SavedMessagesActivity.adapter; clipToPadding = false; setPadding(dp(12), dp(4), dp(12), dp(88)) }, FrameLayout.LayoutParams(-1, -1))
+        frame.addView(RecyclerView(this).apply { layoutManager = LinearLayoutManager(this@SavedMessagesActivity); adapter = this@SavedMessagesActivity.adapter; UiMotion.list(this); clipToPadding = false; setPadding(dp(12), dp(4), dp(12), dp(88)) }, FrameLayout.LayoutParams(-1, -1))
         empty = SecondaryUi.empty(this, R.drawable.ic_star)
         frame.addView(empty, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER)); root.addView(frame, LinearLayout.LayoutParams(-1, 0, 1f))
         val compose = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(10), dp(6), dp(10), dp(6)); setBackgroundColor(ContextCompat.getColor(this@SavedMessagesActivity, R.color.card_bg)) }
@@ -100,6 +100,6 @@ class SavedMessagesActivity : BaseActivity() {
         }
         override fun getItemCount()=items.size
         override fun onBindViewHolder(h:Holder,p:Int){ val i=items[p]; val c=h.card.context; h.title.text=if(i.address==SavedMessageStore.SELF_ADDRESS)c.getString(R.string.self_note) else ContactNames.displayNameUi(i.address); h.meta.text=Dates.full(c,i.date); h.body.text=i.body; h.note.text=i.note; h.note.visibility=if(i.note.isBlank())View.GONE else View.VISIBLE; h.star.alpha=if(i.starred)1f else .45f; h.card.alpha=if(i.id in selected).75f else 1f; h.card.setOnClickListener{onClick(i)}; h.card.setOnLongClickListener{onLongClick(i);true}; h.star.setOnClickListener{onStar(i)}; h.edit.setOnClickListener{onNote(i)}; h.delete.setOnClickListener{onDelete(i)} }
-        fun submit(next:List<SavedMessage>){items.clear();items.addAll(next);selected.retainAll(items.map{it.id}.toSet());notifyDataSetChanged()}; fun toggle(i:SavedMessage){if(!selected.add(i.id))selected.remove(i.id);notifyItemChanged(items.indexOf(i));onSelection(selected.size)}; fun selected()=items.filter{it.id in selected}; fun clear(){if(selected.isEmpty())return;selected.clear();notifyDataSetChanged();onSelection(0)}
+        fun submit(next:List<SavedMessage>){UiMotion.update(this,items,next,{a,b->a.id==b.id});selected.retainAll(items.map{it.id}.toSet())}; fun toggle(i:SavedMessage){if(!selected.add(i.id))selected.remove(i.id);notifyItemChanged(items.indexOf(i));onSelection(selected.size)}; fun selected()=items.filter{it.id in selected}; fun clear(){if(selected.isEmpty())return;val ids=selected.toSet();selected.clear();items.forEachIndexed{index,item->if(item.id in ids)notifyItemChanged(index)};onSelection(0)}
     }
 }
