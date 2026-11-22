@@ -468,4 +468,11 @@
     <string name="try_again">Try again</string>
     <string name="restricted_sms_settings_hint">On the app info screen, open the menu and allow restricted settings if your phone offers it.</string>
     <string name="restricted_sms_store_hint">Android 15/16 may block sensitive SMS access for APKs installed outside a trusted app store.</string>
+    <string name="unknown_sender">Unknown sender</string>
+    <string name="trash_deleted_messages">Deleted messages</string>
+    <string name="trash_count">%1$d messages in trash</string>
+    <string name="restore_message">Restore</string>
+    <string name="restored">Restored</string>
+    <string name="confirm_delete_forever">Delete this message permanently? This cannot be undone.</string>
+    <string name="empty_trash">Empty trash</string>
 </resources>

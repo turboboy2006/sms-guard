@@ -444,4 +444,11 @@
     <string name="rule_sample_prize_excluded">رمز پویا،کد تایید</string>
     <string name="rule_sample_sale_words">حراج،تخفیف ویژه،فروش فوق‌العاده</string>
     <string name="rule_sample_sale_excluded">رسید خرید،کد تایید</string>
+    <string name="unknown_sender">فرستندهٔ ناشناس</string>
+    <string name="trash_deleted_messages">پیام‌های حذف‌شده</string>
+    <string name="trash_count">%1$d پیام در سطل زباله</string>
+    <string name="restore_message">بازگردانی</string>
+    <string name="restored">بازگردانی شد</string>
+    <string name="confirm_delete_forever">این پیام برای همیشه حذف شود؟ این کار برگشت‌پذیر نیست.</string>
+    <string name="empty_trash">خالی کردن سطل زباله</string>
 </resources>

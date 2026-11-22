@@ -39,6 +39,7 @@ class MainActivity : BaseActivity() {
         const val MENU_BLOCKED = 2004
         const val MENU_REFRESH = 2005
         const val MENU_TRASH = 2006
+    const val MENU_DELETED_MESSAGES = 2007
         const val MENU_MARK_READ = 2101
         const val MENU_BULK_SPAM = 2102
         const val MENU_BULK_TRASH = 2103
@@ -698,6 +699,7 @@ class MainActivity : BaseActivity() {
         menu.add(0, MENU_RULES, 2, R.string.rules)
         menu.add(0, MENU_BLOCKED, 3, R.string.blocked_log)
         menu.add(0, MENU_TRASH, 4, R.string.tab_trash)
+        menu.add(0, MENU_DELETED_MESSAGES, 7, R.string.trash_deleted_messages)
         menu.add(0, MENU_MANAGE, 5, R.string.manage_brands)
         menu.add(0, MENU_ARCHIVED, 6, R.string.archived)
         menu.add(0, MENU_SETTINGS, 8, R.string.settings)
@@ -787,6 +789,10 @@ class MainActivity : BaseActivity() {
             }
             MENU_RULES -> startActivity(Intent(this, RulesActivity::class.java))
             MENU_BLOCKED -> showBlockedLog()
+            MENU_DELETED_MESSAGES -> {
+                startActivity(android.content.Intent(this, TrashedMessagesActivity::class.java))
+                true
+            }
             MENU_TRASH -> {
                 startActivity(Intent(this, FolderActivity::class.java).putExtra(FolderActivity.EXTRA_FOLDER, FolderActivity.TRASH))
             }

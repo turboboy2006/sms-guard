@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
 import android.os.Bundle
+import android.provider.Telephony
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -443,9 +444,10 @@ class ConversationActivity : BaseActivity() {
     private fun confirmDeleteMessage(message: SmsMessage) {
         ConfirmSheet.show(this, getString(R.string.delete_message),
             getString(R.string.confirm_delete_message), R.drawable.ic_tab_trash) {
-                // A provider delete is I/O; it runs on the worker like every
-                // other provider call in this screen.
                 worker.execute {
+                    /* اول در سطل زباله ذخیره می‌شود تا حذف برگشت‌پذیر بماند؛
+                       قبلاً پیام مستقیم از provider پاک می‌شد و برای همیشه از بین می‌رفت. */
+                    stashToTrash(listOf(message))
                     val deleted = try {
                         repo.deleteMessage(message.id)
                     } catch (t: Throwable) {
@@ -455,13 +457,32 @@ class ConversationActivity : BaseActivity() {
                         if (isFinishing || isDestroyed) return@runOnUiThread
                         Toast.makeText(
                             this,
-                            if (deleted) R.string.cleared else R.string.send_failed,
+                            if (deleted) R.string.moved_to_trash else R.string.send_failed,
                             Toast.LENGTH_SHORT
                         ).show()
                     }
                     if (deleted) load()
                 }
             }
+    }
+
+    /** محتوای پیام‌ها را پیش از حذف در سطل زبالهٔ محلی نگه می‌دارد. */
+    private fun stashToTrash(messages: List<SmsMessage>) {
+        try {
+            val now = System.currentTimeMillis()
+            TrashStore(this).addAll(messages.map { message ->
+                TrashedMessage(
+                    messageId = message.id,
+                    address = message.address,
+                    body = message.body,
+                    date = message.date,
+                    type = if (message.isIncoming) Telephony.Sms.MESSAGE_TYPE_INBOX else Telephony.Sms.MESSAGE_TYPE_SENT,
+                    deletedAt = now
+                )
+            })
+        } catch (t: Throwable) {
+            // سطل زباله نباید جریان حذف را بشکند.
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -675,6 +696,7 @@ class ConversationActivity : BaseActivity() {
                     if (selected.any { it.isIncoming && (it.categoryId == Cat.SUSPICIOUS || it.categoryId == Cat.SPAM) }) {
                         SenderProfileStore(this).recordFeedback(address, true)
                     }
+                    stashToTrash(selected)
                     selected.forEach { repo.deleteMessage(it.id) }
                     ThreadCache.clear(this)
                     load()
