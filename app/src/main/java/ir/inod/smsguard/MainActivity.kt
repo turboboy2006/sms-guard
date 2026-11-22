@@ -454,10 +454,33 @@ class MainActivity : BaseActivity() {
             if (rm != null && rm.isRoleAvailable(RoleManager.ROLE_SMS) &&
                 !rm.isRoleHeld(RoleManager.ROLE_SMS)
             ) {
-                roleLauncher.launch(rm.createRequestRoleIntent(RoleManager.ROLE_SMS))
+                /* روی اندروید ۱۳+ برای اپ نصب‌شده خارج از فروشگاه، سیستم ممکن است
+                   دیالوگ نقش را نشان ندهد یا بلافاصله رد کند؛ در آن حالت کاربر
+                   باید «اجازهٔ تنظیمات محدودشده» را روشن کند. */
+                try {
+                    roleLauncher.launch(rm.createRequestRoleIntent(RoleManager.ROLE_SMS))
+                    return
+                } catch (t: Throwable) {
+                    roleHelpPrefs.edit().putBoolean("role_request_denied", true).apply()
+                }
+            }
+        } else {
+            try {
+                @Suppress("DEPRECATION")
+                startActivity(Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT).apply {
+                    putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, packageName)
+                })
                 return
+            } catch (t: Throwable) {
+                // پایین‌تر مسیر تنظیمات امتحان می‌شود.
             }
         }
+        showRestrictedRoleHelp()
+        openDefaultAppsSettings()
+    }
+
+    /** مسیر پشتیبان: صفحهٔ «برنامه‌های پیش‌فرض» تنظیمات. */
+    private fun openDefaultAppsSettings() {
         try {
             startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
         } catch (e: Exception) {
@@ -475,6 +498,8 @@ class MainActivity : BaseActivity() {
                 detail = getString(R.string.restricted_sms_settings_hint)),
             ChoiceSheet.Option(getString(R.string.open_android_help), R.drawable.ic_cat_security,
                 detail = getString(R.string.restricted_sms_store_hint)),
+            ChoiceSheet.Option(getString(R.string.play_protect_help), R.drawable.ic_tab_suspicious,
+                detail = getString(R.string.play_protect_hint)),
             ChoiceSheet.Option(getString(R.string.try_again), R.drawable.ic_archive)
         )) { which ->
             when (which) {
@@ -483,6 +508,8 @@ class MainActivity : BaseActivity() {
                 })
                 1 -> startActivity(Intent(Intent.ACTION_VIEW,
                     android.net.Uri.parse("https://support.google.com/android/answer/12623953")))
+                2 -> startActivity(Intent(Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://support.google.com/googleplay/android-developer/contact/protectappeal")))
                 else -> requestDefaultRole()
             }
         }

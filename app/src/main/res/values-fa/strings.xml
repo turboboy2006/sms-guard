@@ -452,4 +452,6 @@
     <string name="confirm_delete_forever">این پیام برای همیشه حذف شود؟ این کار برگشت‌پذیر نیست.</string>
     <string name="empty_trash">خالی کردن سطل زباله</string>
     <string name="marked_not_spam">به‌عنوان اسپم علامت‌گذاری نشد</string>
+    <string name="play_protect_help">هشدار Play Protect</string>
+    <string name="play_protect_hint">اپ‌های پیامکی نصب‌شده خارج از فروشگاه معمولاً هشدار می‌گیرند؛ می‌توانید برای رفع آن به گوگل اعتراض بدهید.</string>
 </resources>
