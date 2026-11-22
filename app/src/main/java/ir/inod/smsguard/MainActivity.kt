@@ -1105,9 +1105,22 @@ class MainActivity : BaseActivity() {
         adapter.merge(filtered)
         rendered = filtered
 
-        binding.textEmptyLabel.setText(
-            if (contactsOnly) R.string.no_contacts_threads else R.string.no_threads
-        )
+        /* در تب سطل زباله، پیام‌های حذف‌شده هم باید دیده شوند؛ وگرنه کاربر فکر
+           می‌کند حذف انجام نشده و سطل خالی است. */
+        val trashedCount =
+            if (selectedCategoryId == Cat.TRASH) TrashStore(this).count() else 0
+        if (filtered.isEmpty() && trashedCount > 0) {
+            binding.textEmptyLabel.text =
+                getString(R.string.trash_deleted_messages) + " (" + trashedCount + ")"
+            binding.textEmpty.setOnClickListener {
+                startActivity(android.content.Intent(this, TrashedMessagesActivity::class.java))
+            }
+        } else {
+            binding.textEmptyLabel.setText(
+                if (contactsOnly) R.string.no_contacts_threads else R.string.no_threads
+            )
+            binding.textEmpty.setOnClickListener(null)
+        }
         binding.textEmpty.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
 
         // The category strip belongs to the message list; the Contacts
