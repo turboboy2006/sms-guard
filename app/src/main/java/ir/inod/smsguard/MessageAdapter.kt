@@ -67,6 +67,27 @@ class MessageAdapter(
         onSelectionChanged(selectedIds.size)
     }
 
+    /**
+     * انتخاب بازه‌ای: از پیام لنگر تا پیام لمس‌شده، همه انتخاب می‌شوند.
+     * بعد از اولین لمس طولانی، هر پیام دیگری که لمس شود بازه را بزرگ‌تر می‌کند.
+     */
+    fun selectRange(fromId: Long, toId: Long) {
+        val a = rows.indexOfFirst { it is Row.Msg && it.message.id == fromId }
+        val b = rows.indexOfFirst { it is Row.Msg && it.message.id == toId }
+        if (a < 0 || b < 0) return
+        val lo = minOf(a, b)
+        val hi = maxOf(a, b)
+        var changed = false
+        for (i in lo..hi) {
+            val row = rows[i]
+            if (row is Row.Msg && selectedIds.add(row.message.id)) {
+                notifyItemChanged(i)
+                changed = true
+            }
+        }
+        if (changed) onSelectionChanged(selectedIds.size)
+    }
+
     fun clearSelection() {
         if (selectedIds.isEmpty()) return
         val previous = selectedIds.toSet()

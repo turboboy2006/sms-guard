@@ -57,6 +57,8 @@ class ConversationActivity : BaseActivity() {
     private var threadId: Long = -1L
     private var address: String = ""
     private var riskyMessageId: Long = -1L
+    /** پیام لنگر برای انتخاب بازه‌ای؛ -1 یعنی بازه‌ای فعال نیست. */
+    private var selectionAnchorId: Long = -1L
     private var messageLimit = 500
     private var targetMessageId = -1L
     private var targetDate = -1L
@@ -125,9 +127,17 @@ class ConversationActivity : BaseActivity() {
 
         adapter = MessageAdapter(
             context = this,
-            onLongClick = { message -> showMessageOptions(message) },
+            onLongClick = { message ->
+                /* لمس طولانی = شروع انتخاب؛ لنگر بازه ثبت می‌شود */
+                selectionAnchorId = message.id
+                if (adapter.selectionCount == 0) adapter.toggleSelection(message)
+                else adapter.selectRange(selectionAnchorId, message.id)
+            },
             onClick = { message ->
-                if (adapter.selectionCount > 0) adapter.toggleSelection(message)
+                if (adapter.selectionCount > 0) {
+                    if (selectionAnchorId > 0) adapter.selectRange(selectionAnchorId, message.id)
+                    else adapter.toggleSelection(message)
+                }
             },
             onRetry = { message -> retry(message) },
             onSelectionChanged = { count -> updateSelectionUi(count) }
@@ -185,6 +195,11 @@ class ConversationActivity : BaseActivity() {
         binding.buttonSend.setOnLongClickListener { scheduleCurrent(); true }
         binding.buttonPickRecipient.setOnClickListener { pickRecipient() }
         binding.buttonNotSpam.setOnClickListener { markConversationSafe() }
+        binding.buttonSelectionCopy.setOnClickListener { copySelected() }
+        binding.buttonSelectionShare.setOnClickListener { shareSelected() }
+        binding.buttonSelectionSpam.setOnClickListener { markSelectedSpam() }
+        binding.buttonSelectionDelete.setOnClickListener { confirmDeleteSelected() }
+        binding.buttonSelectionClose.setOnClickListener { adapter.clearSelection() }
         binding.buttonRiskBlock.setOnClickListener { showSenderMenu() }
         binding.buttonRiskCall.setOnClickListener {
             startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:${android.net.Uri.encode(address)}")))
@@ -613,6 +628,11 @@ class ConversationActivity : BaseActivity() {
     private fun updateSelectionUi(count: Int) {
         supportActionBar?.title = if (count > 0) Dates.count(this, count)
         else ContactNames.displayNameUi(address)
+        /* کنترل‌های انتخاب به‌صورت نوار پایین (bottom bar) نمایش داده می‌شوند */
+        binding.selectionBar.visibility = if (count > 0) View.VISIBLE else View.GONE
+        binding.composer.visibility = if (count > 0) View.GONE else View.VISIBLE
+        binding.selectionCount.text = if (count > 0) Dates.count(this, count) else ""
+        if (count == 0) selectionAnchorId = -1L
         invalidateOptionsMenu()
     }
 
