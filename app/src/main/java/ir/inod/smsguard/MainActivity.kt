@@ -722,15 +722,8 @@ class MainActivity : BaseActivity() {
         menu.add(0, MENU_READ_ALL, 2, R.string.mark_all_read)
             .setIcon(R.drawable.ic_mark_read)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
-        menu.add(0, MENU_REFRESH, 1, R.string.refresh)
-        menu.add(0, MENU_RULES, 2, R.string.rules)
-        menu.add(0, MENU_BLOCKED, 3, R.string.blocked_log)
-        menu.add(0, MENU_TRASH, 4, R.string.tab_trash)
-        menu.add(0, MENU_DELETED_MESSAGES, 7, R.string.trash_deleted_messages)
-        menu.add(0, MENU_MANAGE, 5, R.string.manage_brands)
-        menu.add(0, MENU_ARCHIVED, 6, R.string.archived)
-        menu.add(0, MENU_SETTINGS, 8, R.string.settings)
-            .setIcon(R.drawable.ic_settings)
+        /* این هشت مورد فقط از طریق شیت «گزینه‌های بیشتر» باز می‌شوند؛ اگر در Menu
+           اضافه شوند، آیکن سه‌نقطهٔ سیستم کنار سه‌نقطهٔ خودِ اپ ظاهر می‌شود. */
         menu.add(0, MENU_MARK_READ, 0, R.string.mark_read)
             .setIcon(R.drawable.ic_mark_read)
             .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
@@ -857,7 +850,28 @@ class MainActivity : BaseActivity() {
         ChoiceSheet.show(this, getString(R.string.more_actions), ids.indices.map { index ->
             ChoiceSheet.Option(getString(labels[index]), icons[index], detail = getString(details[index]))
         }) { index ->
-            binding.toolbar.menu.findItem(ids[index])?.let { onOptionsItemSelected(it) }
+            handleMainAction(ids[index])
+        }
+    }
+
+    /** اجرای اکشن‌های شیت «گزینه‌های بیشتر» بدون وابستگی به MenuItem. */
+    private fun handleMainAction(id: Int) {
+        when (id) {
+            MENU_REFRESH -> {
+                ThreadCache.clear(this)
+                toast(R.string.refreshing)
+                loadThreads()
+            }
+            MENU_ARCHIVED -> showArchived()
+            MENU_TRASH -> startActivity(
+                Intent(this, FolderActivity::class.java)
+                    .putExtra(FolderActivity.EXTRA_FOLDER, FolderActivity.TRASH)
+            )
+            MENU_DELETED_MESSAGES -> startActivity(Intent(this, TrashedMessagesActivity::class.java))
+            MENU_RULES -> startActivity(Intent(this, RulesActivity::class.java))
+            MENU_BLOCKED -> showBlockedLog()
+            MENU_MANAGE -> startActivity(Intent(this, ManagerActivity::class.java))
+            MENU_SETTINGS -> startActivity(Intent(this, SettingsActivity::class.java))
         }
     }
 
