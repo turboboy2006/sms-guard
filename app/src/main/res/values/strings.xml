@@ -475,4 +475,5 @@
     <string name="restored">Restored</string>
     <string name="confirm_delete_forever">Delete this message permanently? This cannot be undone.</string>
     <string name="empty_trash">Empty trash</string>
+    <string name="marked_not_spam">Marked as not spam</string>
 </resources>

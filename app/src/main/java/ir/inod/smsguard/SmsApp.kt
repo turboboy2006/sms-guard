@@ -14,8 +14,16 @@ class SmsApp : Application() {
         super.onCreate()
         createChannel()
         watchContacts()
-        InboxSyncJob.schedule(this)
-        OfflineInboxClassifier.scheduleIfNeeded(this)
+        /* کارهای زمان‌بندی روی رشتهٔ پس‌زمینه انجام می‌شوند تا شروع سرد سبک‌تر شود. */
+        val app = this
+        kotlin.concurrent.thread(isDaemon = true, name = "app-startup") {
+            try {
+                InboxSyncJob.schedule(app)
+                OfflineInboxClassifier.scheduleIfNeeded(app)
+            } catch (t: Throwable) {
+                // زمان‌بندی نباید شروع اپ را بشکند.
+            }
+        }
     }
 
     private fun createChannel() {

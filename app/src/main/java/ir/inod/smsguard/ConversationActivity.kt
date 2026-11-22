@@ -679,7 +679,15 @@ class ConversationActivity : BaseActivity() {
         Classifier.invalidateCaches()
         ThreadCache.clear(this)
         binding.cardRisk.visibility = View.GONE
-        load()
+        Toast.makeText(this, R.string.marked_not_spam, Toast.LENGTH_SHORT).show()
+        /* بعد از «نیست» این پیام دیگر اسپم نیست؛ به فهرست برمی‌گردیم تا
+           پیام از نمای اسپم کاملاً بیرون رفته باشد. */
+        if (riskyMessageId > 0) {
+            setResult(RESULT_OK)
+            finish()
+        } else {
+            load()
+        }
     }
 
     private fun blockRiskySender() {

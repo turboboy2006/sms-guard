@@ -451,4 +451,5 @@
     <string name="restored">بازگردانی شد</string>
     <string name="confirm_delete_forever">این پیام برای همیشه حذف شود؟ این کار برگشت‌پذیر نیست.</string>
     <string name="empty_trash">خالی کردن سطل زباله</string>
+    <string name="marked_not_spam">به‌عنوان اسپم علامت‌گذاری نشد</string>
 </resources>

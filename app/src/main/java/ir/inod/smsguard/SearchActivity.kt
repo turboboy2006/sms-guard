@@ -76,7 +76,7 @@ class SearchActivity : BaseActivity() {
         binding.editSearch.doAfterTextChanged {
             binding.buttonClearSearch.visibility = if (it.isNullOrEmpty()) View.INVISIBLE else View.VISIBLE
             main.removeCallbacks(searchRunnable)
-            main.postDelayed(searchRunnable, 250)
+            main.postDelayed(searchRunnable, 140)
         }
         setUpFilters()
         intent.getStringExtra(EXTRA_INITIAL_QUERY)?.let { binding.editSearch.setText(it) }
