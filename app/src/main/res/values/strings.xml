@@ -478,4 +478,5 @@
     <string name="marked_not_spam">Marked as not spam</string>
     <string name="play_protect_help">Play Protect warning</string>
     <string name="play_protect_hint">Sideloaded SMS apps are often flagged. You can appeal the warning to Google.</string>
+    <string name="menu_deleted_detail">Messages removed from conversations, restorable</string>
 </resources>

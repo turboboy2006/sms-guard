@@ -798,7 +798,8 @@ class MainActivity : BaseActivity() {
         menu.findItem(MENU_SEARCH)?.isVisible = !selecting
         menu.findItem(MENU_MORE)?.isVisible = !selecting
         menu.findItem(MENU_READ_ALL)?.isVisible = !selecting && selectedCategoryId == UNREAD_FILTER
-        listOf(MENU_REFRESH, MENU_RULES, MENU_BLOCKED, MENU_TRASH, MENU_MANAGE, MENU_ARCHIVED, MENU_SETTINGS).forEach {
+        listOf(MENU_REFRESH, MENU_RULES, MENU_BLOCKED, MENU_TRASH, MENU_MANAGE, MENU_ARCHIVED,
+            MENU_SETTINGS, MENU_DELETED_MESSAGES).forEach {
             menu.findItem(it)?.isVisible = false
         }
         return super.onPrepareOptionsMenu(menu)
@@ -839,17 +840,19 @@ class MainActivity : BaseActivity() {
     }
 
     private fun showMainMenu() {
-        val ids = listOf(MENU_REFRESH, MENU_ARCHIVED, MENU_TRASH, MENU_RULES,
+        val ids = listOf(MENU_REFRESH, MENU_ARCHIVED, MENU_TRASH, MENU_DELETED_MESSAGES, MENU_RULES,
             MENU_BLOCKED, MENU_MANAGE, MENU_SETTINGS)
         val labels = listOf(R.string.refresh, R.string.archived, R.string.tab_trash,
-            R.string.rules, R.string.blocked_log, R.string.manage_brands, R.string.settings)
+            R.string.trash_deleted_messages, R.string.rules, R.string.blocked_log,
+            R.string.manage_brands, R.string.settings)
         val icons = listOf(R.drawable.ic_archive, R.drawable.ic_archive, R.drawable.ic_tab_trash,
-            R.drawable.ic_cat_security, R.drawable.ic_tab_spam, R.drawable.ic_cat_bank, R.drawable.ic_settings)
+            R.drawable.ic_tab_trash, R.drawable.ic_cat_security, R.drawable.ic_tab_spam,
+            R.drawable.ic_cat_bank, R.drawable.ic_settings)
         val details = listOf(
             R.string.menu_refresh_detail, R.string.menu_archive_detail,
-            R.string.menu_trash_detail, R.string.menu_rules_detail,
-            R.string.menu_blocked_detail, R.string.menu_senders_detail,
-            R.string.menu_settings_detail
+            R.string.menu_trash_detail, R.string.menu_deleted_detail,
+            R.string.menu_rules_detail, R.string.menu_blocked_detail,
+            R.string.menu_senders_detail, R.string.menu_settings_detail
         )
         ChoiceSheet.show(this, getString(R.string.more_actions), ids.indices.map { index ->
             ChoiceSheet.Option(getString(labels[index]), icons[index], detail = getString(details[index]))
