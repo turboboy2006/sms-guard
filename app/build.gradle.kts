@@ -25,6 +25,17 @@ android {
         storeType = "PKCS12"
     } else null
 
+    /**
+     * دو طعم (flavor) از یک کدبیس:
+     *  - full  : دسترسی اینترنت دارد (پیش‌نمایش لینک + دستیار AI اختیاری)
+     *  - offline: بدون INTERNET؛ کاملاً آفلاین و از نظر Play Protect کم‌ریسک‌تر
+     */
+    flavorDimensions += "net"
+    productFlavors {
+        create("full") { dimension = "net" }
+        create("offline") { dimension = "net" }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false

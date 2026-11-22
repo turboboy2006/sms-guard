@@ -16,6 +16,7 @@ import java.net.URL
 class AiAnalyzer(private val settings: SettingsStore) {
 
     fun analyze(sender: String, body: String): AiVerdict? {
+        if (!SmsApp.networkAllowed()) return null   // نسخهٔ آفلاین: هرگز شبکه نمی‌زند
         if (!settings.aiEnabled) return null
         if (settings.aiApiKey.isBlank()) return null
 

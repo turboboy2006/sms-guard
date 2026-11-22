@@ -3,7 +3,7 @@
 
     <!-- Core SMS permissions -->
     <uses-permission android:name="android.permission.SEND_SMS" />
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- INTERNET در flavor «full» اعلام می‌شود؛ نسخهٔ offline هیچ دسترسی شبکه ندارد -->
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_MMS" />

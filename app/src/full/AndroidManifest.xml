@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- فقط نسخهٔ full به شبکه دسترسی دارد (پیش‌نمایش لینک + دستیار AI اختیاری) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

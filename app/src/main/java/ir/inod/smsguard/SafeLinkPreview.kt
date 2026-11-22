@@ -15,6 +15,9 @@ object SafeLinkPreview {
 
     private val cache = ConcurrentHashMap<String, Card>()
     private val pending = ConcurrentHashMap.newKeySet<String>()
+    /** در flavor «offline» هیچ درخواست شبکه‌ای انجام نمی‌شود. */
+    private val networkAllowed: Boolean
+        get() = SmsApp.networkAllowed()
     private val listeners = HashMap<String, MutableList<(Card?) -> Unit>>()
     private val workers = Executors.newFixedThreadPool(2)
 

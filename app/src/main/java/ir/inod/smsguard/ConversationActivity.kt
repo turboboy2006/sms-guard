@@ -628,10 +628,9 @@ class ConversationActivity : BaseActivity() {
     private fun updateSelectionUi(count: Int) {
         supportActionBar?.title = if (count > 0) Dates.count(this, count)
         else ContactNames.displayNameUi(address)
-        /* کنترل‌های انتخاب به‌صورت نوار پایین (bottom bar) نمایش داده می‌شوند */
+        /* کنترل‌های انتخاب به‌صورت نوار بالای صفحه نمایش داده می‌شوند */
         binding.selectionBar.visibility = if (count > 0) View.VISIBLE else View.GONE
         binding.composer.visibility = if (count > 0) View.GONE else View.VISIBLE
-        binding.selectionCount.text = if (count > 0) Dates.count(this, count) else ""
         if (count == 0) selectionAnchorId = -1L
         invalidateOptionsMenu()
     }

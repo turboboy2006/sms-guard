@@ -12,6 +12,7 @@ class SmsApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        appRef = this
         createChannel()
         watchContacts()
         /* کارهای زمان‌بندی روی رشتهٔ پس‌زمینه انجام می‌شوند تا شروع سرد سبک‌تر شود. */
@@ -60,5 +61,20 @@ class SmsApp : Application() {
 
     companion object {
         const val CHANNEL_ID = "sms_guard_messages"
+
+        private var appRef: SmsApp? = null
+
+        /** دسترسی به Context اپ برای بررسی‌های سراسری (مثل مجاز بودن شبکه). */
+        fun app(): SmsApp? = appRef
+
+        /** در flavor «offline» مقدار false است (بدون مجوز INTERNET). */
+        fun networkAllowed(): Boolean {
+            val a = appRef ?: return true
+            return try {
+                a.resources.getBoolean(R.bool.network_enabled)
+            } catch (t: Throwable) {
+                true
+            }
+        }
     }
 }

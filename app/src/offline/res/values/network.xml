@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- نسخهٔ آفلاین: هیچ درخواست شبکه‌ای مجاز نیست -->
+    <bool name="network_enabled">false</bool>
+</resources>
