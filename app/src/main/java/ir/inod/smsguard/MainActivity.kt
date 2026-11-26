@@ -1123,17 +1123,23 @@ class MainActivity : BaseActivity() {
         val inboxFlags = senderStore.inboxFlags()
         val spamIds = CategoryStore(this).active().filter { it.spamFolder }.map { it.id }.toSet()
         val byTab = when {
-            archiveMode -> allThreads
+            archiveMode -> allThreads.filter { inboxFlags[it.address]?.second == true }
             selectedCategoryId == UNREAD_FILTER -> allThreads.filter { it.unreadCount > 0 && it.categoryId != Cat.TRASH }
-            contactsOnly -> allThreads.filter { ContactsIndex.isKnownContact(it.address) }
-            selectedCategoryId != null -> allThreads.filter { it.categoryId == selectedCategoryId }
-            // "All" hides the spam folder and the trash alike.
-            else -> allThreads.filterNot {
-                it.categoryId in spamIds || it.categoryId == Cat.TRASH
+            contactsOnly -> allThreads.filter {
+                ContactsIndex.isKnownContact(it.address) && it.categoryId != Cat.TRASH
             }
+            selectedCategoryId != null -> allThreads.filter { it.categoryId == selectedCategoryId }
+            /* «همه» واقعاً همه است. قبلاً گفتگوهای بایگانی‌شده (مثلاً با یک سویپ
+               اشتباهی) و دسته‌های اسپم هم پنهان می‌شدند و کاربر پیامی را که
+               جستجو پیدا می‌کرد در فهرست نمی‌دید. حالا فقط سطل زباله کنار می‌رود. */
+            else -> allThreads.filterNot { it.categoryId == Cat.TRASH }
         }
-        val visibleRows = byTab.filter { (inboxFlags[it.address]?.second == true) == archiveMode }
-            .sortedWith(compareByDescending<ThreadSummary> { inboxFlags[it.address]?.first == true }.thenByDescending { it.date })
+        /* فیلتر بایگانی فقط در نمای «بایگانی» اعمال می‌شود، نه در همه‌جا؛
+           وگرنه گفتگوی بایگانی‌شده از «همه» و «مخاطبین» هم غیب می‌شود. */
+        val visibleRows = byTab.sortedWith(
+            compareByDescending<ThreadSummary> { inboxFlags[it.address]?.first == true }
+                .thenByDescending { it.date }
+        )
         val filteredBase = if (query.isBlank()) {
             visibleRows
         } else {
