@@ -1,187 +1,165 @@
-# پیام‌بان (SmsGuard)
+<div align="center">
 
-یک اپ پیامک کامل برای اندروید با قواعد مسدودسازی سفارشی.
+# 📨 PayamBan
 
-هدف: پیامک‌های تبلیغاتی و مزاحم به‌جای اینکه فقط ساکت شوند، **واقعاً مسدود** شوند و در گزارش باقی بمانند تا اگر اشتباهی مسدود شد، متوجه شوی.
+**A private, offline-first SMS manager for Android — spam filtering that never leaves your phone.**
 
-> **ادامه‌دهنده‌ی پروژه:** دو فایل را بخوان — `HANDOFF.md` (وضعیت فنی، کارهای
-> باقی‌مانده، ۲۰ اشتباه تکراری) و `RECEIVER-HANDOFF.md` (دسترسی‌ها، روش push،
-> روش گرفتن APK و رفع خطای بیلد).
+[![Android](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84?logo=android&logoColor=white)](#-requirements)
+[![Kotlin](https://img.shields.io/badge/Kotlin-1.9-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Material 3](https://img.shields.io/badge/UI-Material%203-1D4ED8)](#-features)
+[![No Cloud](https://img.shields.io/badge/AI%20%C2%B7%20Cloud%20%C2%B7%20Trackers-none-16A34A)](#-privacy-first)
+[![Build](https://github.com/turboboy2006/sms-guard/actions/workflows/build.yml/badge.svg)](https://github.com/turboboy2006/sms-guard/actions/workflows/build.yml)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+**English** · [فارسی](README.fa.md)
+
+⭐ **If this project is useful to you, a star means a lot — it helps others find it.**
+
+</div>
 
 ---
 
-## امکانات
+## ✨ Why PayamBan?
+
+Every SMS app asks for the same permissions, but most of them ship your messages to a server. Ad-supported "caller ID" apps are worse: they upload your inbox to build their database.
+
+**PayamBan takes the opposite approach.** Spam detection, sender intelligence, campaign clustering and learning from your corrections all happen **on the device**, in plain Kotlin, with **no network call at all**. No ads, no trackers, no analytics, no cloud account.
 
 | | |
 |---|---|
-| اپ پیامک کامل | لیست گفتگوها، نمایش مکالمه، ارسال و دریافت SMS |
-| قواعد مسدودسازی | بر اساس فرستنده، متن، یا هر دو؛ با پشتیبانی Regex |
-| گزارش مسدودشده‌ها | ۳۰۰ پیام آخر مسدودشده ذخیره می‌شود تا بازبینی کنی |
-| مسدودسازی سریع | از داخل هر مکالمه، منو → «مسدود کردن این فرستنده» |
-| نام مخاطب | از دفترچه تلفن خوانده می‌شود |
-| اعلان | یک اعلان per گفتگو |
+| 🔒 **Nothing leaves the phone** | No server, no telemetry, no third-party SDKs. The `offline` build does not even request the `INTERNET` permission. |
+| 🧠 **Explainable filtering** | Every decision ships with a score and human-readable reasons (`link · urgency · bulk opt-out`) — never a black box. |
+| 🧩 **On-device learning** | Correcting one message teaches the app your rules, per sender. |
+| 🚫 **Campaigns, not just messages** | A 64-bit SimHash clusters near-identical bulk messages, so one decision covers the whole campaign. |
+| 🎨 **Material 3, RTL-first** | Built for Persian from the ground up: Vazirmatn typeface, correct bidi handling, light/dark themes, adjustable font scale. |
+| 🗂️ **A real message trash** | Deleted messages move to a restorable trash instead of vanishing forever. |
 
 ---
 
-## ⚠️ محدودیت‌هایی که باید بدانی
+## 🚀 Features
 
-**۱. RCS از دست می‌رود.** اندروید فقط به یک اپ اجازه می‌دهد پیش‌فرض باشد. به‌محض اینکه این اپ را پیش‌فرض کنی، RCS (رمزنگاری سرتاسری، تیک‌خواندن، «در حال تایپ»، عکس با کیفیت) در Google Messages خاموش می‌شود و چت‌ها به SMS معمولی برمی‌گردند.
+### Inbox & conversations
+- Conversation list with **pinned**, **unread**, **archived** and **trash** folders
+- Category chips — Contacts · Banking · OTP · Notifications · Promotions · Spam
+- Full-text search across the whole provider database with debounced live results
+- Long-press to select, then **range selection**; copy, share, report spam or delete from a compact action bar
+- Swipe actions, per-sender colors and avatars, day separators, delayed-send composer
 
-**۲. MMS پشتیبانی نمی‌شود.** Receiver مربوطه در manifest هست (چون اندروید برای اپ پیش‌فرض الزامش می‌کند) ولی MMS دانلود نمی‌شود. اگر کسی برایت MMS بفرستد، دریافت نمی‌کنی. در ایران MMS تقریباً منسوخ است، ولی باید بدانی.
+### Filtering & intelligence
+- Weighted, explainable signal engine: links, urgency, money lures, opt-out headers, obfuscation, brand impersonation, risky TLDs, IP links, punycode…
+- Persian-aware normalizer — Arabic → Persian letters, kashida, ZWNJ, Arabic/Persian digits — the exact tricks bulk senders use to dodge filters
+- Sender profiles and learned weights remember what you correct
+- Brand catalog for Iranian banks, telecom operators, shops and couriers (with typosquat detection)
+- URL and phone-number intelligence, entirely offline
 
-**۳. دو سیم‌کارته:** پاسخ‌ها از سیم‌کارت پیش‌فرض ارسال می‌شوند. ردیابی subscription id پیاده‌سازی نشده.
-
-**۴. مخصوص استفاده شخصی است.** سیاست‌های Google Play اجازه نمی‌دهند اپی با این مجوزهای SMS منتشر شود. نصب فقط به‌صورت sideload.
-
----
-
-## ساخت APK — بدون Android Studio
-
-بیلد در ابر انجام می‌شود، پس به SDK یا Gradle روی کامپیوترت نیازی نیست.
-
-### ۱. پروژه را روی GitHub بگذار
-
-```powershell
-cd C:\xamp\htdocs\inod\sms-guard
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/USERNAME/sms-guard.git
-git push -u origin main
-```
-
-(`USERNAME` را با نام کاربری خودت عوض کن. مخزن می‌تواند private باشد.)
-
-اگر Git را تنظیم نکرده‌ای، اول این دو خط را بزن:
-
-```powershell
-git config --global user.name "نام تو"
-git config --global user.email "mail@example.com"
-```
-
-### ۲. بیلد را بگیر
-
-1. برو به مخزن → تب **Actions**
-2. ورک‌فلوی **Build APK** خودش شروع می‌شود (اگر شروع نشد: `Build APK` → `Run workflow`)
-3. صبر کن تا تیک سبز شود (حدود ۳ تا ۵ دقیقه)
-4. روی همان run کلیک کن → پایین صفحه بخش **Artifacts** → دانلود **sms-guard-debug-apk**
-
-فایل یک zip است؛ بازش کن تا `app-debug.apk` در بیاید.
-
-### ۳. نصب
-
-**روش الف — با کابل و adb (روی سیستم تو نصب است):**
-
-```powershell
-adb devices          # باید گوشی را ببینی، وگرنه USB debugging را روشن کن
-adb install -r "$env:USERPROFILE\Downloads\app-debug.apk"
-```
-
-**روش ب — بدون کابل:** فایل APK را به گوشی منتقل کن، روی آن بزن، و اگر پرسید به این منبع اجازه نصب بده.
+### Privacy & control
+- Per-sender policies: *always analyze*, *never analyze*, *block*, *trust*
+- Rule builder (sender / keyword / regex) with a live "how many existing messages match" preview
+- Encrypted local storage for sensitive values (AES/GCM on the Android Keystore)
+- Settings export/import — no account, no sign-in, no sync
 
 ---
 
-## راه‌اندازی بعد از نصب
+## 📦 Install
 
-1. اپ را باز کن. یک بنر زرد می‌بینی: «این برنامه هنوز اپ پیش‌فرض پیامک نیست».
-2. روی **«تعیین به‌عنوان اپ پیامک پیش‌فرض»** بزن و در پنجره سیستم تأیید کن.
-3. اجازه‌های SMS و مخاطبین را بده.
-4. **مهم:** Google Messages را باز کن و یک پیامک آزمایشی به خودت بفرست تا مطمئن شوی دریافت می‌شود.
+### Option 1 — Download the APK
+Take the latest signed APK from the [**Releases**](../../releases/latest) page.
 
-> از این لحظه، RCS خاموش است. اگر پشیمان شدی، در تنظیمات اندروید → اپ‌های پیش‌فرض → پیامک، دوباره Google Messages را انتخاب کن.
-
----
-
-## ساختن قاعده
-
-**قواعد مسدودسازی → افزودن قاعده**
-
-سه گزینه داری:
-
-- **این قاعده کجا را بررسی کند؟** فرستنده / متن پیام / هر دو
-- **الگو:** چیزی که دنبالش می‌گردی
-- **Regex:** فقط اگر بلدی. برای ۹۹٪ موارد لازم نیست.
-
-### نمونه‌های کاربردی برای اسپم ایرانی
-
-| هدف | کجا | الگو |
+| Build | Network permission | Use when |
 |---|---|---|
-| سرشماره‌های تبلیغاتی رایج | فرستنده | `2000` |
-| هر پیامکی که کلمه تبلیغ دارد | متن پیام | `تبلیغ` |
-| پیامک‌هایی که راه لغو دارند (یعنی انبوه‌اند) | متن پیام | `لغو11` |
-| سرشماره‌های ۵ رقمی و بیشتر | فرستنده (Regex ✓) | `^\d{5,}$` |
-| سرشماره‌های انبوه خاص | فرستنده (Regex ✓) | `^[1-5]000\d+$` |
+| `offline` | ❌ none | Maximum privacy — no link previews, no network code path at all. |
+| `full` | ✅ `INTERNET` | Adds safe link previews for URLs inside messages. |
 
-### ⚠️ قواعدی که نباید بسازی
+> **Installing outside Google Play?** Android may show a *Play Protect* warning for sideloaded SMS apps. It is a heuristic, not a verdict — see [the appeal notes](README.fa.md#-play-protect) (Persian).
 
-- الگوی عمومی روی **متن** مثل `حساب` یا `بانک` — پیامک بانکی و رمز پویا را قربانی می‌کند
-- الگوی عمومی روی **فرستنده** مثل `\d+` — همه چیز را مسدود می‌کند
+### Option 2 — Build it yourself
+```bash
+git clone https://github.com/turboboy2006/sms-guard.git
+cd sms-guard
+./gradlew assembleOfflineRelease   # or: assembleFullRelease
+```
+Requires **JDK 17** and the Android SDK (compileSdk 34). CI builds both flavors on every push — see [`.github/workflows/build.yml`](.github/workflows/build.yml).
 
-**قاعده امن:** اگر مطمئن نیستی، اول روی **فرستنده** قاعده بساز نه متن. سرشماره بانک را یک‌بار ببین و یادداشت کن که مسدودش نکنی.
-
-### روش تدریجی (پیشنهادشده)
-
-1. چند هفته هیچ قاعده‌ای نساز؛ فقط اپ را پیش‌فرض نگه دار.
-2. هر بار پیامک مزاحم دیدی، برو داخل مکالمه → منو → **مسدود کردن این فرستنده**.
-3. هر چند وقت یک‌بار **گزارش مسدودشده‌ها** را نگاه کن. اگر پیامک مهمی آنجا بود، قاعده‌اش را در لیست خاموش کن.
+**Requirements:** Android 8.0 (API 26) or newer.
 
 ---
 
-## ساختار پروژه
+## 🏗️ Project structure
 
 ```
-sms-guard/
-├── .github/workflows/build.yml     بیلد خودکار APK در ابر
-├── settings.gradle.kts
-├── build.gradle.kts                نسخه پلاگین‌ها (AGP 8.5.2 / Kotlin 1.9.24)
-├── gradle.properties
-└── app/
-    ├── build.gradle.kts            compileSdk 34 / minSdk 26
-    └── src/main/
-        ├── AndroidManifest.xml     الزامات اپ پیش‌فرض پیامک
-        ├── java/ir/inod/smsguard/
-        │   ├── SmsApp.kt               Application + کانال اعلان
-        │   ├── Models.kt               Rule, ThreadSummary, SmsMessage, BlockedMessage
-        │   ├── Store.kt                RuleStore + BlockedStore (SharedPreferences/JSON)
-        │   ├── SmsRepository.kt        خواندن/نوشتن provider و ارسال SMS
-        │   ├── Notifier.kt             اعلان‌ها + ContactNames
-        │   ├── SmsReceiver.kt          دریافت SMS و اعمال قواعد
-        │   ├── MmsReceiver.kt          الزام manifest (بدون پشتیبانی MMS)
-        │   ├── HeadlessSmsSendService.kt  پاسخ سریع سیستم
-        │   ├── MainActivity.kt         لیست گفتگوها + بنر پیش‌فرض
-        │   ├── ConversationActivity.kt مکالمه و ارسال
-        │   ├── RulesActivity.kt        مدیریت قواعد
-        │   ├── ThreadAdapter.kt / MessageAdapter.kt / RuleAdapter.kt
-        │   └── Dates.kt
-        └── res/
-            ├── layout/             7 فایل
-            ├── drawable/           5 فایل (همه برداری، بدون تصویر باینری)
-            ├── mipmap-anydpi-v26/  آیکون adaptive
-            ├── values/             strings, colors, themes
-            └── xml/                backup rules
+app/src/main/java/ir/inod/smsguard/
+├── MainActivity.kt              # inbox, tabs, filtering, bulk actions
+├── ConversationActivity.kt      # thread view, selection, composer
+├── FolderActivity.kt            # archived / trash folders
+├── TrashedMessagesActivity.kt   # restorable message trash
+├── Classifier.kt                # weighted signal engine (explainable)
+├── Normalizer.kt                # Persian/Arabic normalization
+├── LearningStore.kt             # per-sender profiles, learned weights
+├── Campaign.kt                  # SimHash campaign clustering
+├── UrlIntel.kt / PhoneIntel.kt  # offline URL & number intelligence
+├── SmsRepository.kt             # provider access, threaded and cached
+├── Store.kt                     # settings, categories, sender policies
+├── RulesActivity.kt             # rule builder + live match preview
+├── ManagerActivity.kt           # sender management
+└── SettingsActivity.kt          # appearance, notifications, backup
 ```
 
----
-
-## رفع اشکال
-
-**بیلد در Actions قرمز شد**
-روی run کلیک کن و لاگ مرحله `Build debug APK` را بخوان. متن خطا را بفرست تا درست کنم. اولین بیلد ممکن است به یک اصلاح کوچک نیاز داشته باشد چون این پروژه بدون کامپایلر نوشته شده.
-
-**اپ پیامک دریافت نمی‌کند**
-- آیا واقعاً پیش‌فرض شده؟ بنر زرد در صفحه اصلی نباید دیده شود.
-- اجازه‌های SMS داده شده؟ تنظیمات → اپ‌ها → پیام‌بان → مجوزها
-- اعلان‌ها: در اندروید ۱۳+ اجازه اعلان باید جدا داده شود
-
-**پیامک بانکی مسدود شده**
-گزارش مسدودشده‌ها را نگاه کن، الگوی قاعده‌ای که آن را گرفته پیدا کن و خاموشش کن.
-
-**می‌خواهم به Google Messages برگردم**
-تنظیمات اندروید → اپ‌ها → اپ‌های پیش‌فرض → پیامک → Google Messages. اپ را می‌توانی نصب‌شده نگه داری.
+Architecture notes and the nine pitfalls we hit while building this are documented in [`HANDOFF.md`](HANDOFF.md) and [`UI-FIXES-PLAN.md`](UI-FIXES-PLAN.md).
 
 ---
 
-## نکته حقوقی
+## 🔐 Privacy first
 
-این اپ برای استفاده شخصی خودت روی گوشی خودت است. خواندن و نوشتن پیامک روی گوشی خودت با رضایت خودت مشکلی ندارد؛ ولی منتشر کردنش در Google Play با این مجوزها مجاز نیست.
+- **No `INTERNET` permission in the `offline` build** — enforced by the operating system, not by a promise.
+- **No analytics, no crash reporting, no ads, no third-party SDKs.**
+- **No account.** Nothing to sign in to and nothing to sync.
+- Message contents are read only to classify them, and stay in the app's private storage.
+
+---
+
+## 🗺️ Roadmap
+
+- [x] Explainable spam engine with on-device learning
+- [x] Campaign clustering (SimHash)
+- [x] Material 3 redesign, Persian-first typography, RTL/LTR correctness
+- [x] Restorable trash, range selection, action bar
+- [x] Offline / full build flavors
+- [ ] Classifier test suite with a golden corpus
+- [ ] Localization: English, Arabic
+- [ ] Tablet and foldable layouts
+
+---
+
+## 🤝 Contributing
+
+Issues and pull requests are welcome. Good first steps:
+
+1. Open an issue describing the **message pattern** you think is misclassified — mask phone numbers and codes.
+2. Run the app, correct a few messages, then export your learned rules from *Settings → Backup*.
+3. Send a PR that adds a signal, a brand entry or a translation.
+
+Please keep the engine **offline and explainable**: every new signal must add a visible reason string.
+
+---
+
+## ⭐ Support the project
+
+If PayamBan saves you from a few spam messages a day:
+
+- **Star this repository** — the simplest way to support it.
+- Report false positives or negatives with a masked sample.
+- Share it with someone who is tired of ad-filled SMS apps.
+
+<div align="center">
+
+**Made with care for Persian users.**
+
+[![Star this repo](https://img.shields.io/github/stars/turboboy2006/sms-guard?style=social)](https://github.com/turboboy2006/sms-guard/stargazers)
+
+</div>
+
+---
+
+## 📄 License
+
+MIT — see [LICENSE](LICENSE).
