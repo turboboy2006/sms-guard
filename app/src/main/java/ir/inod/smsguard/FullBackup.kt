@@ -20,7 +20,8 @@ object FullBackup {
     private const val TRASH_FILE = "trash_messages.json"
 
     /** @return تعداد بخش‌های ذخیره‌شده، یا null اگر خطا رخ داد. */
-    fun export(context: Context, uri: Uri): Int? = try {
+    fun export(context: Context, uri: Uri): Int? {
+        return try {
         val prefsDir = File(context.applicationContext.dataDir, "shared_prefs")
         val sections = JSONObject()
         prefsDir.listFiles()?.forEach { file ->
@@ -44,12 +45,14 @@ object FullBackup {
             out.write(root.toString(2).toByteArray(Charsets.UTF_8))
         } ?: return null
         sections.length() + files.length()
-    } catch (t: Throwable) {
-        null
+        } catch (t: Throwable) {
+            null
+        }
     }
 
     /** @return تعداد بخش‌های بازگردانی‌شده، یا null اگر فایل معتبر نبود. */
-    fun import(context: Context, uri: Uri): Int? = try {
+    fun import(context: Context, uri: Uri): Int? {
+        return try {
         val text = context.contentResolver.openInputStream(uri)?.use {
             it.readBytes().toString(Charsets.UTF_8)
         } ?: return null
@@ -78,12 +81,14 @@ object FullBackup {
             }
         }
         restored
-    } catch (t: Throwable) {
-        null
+        } catch (t: Throwable) {
+            null
+        }
     }
 
     /** خلاصهٔ محتوای پشتیبان برای نمایش پیش از بازگردانی. */
-    fun describe(context: Context, uri: Uri): String? = try {
+    fun describe(context: Context, uri: Uri): String? {
+        return try {
         val text = context.contentResolver.openInputStream(uri)?.use {
             it.readBytes().toString(Charsets.UTF_8)
         } ?: return null
@@ -96,7 +101,8 @@ object FullBackup {
         val stamp = if (created > 0) java.text.SimpleDateFormat("yyyy/MM/dd HH:mm", java.util.Locale.US)
             .format(java.util.Date(created)) else "?"
         "$version · $stamp · $prefs section(s) · $files file(s)"
-    } catch (t: Throwable) {
-        null
+        } catch (t: Throwable) {
+            null
+        }
     }
 }

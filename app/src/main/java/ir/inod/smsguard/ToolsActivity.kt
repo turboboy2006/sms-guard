@@ -223,9 +223,14 @@ class ToolsActivity : BaseActivity() {
 
     private fun sendCrash() {
         val report = CrashReporter.lastCrash(this) ?: return
+        val address = this@ToolsActivity.getString(R.string.support_email)
+        val subject = this@ToolsActivity.getString(
+            R.string.crash_mail_subject,
+            UpdateChecker.currentVersion(this@ToolsActivity)
+        )
         val intent = Intent(Intent.ACTION_SENDTO).apply {
-            data = Uri.parse("mailto:" + getString(R.string.support_email))
-            putExtra(Intent.EXTRA_SUBJECT, getString(R.string.crash_mail_subject, UpdateChecker.currentVersion(this)))
+            data = Uri.parse("mailto:" + address)
+            putExtra(Intent.EXTRA_SUBJECT, subject)
             putExtra(Intent.EXTRA_TEXT, report)
         }
         try {
@@ -245,7 +250,10 @@ class ToolsActivity : BaseActivity() {
                     .setMessage(R.string.update_download_question)
                     .setNegativeButton(R.string.later) { _, _ -> UpdateChecker.postpone(activity) }
                     .setPositiveButton(R.string.update_now) { _, _ ->
-                        activity.startActivity(Intent(activity, ToolsActivity::class.java))
+                        activity.applicationContext.startActivity(
+                            Intent(activity, ToolsActivity::class.java)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
                     }
                     .show()
             })
