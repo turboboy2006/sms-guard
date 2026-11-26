@@ -1133,10 +1133,10 @@ class MainActivity : BaseActivity() {
                 ContactsIndex.isKnownContact(it.address) && it.categoryId != Cat.TRASH
             }
             selectedCategoryId != null -> allThreads.filter { it.categoryId == selectedCategoryId }
-            /* «همه» واقعاً همه است. قبلاً گفتگوهای بایگانی‌شده (مثلاً با یک سویپ
-               اشتباهی) و دسته‌های اسپم هم پنهان می‌شدند و کاربر پیامی را که
-               جستجو پیدا می‌کرد در فهرست نمی‌دید. حالا فقط سطل زباله کنار می‌رود. */
-            else -> allThreads.filterNot { it.categoryId == Cat.TRASH }
+            /* «همه»: سطل زباله و پوشه‌های اسپم پنهان می‌شوند، ولی گفتگوهای
+               بایگانی‌شده دیده می‌شوند (قبلاً بایگانی‌شده هم غیب می‌شد و
+               کاربر فکر می‌کرد پیامش گم شده). */
+            else -> allThreads.filterNot { it.categoryId in spamIds || it.categoryId == Cat.TRASH }
         }
         /* فیلتر بایگانی فقط در نمای «بایگانی» اعمال می‌شود، نه در همه‌جا؛
            وگرنه گفتگوی بایگانی‌شده از «همه» و «مخاطبین» هم غیب می‌شود. */
