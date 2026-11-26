@@ -135,6 +135,13 @@ object Classifier {
     private val CARD_REGEX = Regex("\\d{16}")
     private val SHEBA_REGEX = Regex("ir\\d{24}", RegexOption.IGNORE_CASE)
 
+    /** نشانهٔ «از کاربر اقدام بخواه» — شرط لازم برای فیشینگ‌شمردن شماره کارت. */
+    private val ASK_ACTION_REGEX = Regex(
+        "(کلیک|وارد شوید|واریز کنید|ارسال کنید|بفرستید|تماس بگیرید|تماس حاصل|" +
+            "ثبت ?نام|لینک زیر|دریافت جایزه|رمز کارت|رمز دوم|رمز عبور خود|احراز هویت|" +
+            "اطلاعات بانکی|شماره کارت خود)"
+    )
+
     // ------------------------------------------------------------ predicates
 
     fun looksLikeOtp(body: String): Boolean {
@@ -297,7 +304,8 @@ object Classifier {
     private fun signals(context: Context, address: String, body: String): List<Signal> {
         val out = mutableListOf<Signal>()
         val links = LINK_REGEX.findAll(body).map { it.value }.toList()
-        val compact = Normalizer.normalize(body).replace(" ", "").replace("-", "")
+        val normalizedBody = Normalizer.normalize(body)
+        val compact = normalizedBody.replace(" ", "").replace("-", "")
 
         // --- promotional intent ---
         if (links.isNotEmpty()) out.add(Signal(24, "link"))
@@ -334,8 +342,12 @@ object Classifier {
 
         // --- fraud / phishing intent ---
         if (Normalizer.containsAny(body, FRAUD)) out.add(Signal(40, "fraud-words"))
-        if (CARD_REGEX.containsMatchIn(compact)) out.add(Signal(35, "card-number"))
-        if (SHEBA_REGEX.containsMatchIn(compact)) out.add(Signal(30, "sheba"))
+        /* «شماره کارت/شبا» فقط وقتی نشانهٔ فیشینگ است که پیام از کاربر درخواست
+           اقدام کند. رسید خرید، واریز فروشگاه (دیجی‌کالا) و صورتحساب بانک هم
+           شماره کارت دارند و پیش از این بی‌دلیل اسپم شمرده می‌شدند. */
+        val asksAction = ASK_ACTION_REGEX.containsMatchIn(normalizedBody)
+        if (CARD_REGEX.containsMatchIn(compact) && asksAction) out.add(Signal(35, "card-number"))
+        if (SHEBA_REGEX.containsMatchIn(compact) && asksAction) out.add(Signal(30, "sheba"))
         if (Normalizer.looksObfuscated(body)) out.add(Signal(30, "obfuscated"))
         // --- URL intelligence, all offline ---
         val urls = UrlIntel.extract(body)
