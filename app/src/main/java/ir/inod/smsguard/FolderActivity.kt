@@ -62,7 +62,7 @@ class FolderActivity : BaseActivity() {
         search = SecondaryUi.search(this)
         root.addView(search, LinearLayout.LayoutParams(-1, SecondaryUi.px(this, R.dimen.search_height)))
         if (folder == TRASH) {
-            trashRow = android.widget.TextView(this).apply {
+            val row = android.widget.TextView(this).apply {
                 textSize = 14f
                 setPadding(dp(18), dp(14), dp(18), dp(14))
                 setTextColor(androidx.core.content.ContextCompat.getColor(this@FolderActivity, R.color.text_primary))
@@ -71,7 +71,8 @@ class FolderActivity : BaseActivity() {
                     startActivity(android.content.Intent(this@FolderActivity, TrashedMessagesActivity::class.java))
                 }
             }
-            root.addView(trashRow, LinearLayout.LayoutParams(-1, -2))
+            trashRow = row
+            root.addView(row, LinearLayout.LayoutParams(-1, -2))
             updateTrashRow()
         }
         val frame = FrameLayout(this)
