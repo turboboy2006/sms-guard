@@ -113,6 +113,9 @@ class FolderActivity : BaseActivity() {
             val flags = senderStore.inboxFlags()
             all = repo.loadThreads().filter { row ->
                 if (folder == TRASH) row.categoryId == Cat.TRASH else flags[row.address]?.second == true
+            }.map { row ->
+                /* در سطل زباله و بایگانی هیچ‌چیز «دیده‌نشده» نیست. */
+                if (row.unreadCount > 0) row.copy(unreadCount = 0) else row
             }
             runOnUiThread { filter() }
         }

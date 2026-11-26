@@ -347,6 +347,9 @@ class ConversationActivity : BaseActivity() {
                     messageLimit = maxOf(messageLimit, repo.countMessagesSince(threadId, targetDate) + 50)
                 }
             }
+            /* حتی اگر threadId پیدا نشود، باز کردن گفتگو باید پیام‌های آن شماره
+               را خوانده کند؛ وگرنه بولت «دیده‌نشده» در فهرست می‌ماند. */
+            markAddressRead(address)
 
             val messages = try {
                 if (threadId >= 0) repo.loadMessages(threadId, messageLimit) else emptyList()
@@ -495,8 +498,26 @@ class ConversationActivity : BaseActivity() {
                     deletedAt = now
                 )
             })
+            /* چیزی که به سطل زباله رفت دیگر «دیده‌نشده» نیست. */
+            markAddressRead(address)
+            ThreadCache.clear(this)
         } catch (t: Throwable) {
             // سطل زباله نباید جریان حذف را بشکند.
+        }
+    }
+
+    /** همهٔ پیام‌های این شماره را خوانده می‌کند (بدون وابستگی به threadId). */
+    private fun markAddressRead(addr: String) {
+        if (addr.isBlank()) return
+        try {
+            val values = android.content.ContentValues().apply { put(Telephony.Sms.READ, 1) }
+            contentResolver.update(
+                Telephony.Sms.CONTENT_URI, values,
+                "${Telephony.Sms.ADDRESS} = ? AND ${Telephony.Sms.READ} = 0", arrayOf(addr)
+            )
+            ThreadCache.clear(this)
+        } catch (t: Throwable) {
+            // نادیده: خواندن نباید جریان باز کردن گفتگو را بشکند.
         }
     }
 
