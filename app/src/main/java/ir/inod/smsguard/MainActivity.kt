@@ -40,6 +40,7 @@ class MainActivity : BaseActivity() {
         const val MENU_REFRESH = 2005
         const val MENU_TRASH = 2006
     const val MENU_DELETED_MESSAGES = 2007
+    const val MENU_TOOLS = 2008
         const val MENU_MARK_READ = 2101
         const val MENU_BULK_SPAM = 2102
         const val MENU_BULK_TRASH = 2103
@@ -163,6 +164,7 @@ class MainActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ToolsActivity.maybePromptUpdate(this)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
@@ -820,6 +822,7 @@ class MainActivity : BaseActivity() {
             MENU_MANAGE -> startActivity(Intent(this, ManagerActivity::class.java))
             MENU_ARCHIVED -> showArchived()
             MENU_SETTINGS -> startActivity(Intent(this, SettingsActivity::class.java))
+            MENU_TOOLS -> startActivity(Intent(this, ToolsActivity::class.java))
             MENU_MARK_READ -> bulkMarkRead()
             MENU_BULK_SPAM -> bulkCategory(Cat.SPAM)
             MENU_BULK_TRASH -> bulkCategory(Cat.TRASH)
@@ -872,6 +875,7 @@ class MainActivity : BaseActivity() {
             MENU_BLOCKED -> showBlockedLog()
             MENU_MANAGE -> startActivity(Intent(this, ManagerActivity::class.java))
             MENU_SETTINGS -> startActivity(Intent(this, SettingsActivity::class.java))
+            MENU_TOOLS -> startActivity(Intent(this, ToolsActivity::class.java))
         }
     }
 

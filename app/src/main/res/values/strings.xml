@@ -479,4 +479,32 @@
     <string name="play_protect_help">Play Protect warning</string>
     <string name="play_protect_hint">Sideloaded SMS apps are often flagged. You can appeal the warning to Google.</string>
     <string name="menu_deleted_detail">Messages removed from conversations, restorable</string>
+    <string name="tools_title">Tools</string>
+    <string name="update_section">App update</string>
+    <string name="update_current">Installed version: %1$s</string>
+    <string name="update_available">Version %1$s is available</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_download">Download now</string>
+    <string name="update_download_question">A new version is available. Download and install it now?</string>
+    <string name="update_now">Update now</string>
+    <string name="update_now_instant">Update now → v%1$s</string>
+    <string name="update_failed">Download failed: %1$s</string>
+    <string name="later">Later</string>
+    <string name="backup_section">Full backup</string>
+    <string name="backup_hint">Settings, categories, rules, sender policies, learned weights, saved notes and trash in one file.</string>
+    <string name="backup_create">Create backup</string>
+    <string name="backup_restore">Restore</string>
+    <string name="backup_restore_confirm">Replace current app data with this backup?
+%1$s</string>
+    <string name="backup_done">Backup written (%1$d sections).</string>
+    <string name="backup_invalid">This file is not a PayamBan backup.</string>
+    <string name="crash_section">Error report</string>
+    <string name="crash_none">No crash has been recorded on this device.</string>
+    <string name="crash_ready">A crash report is ready to send.</string>
+    <string name="crash_send">Send report</string>
+    <string name="crash_send_to">Send to %1$s</string>
+    <string name="crash_mail_subject">PayamBan crash report · v%1$s</string>
+    <string name="crash_no_mail_app">No email app found on this device.</string>
+    <string name="support_email">turbo_boy2006@yahoo.com</string>
 </resources>

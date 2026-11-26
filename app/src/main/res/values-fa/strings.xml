@@ -455,4 +455,32 @@
     <string name="play_protect_help">هشدار Play Protect</string>
     <string name="play_protect_hint">اپ‌های پیامکی نصب‌شده خارج از فروشگاه معمولاً هشدار می‌گیرند؛ می‌توانید برای رفع آن به گوگل اعتراض بدهید.</string>
     <string name="menu_deleted_detail">پیام‌هایی که از مکالمات حذف شده‌اند و قابل بازگردانی‌اند</string>
+    <string name="tools_title">ابزارها</string>
+    <string name="update_section">به‌روزرسانی برنامه</string>
+    <string name="update_current">نسخهٔ نصب‌شده: %1$s</string>
+    <string name="update_available">نسخهٔ %1$s منتشر شده است</string>
+    <string name="update_check">بررسی به‌روزرسانی</string>
+    <string name="update_checking">در حال بررسی…</string>
+    <string name="update_download">الان دانلود می‌کنم</string>
+    <string name="update_download_question">نسخهٔ جدید آمده است. الان دانلود و نصب شود؟</string>
+    <string name="update_now">به‌روزرسانی</string>
+    <string name="update_now_instant">به‌روزرسانی فوری → v%1$s</string>
+    <string name="update_failed">دانلود نشد: %1$s</string>
+    <string name="later">بعداً</string>
+    <string name="backup_section">پشتیبان کامل</string>
+    <string name="backup_hint">تنظیمات، دسته‌ها، قوانین، سیاست فرستنده‌ها، وزن‌های یادگرفته‌شده، یادداشت‌ها و سطل زباله در یک فایل.</string>
+    <string name="backup_create">ساخت فایل پشتیبان</string>
+    <string name="backup_restore">بازگردانی</string>
+    <string name="backup_restore_confirm">داده‌های فعلی با این پشتیبان جایگزین شوند؟
+%1$s</string>
+    <string name="backup_done">پشتیبان نوشته شد (%1$d بخش).</string>
+    <string name="backup_invalid">این فایل، پشتیبان پیام‌بان نیست.</string>
+    <string name="crash_section">گزارش خطا</string>
+    <string name="crash_none">هیچ خطایی روی این دستگاه ثبت نشده است.</string>
+    <string name="crash_ready">یک گزارش خطا آمادهٔ ارسال است.</string>
+    <string name="crash_send">ارسال گزارش</string>
+    <string name="crash_send_to">ارسال به %1$s</string>
+    <string name="crash_mail_subject">گزارش خطای پیام‌بان · نسخهٔ %1$s</string>
+    <string name="crash_no_mail_app">هیچ برنامهٔ ایمیلی روی گوشی پیدا نشد.</string>
+    <string name="support_email">turbo_boy2006@yahoo.com</string>
 </resources>

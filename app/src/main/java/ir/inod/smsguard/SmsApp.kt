@@ -13,6 +13,7 @@ class SmsApp : Application() {
     override fun onCreate() {
         super.onCreate()
         appRef = this
+        CrashReporter.install(this)
         createChannel()
         watchContacts()
         /* کارهای زمان‌بندی روی رشتهٔ پس‌زمینه انجام می‌شوند تا شروع سرد سبک‌تر شود. */
