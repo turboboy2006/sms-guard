@@ -34,10 +34,21 @@ class FolderActivity : BaseActivity() {
     private lateinit var empty: android.widget.TextView
     private lateinit var search: EditText
     private var all = emptyList<ThreadSummary>()
+    private var trashRow: android.widget.TextView? = null
 
     override fun onResume() {
         super.onResume()
         if (::adapter.isInitialized) adapter.refreshNotificationState()
+        updateTrashRow()
+    }
+
+    /** در سطل زباله، پیام‌های تکی حذف‌شده هم باید دیده شوند. */
+    private fun updateTrashRow() {
+        val row = trashRow ?: return
+        val count = TrashStore(this).count()
+        row.text = if (count > 0) getString(R.string.trash_deleted_messages) + " (" + count + ")"
+        else getString(R.string.trash_deleted_messages)
+        row.visibility = if (folder == TRASH) android.view.View.VISIBLE else android.view.View.GONE
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,6 +61,19 @@ class FolderActivity : BaseActivity() {
         root.addView(toolbar, LinearLayout.LayoutParams(-1, SecondaryUi.px(this, R.dimen.appbar_height)))
         search = SecondaryUi.search(this)
         root.addView(search, LinearLayout.LayoutParams(-1, SecondaryUi.px(this, R.dimen.search_height)))
+        if (folder == TRASH) {
+            trashRow = android.widget.TextView(this).apply {
+                textSize = 14f
+                setPadding(dp(18), dp(14), dp(18), dp(14))
+                setTextColor(androidx.core.content.ContextCompat.getColor(this@FolderActivity, R.color.text_primary))
+                setBackgroundColor(androidx.core.content.ContextCompat.getColor(this@FolderActivity, R.color.card_bg))
+                setOnClickListener {
+                    startActivity(android.content.Intent(this@FolderActivity, TrashedMessagesActivity::class.java))
+                }
+            }
+            root.addView(trashRow, LinearLayout.LayoutParams(-1, -2))
+            updateTrashRow()
+        }
         val frame = FrameLayout(this)
         val recycler = androidx.recyclerview.widget.RecyclerView(this).apply {
             layoutManager = LinearLayoutManager(this@FolderActivity)
