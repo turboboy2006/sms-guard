@@ -144,6 +144,17 @@ object Classifier {
 
     // ------------------------------------------------------------ predicates
 
+    /**
+     * رویدادهای فروش انبوهی که کاربر آن‌ها را اسپم می‌داند
+     * (بلک‌فرایدی / جمعه سیاه و مشابه‌هایش).
+     */
+    private val SPAM_EVENTS = listOf(
+        "بلک فرایدی", "بلک‌فرایدی", "بلکفرایدی", "جمعه سیاه", "جمعه‌سیاه", "جمعه سياه",
+        "black friday", "blackfriday", "black-friday", "black friday sale"
+    )
+
+    fun looksLikeSpamEvent(body: String): Boolean = Normalizer.containsAny(body, SPAM_EVENTS)
+
     fun looksLikeOtp(body: String): Boolean {
         val hasCode = OTP_CODE_REGEX.containsMatchIn(body)
         if (!hasCode) return false
@@ -455,6 +466,7 @@ object Classifier {
         val detector = SpamDetector.detect(detectorSender(address), body)
         val detectorConfidence = (detector.confidence * 100).toInt().coerceIn(0, 100)
         val category = when {
+            looksLikeSpamEvent(body) -> Cat.SPAM
             looksLikeOtp(body) -> Cat.OTP
             detector.category == DetectorCategory.OTP && detector.confidence >= 0.78 -> Cat.OTP
             looksLikeBank(address, body) -> Cat.BANKING
