@@ -483,4 +483,5 @@
     <string name="crash_mail_subject">گزارش خطای پیام‌بان · نسخهٔ %1$s</string>
     <string name="crash_no_mail_app">هیچ برنامهٔ ایمیلی روی گوشی پیدا نشد.</string>
     <string name="support_email">turbo_boy2006@yahoo.com</string>
+    <string name="menu_tools_detail">به‌روزرسانی، پشتیبان کامل و گزارش خطا</string>
 </resources>
