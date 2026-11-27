@@ -84,6 +84,12 @@ class SmsRepository(private val context: Context) {
                 // The newest row decides for the whole pass: if the cache
                 // already knows it, nothing above it in the list can be new.
                 val cacheCurrent = c.moveToFirst() && useCache && ThreadCache.newestMessageId(context) == c.getLong(iId)
+                /* اگر جدیدترین پیام provider همان چیزی است که کش می‌شناسد،
+                   اسکن ۲۰ هزار ردیف بعدی هیچ اطلاعات تازه‌ای ندارد و فقط
+                   شروع اپ را ۱ تا ۵ ثانیه عقب می‌اندازد. */
+                if (cacheCurrent && cached.isNotEmpty()) {
+                    return cachedThreads()
+                }
 
                 while (!c.isAfterLast && scanned < scanLimit) {
                     scanned++
