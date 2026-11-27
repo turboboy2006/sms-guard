@@ -595,11 +595,27 @@ class SettingsActivity : BaseActivity() {
             }
     }
 
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menu.add(0, MENU_TOOLS_SHEET, 0, R.string.update_check)
+            .setIcon(R.drawable.ic_cat_security)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
+        menu.add(0, MENU_TOOLS_SHEET, 1, R.string.tools_title)
+        return true
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
             finish()
             return true
         }
+        if (item.itemId == MENU_TOOLS_SHEET) {
+            startActivity(Intent(this, ToolsActivity::class.java))
+            return true
+        }
         return super.onOptionsItemSelected(item)
+    }
+
+    private companion object {
+        const val MENU_TOOLS_SHEET = 3001
     }
 }

@@ -155,6 +155,25 @@ class SmsRepository(private val context: Context) {
     }
 
     /**
+     * شناسهٔ گفتگوهایی که هنوز پیام خوانده‌نشده دارند — کوئری سبک (فقط ردیف‌های
+     * خوانده‌نشده). برای همگام‌کردن بولت‌ها بعد از بازگشت از یک گفتگو.
+     */
+    fun unreadThreadIds(): Set<Long> {
+        val out = HashSet<Long>()
+        try {
+            resolver.query(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(Telephony.Sms.THREAD_ID),
+                "${Telephony.Sms.READ} = 0 AND ${Telephony.Sms.TYPE} = ${Telephony.Sms.MESSAGE_TYPE_INBOX}",
+                null, null
+            )?.use { c -> while (c.moveToNext()) out.add(c.getLong(0)) }
+        } catch (t: Throwable) {
+            // در صورت خطا، هیچ بولتی تغییر نمی‌کند.
+        }
+        return out
+    }
+
+    /**
      * The whole mailbox as the cache last saw it, without touching the provider.
      * Used to paint the inbox on the very first frame of a launch.
      */

@@ -356,6 +356,7 @@ class MainActivity : BaseActivity() {
         super.onResume()
         if (::adapter.isInitialized) adapter.refreshNotificationState()
         if (::adapter.isInitialized) adapter.refreshDrafts()
+        reconcileUnreadBadges()
         refreshBanner()
         applyChipVisibility()
         val nextCategorySignature = CategoryStore(this).all().joinToString("|") {
@@ -857,6 +858,34 @@ class MainActivity : BaseActivity() {
         }
     }
 
+    /**
+     * بولت «خوانده‌نشده» را با وضعیت واقعی provider همگام می‌کند.
+     * با یک کوئری سبک (فقط ردیف‌های خوانده‌نشده) — بدون اسکن کامل صندوق.
+     */
+    private fun reconcileUnreadBadges() {
+        if (!::adapter.isInitialized) return
+        worker.execute {
+            val unread = repo.unreadThreadIds()
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                var changed = false
+                val nextAll = allThreads.map { row ->
+                    if (row.unreadCount > 0 && row.threadId !in unread) {
+                        changed = true
+                        row.copy(unreadCount = 0)
+                    } else row
+                }
+                if (!changed) return@runOnUiThread
+                allThreads = nextAll
+                rendered = rendered.map { row ->
+                    if (row.unreadCount > 0 && row.threadId !in unread) row.copy(unreadCount = 0) else row
+                }
+                adapter.merge(rendered)
+                binding.textEmpty.visibility = if (rendered.isEmpty()) View.VISIBLE else View.GONE
+            }
+        }
+    }
+
     /** اجرای اکشن‌های شیت «گزینه‌های بیشتر» بدون وابستگی به MenuItem. */
     private fun handleMainAction(id: Int) {
         when (id) {
@@ -985,9 +1014,13 @@ class MainActivity : BaseActivity() {
                             binding.textEmpty.visibility = if (rendered.isEmpty()) View.VISIBLE else View.GONE
                             worker.execute { repo.markThreadRead(row.threadId) }
                         }
-                    }, 900L)
+                    }, 2000L)
                 } else {
                     performSwipeAction(row, action)
+                    /* نوار رنگی سوئیپ نباید بماند: همان لحظه ردیف بازنشانی می‌شود. */
+                    if (position >= 0 && position < adapter.itemCount) {
+                        binding.recyclerThreads.post { adapter.notifyItemChanged(position) }
+                    }
                 }
             }
 
