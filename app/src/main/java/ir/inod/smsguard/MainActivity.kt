@@ -97,6 +97,43 @@ class MainActivity : BaseActivity() {
     private var contactsOnly = false
     private var archiveMode = false
 
+    /**
+     * جای اسکرول هر نما، جداگانه.
+     *
+     * ردیف‌ها شناسه‌ی پایدار دارند و RecyclerView هنگام تغییر فهرست، همان
+     * ردیفِ بالای صفحه را نگه می‌دارد؛ ولی وقتی از «مخاطبین» به «همه»
+     * می‌رویم، آن ردیف در فهرست بزرگ جای دیگری است (مثلاً ردیف ۹۰۰) و
+     * صفحه یک‌باره پایین می‌پرید. پس قبل از هر تغییر نما جای فعلی را
+     * برای همان نما ذخیره می‌کنیم و جای نمای جدید را بازمی‌گردانیم.
+     */
+    private val viewport = HashMap<String, Pair<Int, Int>>()
+
+    private fun viewportKey(): String = when {
+        archiveMode -> "archive"
+        contactsOnly -> "contacts"
+        selectedCategoryId == null -> "__all__"
+        else -> selectedCategoryId!!
+    }
+
+    private fun rememberViewport() {
+        if (!::adapter.isInitialized) return
+        val lm = binding.recyclerThreads.layoutManager as? LinearLayoutManager ?: return
+        val index = lm.findFirstVisibleItemPosition()
+        if (index == RecyclerView.NO_POSITION) return
+        viewport[viewportKey()] = index to (lm.findViewByPosition(index)?.top ?: 0)
+    }
+
+    private fun restoreViewport() {
+        if (!::adapter.isInitialized) return
+        val lm = binding.recyclerThreads.layoutManager as? LinearLayoutManager ?: return
+        val saved = viewport[viewportKey()] ?: (0 to 0)
+        binding.recyclerThreads.post {
+            if (isFinishing || isDestroyed) return@post
+            val index = saved.first.coerceAtMost((adapter.itemCount - 1).coerceAtLeast(0))
+            lm.scrollToPositionWithOffset(index, saved.second)
+        }
+    }
+
     private val worker = Executors.newSingleThreadExecutor()
     private val previewWorker = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
@@ -203,17 +240,21 @@ class MainActivity : BaseActivity() {
                     false
                 }
                 R.id.nav_contacts -> {
+                    rememberViewport()
                     archiveMode = false
                     contactsOnly = false
                     selectCategoryChip(Cat.PERSONAL)
                     applyFilter()
+                    restoreViewport()
                     true
                 }
                 else -> {
+                    rememberViewport()
                     archiveMode = false
                     contactsOnly = false
                     selectCategoryChip(null)
                     applyFilter()
+                    restoreViewport()
                     true
                 }
             }
@@ -310,8 +351,13 @@ class MainActivity : BaseActivity() {
         }
         binding.chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             val first = checkedIds.firstOrNull() ?: return@setOnCheckedStateChangeListener
-            selectedCategoryId = idToCategory[first]
+            val next = idToCategory[first]
+            // Only a change of view needs a new anchor; a re-check of the same
+            // chip (list rebuild after an edit) keeps the current position.
+            if (next != selectedCategoryId) rememberViewport()
+            selectedCategoryId = next
             applyFilter()
+            restoreViewport()
         }
         selectCategoryChip(previousSelection)
         categorySignature = CategoryStore(this).all().joinToString("|") {
@@ -1143,7 +1189,12 @@ class MainActivity : BaseActivity() {
     @Deprecated("Handled for selection mode")
     override fun onBackPressed() {
         if (::adapter.isInitialized && adapter.selectionCount > 0) adapter.clearSelection()
-        else if (archiveMode) { archiveMode = false; applyFilter() }
+        else if (archiveMode) {
+            rememberViewport()
+            archiveMode = false
+            applyFilter()
+            restoreViewport()
+        }
         else super.onBackPressed()
     }
 
