@@ -43,7 +43,6 @@ class MessageAdapter(
 
     private val rows = mutableListOf<Row>()
     private val selectedIds = linkedSetOf<Long>()
-    private val expandedMetaIds = linkedSetOf<Long>()
     private val latestMetaIds = linkedSetOf<Long>()
     private val attachedMessages = linkedSetOf<MsgVH>()
     private val animatedEmojiIds = linkedSetOf<Long>()
@@ -295,7 +294,7 @@ class MessageAdapter(
             }
         }
         time.text = Dates.full(context, item.date)
-        val showMeta = item.id in latestMetaIds || item.id in expandedMetaIds || selectedIds.isNotEmpty()
+        val showMeta = item.id in latestMetaIds || selectedIds.isNotEmpty()
         time.visibility = if (showMeta) View.VISIBLE else View.GONE
         status.visibility = if (item.isIncoming || !showMeta) View.GONE else View.VISIBLE
         if (!item.isIncoming) {
@@ -393,12 +392,14 @@ class MessageAdapter(
             )
         )
 
+        /* تپ روی حباب، پیام را انتخاب می‌کند و نوار کنش‌ها (کپی، اشتراک،
+           حذف…) بالا می‌آید؛ همان چیزی که لمس طولانی هم می‌دهد، با این
+           تفاوت که در حالت انتخاب می‌توان چند پیام را با تپ‌های بعدی
+           هم‌زمان انتخاب کرد. */
         holder.itemView.setOnClickListener {
-            if (selectedIds.isEmpty()) {
-                if (!expandedMetaIds.add(item.id)) expandedMetaIds.remove(item.id)
-                val changed = holder.bindingAdapterPosition
-                if (changed != RecyclerView.NO_POSITION) notifyItemChanged(changed)
-            }
+            holder.itemView.animate().alpha(0.94f).setDuration(60).withEndAction {
+                holder.itemView.animate().alpha(1f).setDuration(100).start()
+            }.start()
             onClick(item)
         }
 

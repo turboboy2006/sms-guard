@@ -134,10 +134,11 @@ class ConversationActivity : BaseActivity() {
                 else adapter.selectRange(selectionAnchorId, message.id)
             },
             onClick = { message ->
-                if (adapter.selectionCount > 0) {
-                    if (selectionAnchorId > 0) adapter.selectRange(selectionAnchorId, message.id)
-                    else adapter.toggleSelection(message)
-                }
+                /* تپ ساده هم مثل لمس طولانی است: همان پیام انتخاب می‌شود و
+                   نوار کنش‌ها (کپی، اشتراک، حذف…) می‌آید؛ تپ‌های بعدی در
+                   همان حالت، پیام‌های بیشتری را هم‌زمان انتخاب می‌کنند. */
+                if (adapter.selectionCount == 0) selectionAnchorId = message.id
+                adapter.toggleSelection(message)
             },
             onRetry = { message -> retry(message) },
             onSelectionChanged = { count -> updateSelectionUi(count) }
