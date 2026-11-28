@@ -31,7 +31,7 @@ object OfflineInboxClassifier {
     private const val KEY_VERSION = "completed_version"
     private const val KEY_CURSOR = "resume_after_id"
     private const val KEY_STATUS = "last_status"
-    private const val VERSION = 6
+    private const val VERSION = 7
     private const val BATCH = 500
     private const val CHUNK = 8000
     private val executor = Executors.newSingleThreadExecutor()
@@ -39,7 +39,12 @@ object OfflineInboxClassifier {
 
     fun scheduleIfNeeded(context: Context) {
         val app = context.applicationContext
-        if (app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_VERSION, 0) >= VERSION) return
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getInt(KEY_VERSION, 0) >= VERSION) return
+        /* نسخهٔ جدید یعنی قواعد جدید؛ نشانگر ادامه باید از صفر شروع شود،
+           وگرنه فقط دنبالهٔ صندوق با قواعد تازه دیده می‌شود و سرِ صندوق با
+           قواعد قدیمی می‌ماند. */
+        prefs.edit().remove(KEY_CURSOR).apply()
         executor.execute { run(app, announce = false) }
     }
 
