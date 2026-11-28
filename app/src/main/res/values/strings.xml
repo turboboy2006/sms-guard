@@ -508,4 +508,8 @@
     <string name="crash_no_mail_app">No email app found on this device.</string>
     <string name="support_email">turbo_boy2006@yahoo.com</string>
     <string name="menu_tools_detail">App update, full backup and error report</string>
+    <string name="reclassify_section">Re-classify messages</string>
+    <string name="reclassify_hint">Old messages keep the label they got when they arrived. Run this once after updating the rules.</string>
+    <string name="reclassify_run">Re-classify now</string>
+    <string name="reclassify_started">Re-classification started in the background.</string>
 </resources>

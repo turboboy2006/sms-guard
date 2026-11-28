@@ -23,6 +23,18 @@ object OfflineInboxClassifier {
         executor.execute { run(app) }
     }
 
+    /**
+     * بازدسته‌بندی دستی کل صندوق با قواعد فعلی.
+     * پیام‌های قدیمی برچسب زمان دریافتشان را دارند و با قوانین جدید
+     * (مثل بلک‌فرایدی) به‌روز نمی‌شوند؛ این تابع همان‌ها را دوباره می‌سنجد.
+     */
+    fun runManually(context: Context) {
+        val app = context.applicationContext
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_VERSION).apply()
+        Classifier.invalidateCaches()
+        executor.execute { run(app) }
+    }
+
     private fun run(context: Context) {
         val overrides = MessageCategoryStore(context)
         val indexed = overrides.all()

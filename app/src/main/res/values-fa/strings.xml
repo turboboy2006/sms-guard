@@ -484,4 +484,8 @@
     <string name="crash_no_mail_app">هیچ برنامهٔ ایمیلی روی گوشی پیدا نشد.</string>
     <string name="support_email">turbo_boy2006@yahoo.com</string>
     <string name="menu_tools_detail">به‌روزرسانی، پشتیبان کامل و گزارش خطا</string>
+    <string name="reclassify_section">بازدسته‌بندی پیام‌ها</string>
+    <string name="reclassify_hint">پیام‌های قدیمی برچسب زمان دریافت را دارند. بعد از تغییر قوانین، یک‌بار این را بزن.</string>
+    <string name="reclassify_run">همین حالا بازدسته‌بندی کن</string>
+    <string name="reclassify_started">بازدسته‌بندی در پس‌زمینه شروع شد.</string>
 </resources>

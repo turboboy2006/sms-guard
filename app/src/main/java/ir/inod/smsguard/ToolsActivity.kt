@@ -106,6 +106,22 @@ class ToolsActivity : BaseActivity() {
             }
         ))
 
+        body.addView(section(getString(R.string.reclassify_section)))
+        body.addView(TextView(this).apply {
+            textSize = 13f
+            setTextColor(ContextCompat.getColor(this@ToolsActivity, R.color.text_muted))
+            text = getString(R.string.reclassify_hint)
+        })
+        val reclassifyButton = MaterialButton(this).apply {
+            setText(R.string.reclassify_run)
+            setOnClickListener {
+                OfflineInboxClassifier.runManually(this@ToolsActivity)
+                ThreadCache.clear(this@ToolsActivity)
+                toast(getString(R.string.reclassify_started))
+            }
+        }
+        body.addView(reclassifyButton, LinearLayout.LayoutParams(-1, dp(46)).also { it.topMargin = dp(10) })
+
         body.addView(section(getString(R.string.crash_section)))
         crashStatus = TextView(this).apply {
             textSize = 13f

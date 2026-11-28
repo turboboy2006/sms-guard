@@ -88,7 +88,11 @@ class SmsReceiver : BroadcastReceiver() {
         // ones that matter at night. See [QuietHours].
         val suppressed = QuietHours.shouldSuppress(context, localCategory)
 
-        if (messageId >= 0 && threadId >= 0 && !suppressed) {
+        /* اسپم و مشکوک اعلان نمی‌گیرند؛ فقط در پوشهٔ خودشان دیده می‌شوند.
+           قبلاً با حالت SILENT اعلان می‌آمد و در نوار اعلان می‌ماند. */
+        val silentCategory = localCategory == Cat.SPAM || localCategory == Cat.SUSPICIOUS
+
+        if (messageId >= 0 && threadId >= 0 && !suppressed && !silentCategory) {
             Notifier(context).notifyIncoming(threadId, address, body, localCategory)
         }
 
