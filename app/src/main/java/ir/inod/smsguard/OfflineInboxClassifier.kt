@@ -111,17 +111,25 @@ object OfflineInboxClassifier {
         } ?: return "ناموفق: صندوق پیام خوانده نشد"
 
         commit(context, store, fresh)
+        Classifier.invalidateCaches()
+        ThreadCache.clear(context)
+        MessageBus.notifyChanged()
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putInt(KEY_VERSION, VERSION).apply()
         val spam = fresh.values.count { it == Cat.SPAM }
         return "بازدسته‌بندی انجام شد: $scanned پیام بررسی شد، $spam مورد اسپم/تبلیغ"
     }
 
+    /**
+     * نوشتن روی دیسک، بدون تازه‌سازی فهرست.
+     *
+     * تازه‌سازی فهرست، کل صندوق را از provider بازمی‌خواند و برای هر گفتگو
+     * دوباره دسته‌بندی می‌کند؛ اگر هر ۴۰۰ پیام یک‌بار انجام شود، خودِ
+     * بازدسته‌بندی ده‌ها برابر کندتر از محاسبه‌اش می‌شود. پس فقط در پایان
+     * یک‌بار اعلام می‌کنیم.
+     */
     private fun commit(context: Context, store: MessageCategoryStore, fresh: Map<Long, String>) {
         store.replaceAll(fresh)
-        Classifier.invalidateCaches()
-        ThreadCache.clear(context)
-        MessageBus.notifyChanged()
-        Log.i(TAG, "reclassify commit: ${fresh.size} labelled")
+        Log.i(TAG, "reclassify chunk: ${fresh.size} labelled")
     }
 }
