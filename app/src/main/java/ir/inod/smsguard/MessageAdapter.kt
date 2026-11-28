@@ -269,6 +269,12 @@ class MessageAdapter(
         bubble.text = item.body
         applySafeLinks(context, bubble, item)
         applyOtpHighlight(context, bubble, item)
+        /* حبابی که لینک دارد به‌خاطر movementMethod کلیک‌پذیر می‌شود و لمس را
+           می‌بلعد، پس تپ و لمس طولانی هیچ‌وقت به ردیف نمی‌رسید. دوباره
+           غیرکلیک‌پذیرش می‌کنیم تا تپ به ردیف برسد؛ خودِ لینک همچنان کار
+           می‌کند، چون LinkMovementMethod لمس روی متنِ لینک را جدا می‌گیرد. */
+        bubble.isClickable = false
+        bubble.isLongClickable = false
         bubble.maxWidth = (context.resources.displayMetrics.widthPixels * 0.8f).toInt()
         val preview = holder.binding.textLinkPreview
         preview.tag = item.id
