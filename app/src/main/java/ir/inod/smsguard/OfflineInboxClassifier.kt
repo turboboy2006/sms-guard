@@ -31,7 +31,7 @@ object OfflineInboxClassifier {
     private const val KEY_VERSION = "completed_version"
     private const val KEY_CURSOR = "resume_after_id"
     private const val KEY_STATUS = "last_status"
-    private const val VERSION = 5
+    private const val VERSION = 6
     private const val BATCH = 500
     private const val CHUNK = 8000
     private val executor = Executors.newSingleThreadExecutor()

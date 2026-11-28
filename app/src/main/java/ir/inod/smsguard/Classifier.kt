@@ -257,6 +257,22 @@ object Classifier {
         "کریپتو", "وام", "تسهیلات", "سود تضمینی", "بدون ضامن", "اقساطی",
         "کسب درآمد", "درآمد دلاری", "درآمد ارزی", "کمیسیون"
     )
+    /** طعمه‌های «جایزه/اعتبار/شارژ» با عدد بزرگ؛ شکل رایج پیام‌های فریبنده. */
+    private val SCAM_WORDS = listOf(
+        "اعتبار خرید", "اعتبار هدیه", "شارژ رایگان", "اینترنت رایگان", "بسته هدیه",
+        "هدیه ویژه", "جایزه", "برنده", "قرعه", "شانس", "میلیون تومان", "میلیارد"
+    )
+    private val BIG_NUMBER = Regex("\\d[\\d,٫٬]{2,}")
+
+    fun looksLikeScamLure(body: String): Boolean {
+        val normalized = Normalizer.normalize(body)
+        val hits = SCAM_WORDS.count { normalized.contains(it) }
+        if (hits == 0) return false
+        val money = BIG_NUMBER.containsMatchIn(body) ||
+            normalized.contains("تومان") || normalized.contains("ریال") ||
+            normalized.contains("=") || normalized.contains("میلیون")
+        return money
+    }
 
     /**
      * فرستندهٔ بازاریابی: شناسهٔ عددی انبوه یا نام برند، به‌همراه دامنه‌ای که
@@ -586,6 +602,7 @@ object Classifier {
             )
         if (looksLikeSpamEvent(body)) return quick(Cat.SPAM, "event", suspicious = true)
         if (knownAdSender(address, body)) return quick(Cat.SPAM, "ad-sender", suspicious = true)
+        if (looksLikeScamLure(body)) return quick(Cat.SPAM, "lure", suspicious = true)
         if (looksLikeOtp(body)) return quick(Cat.OTP, "otp")
         if (looksLikeBank(address, body)) return quick(Cat.BANKING, "bank")
         if (looksLikeAd(body)) return quick(Cat.SPAM, "promotion", suspicious = true)
