@@ -168,12 +168,13 @@ object Classifier {
            لینک بازکننده یا واژهٔ تبلیغاتی نداشته باشد. پیش از این چنین پیامی
            اسپم شمرده می‌شد (مثل کد ورود سایت استوری). */
         val bareCode = Regex(
-            "(?:^|[\\s:：|])(?:code|کد|رمز|otp)\\s*[:：]?\\s*\\d{4,8}(?:\\s|$)",
+            "(?:^|[\\s:：|])(?:code|کد|رمز|otp)\\s*[:：]?\\s*\\d{4,6}(?:\\s|$)",
             RegexOption.IGNORE_CASE
         ).containsMatchIn(normalized)
         val hasLink = normalized.contains("http") || normalized.contains("www.") ||
             Regex("[a-z0-9-]+\\.(com|ir|net|org|me|site|shop|app|link)\\b").containsMatchIn(normalized)
-        val promo = Normalizer.containsAny(normalized, PROMO)
+        val promo = Normalizer.containsAny(normalized, PROMO) ||
+            Normalizer.containsAny(normalized, listOf("هدیه", "جایزه", "تخفیف", "بسته", "شانس", "برنده"))
         return bareCode && !hasLink && !promo
     }
 
@@ -486,7 +487,7 @@ object Classifier {
             heuristicScore >= boundary -> Cat.SPAM
             detector.category == DetectorCategory.SPAM &&
                 detector.confidence >= 0.82 && detector.riskScore >= 55 -> Cat.SPAM
-            detector.category == DetectorCategory.PROMOTION && detector.confidence >= 0.64 -> Cat.NOTIFICATION
+            detector.category == DetectorCategory.PROMOTION && detector.confidence >= 0.64 -> Cat.PROMOTION
             detector.category == DetectorCategory.NOTIFICATION && detector.confidence >= 0.66 -> Cat.NOTIFICATION
             detector.category == DetectorCategory.CONTACTS &&
                 detector.confidence >= 0.78 && looksLikePersonalNumber(address) -> Cat.PERSONAL
