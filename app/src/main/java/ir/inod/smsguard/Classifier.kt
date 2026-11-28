@@ -162,7 +162,19 @@ object Classifier {
         val explicit = Normalizer.containsAny(normalized, OTP_WORDS)
         val expiry = listOf("اعتبار", "دقیقه", "منقضی", "استفاده نکنید", "محرمانه")
             .any(normalized::contains)
-        return explicit || expiry
+        if (explicit || expiry) return true
+
+        /* «code: 123456» یا «کد: 123456» تنها هم کد یکبارمصرف است، اگر پیام
+           لینک بازکننده یا واژهٔ تبلیغاتی نداشته باشد. پیش از این چنین پیامی
+           اسپم شمرده می‌شد (مثل کد ورود سایت استوری). */
+        val bareCode = Regex(
+            "(?:^|[\\s:：|])(?:code|کد|رمز|otp)\\s*[:：]?\\s*\\d{4,8}(?:\\s|$)",
+            RegexOption.IGNORE_CASE
+        ).containsMatchIn(normalized)
+        val hasLink = normalized.contains("http") || normalized.contains("www.") ||
+            Regex("[a-z0-9-]+\\.(com|ir|net|org|me|site|shop|app|link)\\b").containsMatchIn(normalized)
+        val promo = Normalizer.containsAny(normalized, PROMO)
+        return bareCode && !hasLink && !promo
     }
 
     fun senderLooksBank(address: String): Boolean =
