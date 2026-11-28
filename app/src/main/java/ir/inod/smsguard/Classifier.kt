@@ -117,7 +117,24 @@ object Classifier {
         RegexOption.IGNORE_CASE
     )
     private val PERCENT_REGEX = Regex("(%|٪|درصد|\\d\\s*درصد)")
-    private val BUY_WORDS = listOf("بخرید", "خرید بسته", "ثبت‌نام", "ثبت نام", "دریافت از", "همین حالا")
+    private val BUY_WORDS = listOf("بخرید", "بخر", "خرید آنلاین", "خرید بسته", "ثبت‌نام", "ثبت نام", "دریافت از", "همین حالا")
+    /**
+     * فرستنده‌هایی که کارشان تبلیغ است: درگاه‌های پیام انبوه و فروشگاه‌ها.
+     *
+     * این فهرست برای پیام‌هایی است که خودِ متنشان ادبیات تبلیغاتی آشکار
+     * ندارد (مثل «شانس به خطت رو کرده» یا کد خوش‌آمد یک سایت)، ولی فرستنده
+     * صرفاً بازاریابی است. اگر کاربر دستهٔ فرستنده را دستی عوض کند، تصمیم
+     * او مقدم است.
+     */
+    private val AD_SENDERS = setOf(
+        "roja", "mci offers", "zhkt", "ژاکت",
+        "9890000972", "90000972", "9890003426", "90003426",
+        "98500033003", "500033003", "9850004000916", "50004000916",
+        "982170007227", "2170007227", "981000044445", "1000044445"
+    )
+    private val AD_DOMAINS = listOf(
+        "roja.li", "midn.me", "zhkt.ir", "zhks.ir", "11l.eu", "sitestory.net", "zbl.io"
+    )
     private val SHORTENERS = listOf(
         "bit.ly", "t.co", "tinyurl", "goo.gl", "is.gd", "rb.gy", "cutt.ly",
         "ow.ly", "shorturl", "linktr.ee", "t.me", "wa.me", "whatsapp.com"
@@ -179,9 +196,12 @@ object Classifier {
         if (!hasCode) return false
         val normalized = Normalizer.normalize(body)
         val explicit = Normalizer.containsAny(normalized, OTP_WORDS)
-        val expiry = listOf("اعتبار", "دقیقه", "منقضی", "استفاده نکنید", "محرمانه")
+        /* «دقیقه» و «اعتبار» در بسته‌های اینترنت هم می‌آید؛ بدون واژهٔ صریح
+           کد یکبارمصرف، نشانهٔ OTP نیست. قبلاً تبلیغ همراه اول با «۶۰ دقیقه
+           مکالمه» به «رمز پویا» می‌رفت. */
+        val expiry = explicit && listOf("اعتبار", "دقیقه", "منقضی", "استفاده نکنید", "محرمانه")
             .any(normalized::contains)
-        if (explicit || expiry) return true
+        if (explicit && (expiry || !looksLikeAd(body))) return true
 
         /* «code: 123456» یا «کد: 123456» تنها هم کد یکبارمصرف است، اگر پیام
            لینک بازکننده یا واژهٔ تبلیغاتی نداشته باشد. پیش از این چنین پیامی
@@ -217,8 +237,10 @@ object Classifier {
     fun looksLikeAd(body: String): Boolean {
         val normalized = Normalizer.normalize(body)
         val adHits = AD_WORDS.count { normalized.contains(it) }
-        if (adHits == 0) return false
-        var score = adHits
+        val lure = Normalizer.containsAny(normalized, MONEY_LURE) ||
+            Normalizer.containsAny(normalized, LURE_EXTRA)
+        if (adHits == 0 && !lure) return false
+        var score = adHits + if (lure) 1 else 0
         if (LINK_REGEX.containsMatchIn(body) || SHORT_LINK_REGEX.containsMatchIn(normalized)) score++
         if (PERCENT_REGEX.containsMatchIn(body)) score++
         if (OPT_OUT_REGEX.containsMatchIn(body)) score++
@@ -227,6 +249,24 @@ object Classifier {
         /* دو واژهٔ فروش به‌تنهایی هم کافی است: «تخفیف ویژه جشنواره» پیام
            خدماتی نیست، حتی اگر لینک نداشته باشد. */
         return adHits >= 2 || score >= 3
+    }
+
+    /** سرمایه‌گذاری و وام: طعمه‌های مالی تبلیغاتی، جدا از فیشینگ. */
+    private val LURE_EXTRA = listOf(
+        "سرمایه‌گذاری", "سرمایه گذاری", "صندوق", "طلا", "بورس", "ارز دیجیتال",
+        "کریپتو", "وام", "تسهیلات", "سود تضمینی", "بدون ضامن", "اقساطی",
+        "کسب درآمد", "درآمد دلاری", "درآمد ارزی", "کمیسیون"
+    )
+
+    /**
+     * فرستندهٔ بازاریابی: شناسهٔ عددی انبوه یا نام برند، به‌همراه دامنه‌ای که
+     * فقط در تبلیغات دیده می‌شود.
+     */
+    fun knownAdSender(address: String, body: String): Boolean {
+        val normalizedAddress = Normalizer.normalize(address).replace("+", "").replace(" ", "")
+        if (AD_SENDERS.any { normalizedAddress == it || normalizedAddress.endsWith(it) }) return true
+        val normalizedBody = Normalizer.normalize(body)
+        return AD_DOMAINS.any { normalizedBody.contains(it) }
     }
 
     /**
@@ -509,8 +549,18 @@ object Classifier {
 
     // ------------------------------------------------------------ decisioning
 
-    /** Baseline decision that never touches the network. */
-    fun classifyLocal(context: Context, address: String, body: String): LocalVerdict {
+    /**
+     * Baseline decision that never touches the network.
+     *
+     * [withReasons] is false for the whole-mailbox re-classification pass: the
+     * reason strings double the scoring work and nothing reads them there.
+     */
+    fun classifyLocal(
+        context: Context,
+        address: String,
+        body: String,
+        withReasons: Boolean = true
+    ): LocalVerdict {
         // A real address-book contact is stronger evidence than any statistical model.
         if (isKnownContact(context, address)) {
             return LocalVerdict(Cat.PERSONAL, 0, listOf("contact"), false)
@@ -522,6 +572,10 @@ object Classifier {
         val detectorConfidence = (detector.confidence * 100).toInt().coerceIn(0, 100)
         val category = when {
             looksLikeSpamEvent(body) -> Cat.SPAM
+            /* فرستنده‌ای که کارش تبلیغ است، حتی وقتی متن ادبیات تبلیغاتی
+               آشکار ندارد (کد خوش‌آمد سایت، «شانس به خطت رو کرده»). پیش از
+               OTP سنجیده می‌شود تا این پیام‌ها «رمز پویا» برچسب نگیرند. */
+            knownAdSender(address, body) -> Cat.SPAM
             looksLikeOtp(body) -> Cat.OTP
             detector.category == DetectorCategory.OTP && detector.confidence >= 0.78 -> Cat.OTP
             looksLikeBank(address, body) -> Cat.BANKING
@@ -553,7 +607,9 @@ object Classifier {
             Cat.PERSONAL -> "model-personal"
             else -> null
         }
-        val reasons = buildList {
+        val reasons = if (!withReasons) {
+            emptyList()
+        } else buildList {
             addAll(reasonsFor(context, address, body))
             modelTag?.let { add(it) }
             addAll(detector.reasons.map { "detector:$it" })

@@ -121,6 +121,15 @@ class ToolsActivity : BaseActivity() {
             }
         }
         body.addView(reclassifyButton, LinearLayout.LayoutParams(-1, dp(46)).also { it.topMargin = dp(10) })
+        val reclassifyStatus = TextView(this).apply {
+            textSize = 13f
+            setTextColor(ContextCompat.getColor(this@ToolsActivity, R.color.text_muted))
+            OfflineInboxClassifier.lastStatus(this@ToolsActivity)?.let {
+                text = it
+                visibility = android.view.View.VISIBLE
+            } ?: run { visibility = android.view.View.GONE }
+        }
+        body.addView(reclassifyStatus, LinearLayout.LayoutParams(-1, -2).also { it.topMargin = dp(6) })
 
         body.addView(section(getString(R.string.crash_section)))
         crashStatus = TextView(this).apply {
