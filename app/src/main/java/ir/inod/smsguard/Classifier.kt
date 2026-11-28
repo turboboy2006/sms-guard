@@ -554,12 +554,17 @@ object Classifier {
      *
      * [withReasons] is false for the whole-mailbox re-classification pass: the
      * reason strings double the scoring work and nothing reads them there.
+     * [fast] additionally skips the statistical model, which is by far the most
+     * expensive part of a decision. A 20-thousand-message mailbox is relabelled
+     * with rules and the heuristic weights; live messages, which arrive one at
+     * a time, still get the full model.
      */
     fun classifyLocal(
         context: Context,
         address: String,
         body: String,
-        withReasons: Boolean = true
+        withReasons: Boolean = true,
+        fast: Boolean = false
     ): LocalVerdict {
         // A real address-book contact is stronger evidence than any statistical model.
         if (isKnownContact(context, address)) {
@@ -587,6 +592,26 @@ object Classifier {
 
         val boundary = threshold(context)
         val heuristicScore = localScore(context, address, body)
+
+        /* مسیر سریع بازدسته‌بندی: بدون مدل آماری. قواعد و وزن‌های heuristic
+           تصمیم را می‌گیرند؛ مدل فقط همان چیزی است که «شاید» را به «بله»
+           تبدیل می‌کند و در یک پاس ۲۰ هزار پیامی چند دقیقه وقت می‌برد. */
+        if (fast) {
+            val fastCategory = when {
+                heuristicScore >= boundary -> Cat.SPAM
+                looksLikeNotification(body) -> Cat.NOTIFICATION
+                Normalizer.containsAny(body, PROMO) -> Cat.NOTIFICATION
+                else -> Cat.OTHER
+            }
+            return LocalVerdict(
+                categoryId = fastCategory,
+                score = if (fastCategory == Cat.SPAM) heuristicScore else 0,
+                reasons = emptyList(),
+                isSuspicious = fastCategory == Cat.SPAM,
+                confidence = (50 + kotlin.math.abs(heuristicScore - boundary)).coerceIn(50, 99)
+            )
+        }
+
         val detector = SpamDetector.detect(detectorSender(address), body)
         val detectorConfidence = (detector.confidence * 100).toInt().coerceIn(0, 100)
         val category = when {
