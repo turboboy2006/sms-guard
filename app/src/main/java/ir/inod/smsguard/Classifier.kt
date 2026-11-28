@@ -246,9 +246,10 @@ object Classifier {
         if (OPT_OUT_REGEX.containsMatchIn(body)) score++
         if (Normalizer.containsAny(normalized, URGENT)) score++
         if (Normalizer.containsAny(normalized, BUY_WORDS)) score++
-        /* دو واژهٔ فروش به‌تنهایی هم کافی است: «تخفیف ویژه جشنواره» پیام
-           خدماتی نیست، حتی اگر لینک نداشته باشد. */
-        return adHits >= 2 || score >= 3
+        /* یک واژهٔ فروش + یک نشانهٔ کمپین (لینک، درصد، فوریت، دعوت به خرید)
+           = تبلیغ. کاربر خواسته تبلیغ اسپم شمرده شود، پس آستانه پایین است؛
+           پیام بانکی و کد یکبارمصرف پیش از این قاعده برچسب می‌خورند. */
+        return adHits >= 2 || score >= 2
     }
 
     /** سرمایه‌گذاری و وام: طعمه‌های مالی تبلیغاتی، جدا از فیشینگ. */
