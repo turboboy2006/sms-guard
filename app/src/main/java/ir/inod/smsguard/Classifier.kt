@@ -566,6 +566,25 @@ object Classifier {
             return LocalVerdict(Cat.PERSONAL, 0, listOf("contact"), false)
         }
 
+        /* تصمیم‌های قطعی، پیش از هر کار سنگین.
+           امتیازدهی و مدل روی هر پیام چند ده میلی‌ثانیه وقت می‌گیرد؛ اگر
+           قاعده‌ای از قبل تکلیف را روشن کرده باشد، اجرای آن‌ها فقط بازدسته‌بندی
+           کل صندوق را کند می‌کند. تبلیغ و کد یکبارمصرف اکثر پیام‌های انبوه‌اند
+           و همهٔ این‌ها بدون مدل هم قابل تشخیص‌اند. */
+        fun quick(categoryId: String, tag: String, suspicious: Boolean = false): LocalVerdict =
+            LocalVerdict(
+                categoryId = categoryId,
+                score = if (suspicious) 70 else 0,
+                reasons = if (withReasons) listOf(tag) else emptyList(),
+                isSuspicious = suspicious,
+                confidence = 88
+            )
+        if (looksLikeSpamEvent(body)) return quick(Cat.SPAM, "event", suspicious = true)
+        if (knownAdSender(address, body)) return quick(Cat.SPAM, "ad-sender", suspicious = true)
+        if (looksLikeOtp(body)) return quick(Cat.OTP, "otp")
+        if (looksLikeBank(address, body)) return quick(Cat.BANKING, "bank")
+        if (looksLikeAd(body)) return quick(Cat.SPAM, "promotion", suspicious = true)
+
         val boundary = threshold(context)
         val heuristicScore = localScore(context, address, body)
         val detector = SpamDetector.detect(detectorSender(address), body)
