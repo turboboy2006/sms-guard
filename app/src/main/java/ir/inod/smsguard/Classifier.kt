@@ -99,6 +99,25 @@ object Classifier {
         "سررسید", "یادآوری", "نوبت", "قرار", "فاکتور", "قبض", "سفارش شما",
         "ارسال شد", "تحویل", "مرسوله", "رزرو", "تمدید", "انقضا", "پست"
     )
+    /**
+     * واژه‌هایی که فقط در تبلیغ فروش دیده می‌شوند.
+     *
+     * عمداً کوتاه‌تر از [PROMO] است: «سفارش»، «فروشگاه» و «ثبت‌نام» در پیام
+     * خدماتی هم می‌آیند و اگر تنها باشند پیام را اسپم نمی‌کنند.
+     */
+    private val AD_WORDS = listOf(
+        "تخفیف", "حراج", "جشنواره", "فروش ویژه", "کد تخفیف", "آفردی",
+        "بلک فرایدی", "بلک‌فرایدی", "black friday", "offer", "discount", "sale",
+        "کمپین", "افیلیت", "کمیسیون", "وبینار", "فرصت محدود", "فقط امروز",
+        "آخرین فرصت", "قرعه", "جایزه", "برنده", "لاتاری", "هدیه",
+        "پیشنهاد ویژه", "فروش فوق‌العاده", "ارزان‌ترین"
+    )
+    private val SHORT_LINK_REGEX = Regex(
+        "[a-z0-9-]+\\.(ir|com|net|org|me|site|shop|link|ly|ac|co)\\b",
+        RegexOption.IGNORE_CASE
+    )
+    private val PERCENT_REGEX = Regex("(%|٪|درصد|\\d\\s*درصد)")
+    private val BUY_WORDS = listOf("بخرید", "خرید بسته", "ثبت‌نام", "ثبت نام", "دریافت از", "همین حالا")
     private val SHORTENERS = listOf(
         "bit.ly", "t.co", "tinyurl", "goo.gl", "is.gd", "rb.gy", "cutt.ly",
         "ow.ly", "shorturl", "linktr.ee", "t.me", "wa.me", "whatsapp.com"
@@ -186,6 +205,29 @@ object Classifier {
 
     fun looksLikeNotification(body: String): Boolean =
         Normalizer.containsAny(body, NOTIFY_WORDS)
+
+    /**
+     * تبلیغات فروش، جدا از پیام خدماتی.
+     *
+     * یک واژهٔ فروش در یک پیام خدماتی («قبض شما صادر شد») دلیل تبلیغ بودن
+     * نیست؛ ولی همان واژه به‌همراه لینک، درصد، لینک کوتاه خودشان، امضای
+     * «لغو۱۱» یا دعوت به خرید، کمپین تبلیغاتی است. و به خواست کاربر، تبلیغ
+     * هم مثل اسپم حساب می‌شود و از «همه» بیرون می‌رود.
+     */
+    fun looksLikeAd(body: String): Boolean {
+        val normalized = Normalizer.normalize(body)
+        val adHits = AD_WORDS.count { normalized.contains(it) }
+        if (adHits == 0) return false
+        var score = adHits
+        if (LINK_REGEX.containsMatchIn(body) || SHORT_LINK_REGEX.containsMatchIn(normalized)) score++
+        if (PERCENT_REGEX.containsMatchIn(body)) score++
+        if (OPT_OUT_REGEX.containsMatchIn(body)) score++
+        if (Normalizer.containsAny(normalized, URGENT)) score++
+        if (Normalizer.containsAny(normalized, BUY_WORDS)) score++
+        /* دو واژهٔ فروش به‌تنهایی هم کافی است: «تخفیف ویژه جشنواره» پیام
+           خدماتی نیست، حتی اگر لینک نداشته باشد. */
+        return adHits >= 2 || score >= 3
+    }
 
     /**
      * App-wide caches.
@@ -487,7 +529,12 @@ object Classifier {
             heuristicScore >= boundary -> Cat.SPAM
             detector.category == DetectorCategory.SPAM &&
                 detector.confidence >= 0.82 && detector.riskScore >= 55 -> Cat.SPAM
-            detector.category == DetectorCategory.PROMOTION && detector.confidence >= 0.64 -> Cat.PROMOTION
+            /* تبلیغ فروش، اسپم حساب می‌شود: کاربر خواسته آگهی‌ها از «همه»
+               بیرون بروند و فقط در تب اسپم دیده شوند. دستهٔ «تبلیغاتی» در
+               فهرست دسته‌ها غیرفعال بود و همین پیام‌ها را «خدماتی» نشان
+               می‌داد. */
+            looksLikeAd(body) -> Cat.SPAM
+            detector.category == DetectorCategory.PROMOTION && detector.confidence >= 0.50 -> Cat.SPAM
             detector.category == DetectorCategory.NOTIFICATION && detector.confidence >= 0.66 -> Cat.NOTIFICATION
             detector.category == DetectorCategory.CONTACTS &&
                 detector.confidence >= 0.78 && looksLikePersonalNumber(address) -> Cat.PERSONAL

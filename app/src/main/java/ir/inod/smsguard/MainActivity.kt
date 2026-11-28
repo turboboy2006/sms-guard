@@ -965,7 +965,7 @@ class MainActivity : BaseActivity() {
                         val id = categories[index].id
                         selected.forEach { row ->
                             senderStore.setCategory(row.address, id)
-                            messageCats.set(row.messageId, id)
+                            messageCats.setByUser(row.messageId, id)
                         }
                         Classifier.invalidateCaches()
                         ThreadCache.clear(this)
@@ -1118,7 +1118,7 @@ class MainActivity : BaseActivity() {
         adapter.clearSelection()
         rows.forEach { row ->
             senderStore.setCategory(row.address, categoryId)
-            messageCats.set(row.messageId, categoryId)
+            messageCats.setByUser(row.messageId, categoryId)
             if (categoryId == Cat.SPAM) {
                 SenderProfileStore(this).recordFeedback(row.address, true)
                 LearnedWeights(this).record(row.snippet, true)
@@ -1137,7 +1137,7 @@ class MainActivity : BaseActivity() {
             rows.forEach { row ->
                 val old = previous[row.threadId]
                 senderStore.setCategory(row.address, old?.first ?: Cat.OTHER)
-                messageCats.set(row.messageId, old?.second ?: old?.first ?: Cat.OTHER)
+                messageCats.setByUser(row.messageId, old?.second ?: old?.first ?: Cat.OTHER)
                 if (categoryId == Cat.SPAM) {
                     SenderProfileStore(this).revertFeedback(row.address, true)
                     LearnedWeights(this).revert(row.snippet, true)
@@ -1524,7 +1524,7 @@ class MainActivity : BaseActivity() {
         val previousOverride = messageCats.categoryFor(thread.messageId)
 
         senderStore.setCategory(thread.address, categoryId)
-        messageCats.set(thread.messageId, categoryId)
+        messageCats.setByUser(thread.messageId, categoryId)
 
         // Learning loop. Only labels carrying a clear verdict train the model;
         // ambiguous categories are left alone.
@@ -1566,7 +1566,7 @@ class MainActivity : BaseActivity() {
                 LearnedWeights(this).revert(thread.snippet, isSpam)
             }
             senderStore.setCategory(thread.address, previousCat ?: Cat.OTHER)
-            messageCats.set(
+            messageCats.setByUser(
                 thread.messageId,
                 previousOverride ?: previousCat ?: Cat.OTHER
             )

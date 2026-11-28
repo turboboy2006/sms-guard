@@ -10,11 +10,16 @@ import java.util.concurrent.Executors
  * The result is written as a per-message override, never as a sender-wide
  * decision. It is safe to run without network access and can be resumed after
  * interruption because unclassified messages are simply considered next time.
+ *
+ * Bumping [VERSION] makes the next launch re-label the whole mailbox with the
+ * current rules: an inbox labelled by yesterday's classifier would otherwise
+ * keep its old 「خدماتی」 tags forever, because a stored verdict is read before
+ * anything is re-classified.
  */
 object OfflineInboxClassifier {
     private const val PREFS = "offline_initial_classification"
     private const val KEY_VERSION = "completed_version"
-    private const val VERSION = 2
+    private const val VERSION = 3
     private val executor = Executors.newSingleThreadExecutor()
 
     fun scheduleIfNeeded(context: Context) {
@@ -35,9 +40,17 @@ object OfflineInboxClassifier {
         executor.execute { run(app) }
     }
 
+    /**
+     * هر پیام صندوق با قواعد فعلی دوباره سنجیده می‌شود.
+     *
+     * برچسب‌هایی که کاربر دستی گذاشته دست‌نخورده می‌مانند؛ بقیه از نو
+     * نوشته می‌شوند. پیامی که با قواعد جدید «دسته‌بندی‌نشده» شد برچسب
+     * قبلی‌اش پاک می‌شود تا دفعهٔ بعد هم دوباره سنجیده شود.
+     */
     private fun run(context: Context) {
-        val overrides = MessageCategoryStore(context)
-        val indexed = overrides.all()
+        val store = MessageCategoryStore(context)
+        val userChoices = store.userChoices()
+        val fresh = mutableMapOf<Long, String>()
         val projection = arrayOf(Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY)
         var completed = true
         try {
@@ -49,13 +62,13 @@ object OfflineInboxClassifier {
                 val body = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
                 while (cursor.moveToNext()) {
                     val messageId = cursor.getLong(id)
-                    if (indexed.containsKey(messageId)) continue
+                    if (userChoices.containsKey(messageId)) continue
                     val sender = cursor.getString(address).orEmpty()
                     val text = cursor.getString(body).orEmpty()
                     val category = Classifier.classifyLocal(context, sender, text).categoryId
                     // Only preserve a stable semantic result. Uncategorized
                     // messages remain free for future, improved classifiers.
-                    if (category != Cat.OTHER) indexed[messageId] = category
+                    if (category != Cat.OTHER) fresh[messageId] = category
                 }
             } ?: run { completed = false }
         } catch (_: SecurityException) {
@@ -64,7 +77,7 @@ object OfflineInboxClassifier {
             completed = false
         }
         if (completed) {
-            overrides.replaceAll(indexed)
+            store.replaceAll(fresh)
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putInt(KEY_VERSION, VERSION).apply()
             Classifier.invalidateCaches()

@@ -937,9 +937,24 @@ class MessageCategoryStore(context: Context) {
     private val prefs = context.applicationContext
         .getSharedPreferences("sms_guard_msgcat", Context.MODE_PRIVATE)
 
+    /**
+     * برچسب‌های ماشین (دسته‌بندی خودکار و AI) و برچسب‌های خودِ کاربر
+     * جدا نگه داشته می‌شوند. بازدسته‌بندی کل صندوق اجازه دارد برچسب‌های
+     * ماشین را از نو بنویسد، ولی انتخاب دستی کاربر دست‌نخورده می‌ماند.
+     */
     fun all(): MutableMap<Long, String> {
+        val map = machineAll()
+        map.putAll(userChoices())
+        return map
+    }
+
+    fun machineAll(): MutableMap<Long, String> = read(KEY)
+
+    fun userChoices(): Map<Long, String> = read(USER_KEY)
+
+    private fun read(key: String): MutableMap<Long, String> {
         val map = mutableMapOf<Long, String>()
-        val raw = prefs.getString(KEY, null) ?: return map
+        val raw = prefs.getString(key, null) ?: return map
         try {
             val o = JSONObject(raw)
             for (k in o.keys()) map[k.toLong()] = o.getString(k)
@@ -951,16 +966,36 @@ class MessageCategoryStore(context: Context) {
 
     fun categoryFor(messageId: Long): String? = all()[messageId]
 
+    /** دسته‌بندی خودکار (قواعد و مدل). با بازدسته‌بندی بعدی بازنویسی می‌شود. */
     fun set(messageId: Long, categoryId: String) {
-        val map = all()
+        val map = machineAll()
         map[messageId] = categoryId
-        save(map)
+        save(KEY, map)
     }
 
-    /** One atomic write for initial offline classification, not one JSON rewrite per SMS. */
-    fun replaceAll(values: Map<Long, String>) = save(values)
+    /** تصمیم کاربر. بازدسته‌بندی خودکار هرگز سراغش نمی‌رود. */
+    fun setByUser(messageId: Long, categoryId: String) {
+        val user = read(USER_KEY).toMutableMap()
+        user[messageId] = categoryId
+        save(USER_KEY, user)
+        val machine = machineAll()
+        if (machine.remove(messageId) != null) save(KEY, machine)
+    }
 
-    private fun save(values: Map<Long, String>) {
+    /**
+     * One atomic write for a whole-mailbox pass.
+     *
+     * Rows the user set by hand are re-applied on top, so a re-classification
+     * can never undo a decision the user made deliberately.
+     */
+    fun replaceAll(values: Map<Long, String>) {
+        val user = userChoices()
+        val machine = values.toMutableMap()
+        user.keys.forEach { machine.remove(it) }
+        save(KEY, machine)
+    }
+
+    private fun save(key: String, values: Map<Long, String>) {
         val map = values.toMutableMap()
         if (map.size > MAX) {
             val trimmed = map.entries.sortedByDescending { it.key }.take(MAX)
@@ -969,11 +1004,12 @@ class MessageCategoryStore(context: Context) {
         }
         val o = JSONObject()
         for ((k, v) in map) o.put(k.toString(), v)
-        prefs.edit().putString(KEY, o.toString()).apply()
+        prefs.edit().putString(key, o.toString()).apply()
     }
 
     private companion object {
         const val KEY = "overrides"
+        const val USER_KEY = "user_overrides"
         // Initial offline indexing must survive a large mailbox. The cache in
         // Classifier keeps reads cheap; this is only compact JSON metadata.
         const val MAX = 50_000

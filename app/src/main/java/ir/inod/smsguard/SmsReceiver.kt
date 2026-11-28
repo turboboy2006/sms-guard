@@ -90,7 +90,8 @@ class SmsReceiver : BroadcastReceiver() {
 
         /* اسپم و مشکوک اعلان نمی‌گیرند؛ فقط در پوشهٔ خودشان دیده می‌شوند.
            قبلاً با حالت SILENT اعلان می‌آمد و در نوار اعلان می‌ماند. */
-        val silentCategory = localCategory == Cat.SPAM || localCategory == Cat.SUSPICIOUS
+        val silentCategory = localCategory == Cat.SPAM || localCategory == Cat.SUSPICIOUS ||
+            localCategory == Cat.PROMOTION
 
         if (messageId >= 0 && threadId >= 0 && !suppressed && !silentCategory) {
             Notifier(context).notifyIncoming(threadId, address, body, localCategory)

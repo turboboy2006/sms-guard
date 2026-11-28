@@ -707,7 +707,7 @@ class ConversationActivity : BaseActivity() {
         SenderStore(this).setPolicy(address, SenderPolicy.NEVER_ANALYZE)
         SenderStore(this).setCategory(address, Cat.OTHER)
         adapter.allMessages().filter { it.isIncoming }.forEach {
-            MessageCategoryStore(this).set(it.id, Cat.OTHER)
+            MessageCategoryStore(this).setByUser(it.id, Cat.OTHER)
         }
         SenderStore(this).setBannerDismissed(address)
         SenderProfileStore(this).recordFeedback(address, false)
@@ -737,7 +737,7 @@ class ConversationActivity : BaseActivity() {
         val selected = adapter.selectedMessages()
         val categories = MessageCategoryStore(this)
         selected.forEach {
-            categories.set(it.id, Cat.SPAM)
+            categories.setByUser(it.id, Cat.SPAM)
             LearnedWeights(this).record(it.body, true)
             CampaignStore(this).markSpam(it.id)
         }

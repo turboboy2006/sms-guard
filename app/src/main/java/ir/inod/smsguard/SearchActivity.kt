@@ -201,7 +201,7 @@ class SearchActivity : BaseActivity() {
         val selected = adapter.selectedItems()
         selected.forEach {
             SenderStore(this).setCategory(it.address, category)
-            MessageCategoryStore(this).set(it.messageId, category)
+            MessageCategoryStore(this).setByUser(it.messageId, category)
         }
         Classifier.invalidateCaches()
         ThreadCache.clear(this)

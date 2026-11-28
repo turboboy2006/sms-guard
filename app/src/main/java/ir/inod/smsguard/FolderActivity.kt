@@ -143,7 +143,7 @@ class FolderActivity : BaseActivity() {
         val selected = adapter.selectedItems(); if (selected.isEmpty()) return
         selected.forEach { row ->
             if (folder == TRASH) {
-                senderStore.setCategory(row.address, Cat.OTHER); messageCats.set(row.messageId, Cat.OTHER)
+                senderStore.setCategory(row.address, Cat.OTHER); messageCats.setByUser(row.messageId, Cat.OTHER)
             } else senderStore.setArchived(row.address, false)
         }
         all = all.filterNot { row -> selected.any { it.threadId == row.threadId } }
