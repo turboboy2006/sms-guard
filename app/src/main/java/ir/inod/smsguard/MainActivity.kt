@@ -746,78 +746,41 @@ class MainActivity : BaseActivity() {
 
     /** Search, plus the actions that used to live in a row of buttons. */
     override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
-        val searchItem = menu.add(0, MENU_SEARCH, 0, R.string.search)
+        val ink = ContextCompat.getColor(this, R.color.text_primary)
+        menu.add(0, MENU_SEARCH, 0, R.string.search)
             .setIcon(R.drawable.ic_search)
-        searchItem.setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS or
-            android.view.MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW)
-        searchItem.actionView = SearchView(this).apply {
-            queryHint = getString(R.string.search_hint)
-            maxWidth = Int.MAX_VALUE
-            setIconifiedByDefault(false)
-            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-                override fun onQueryTextSubmit(text: String): Boolean {
-                    if (text.isBlank()) return false
-                    startActivity(Intent(this@MainActivity, SearchActivity::class.java)
-                        .putExtra(SearchActivity.EXTRA_INITIAL_QUERY, text.trim()))
-                    searchItem.collapseActionView()
-                    return true
-                }
-                override fun onQueryTextChange(text: String): Boolean = false
-            })
-        }
-        menu.add(0, MENU_MORE, 1, R.string.more_actions)
+        menu.add(0, MENU_MORE, 1, R.string.more_short)
             .setIcon(R.drawable.ic_more)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
         menu.add(0, MENU_READ_ALL, 2, R.string.mark_all_read)
             .setIcon(R.drawable.ic_mark_read)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
         /* این هشت مورد فقط از طریق شیت «گزینه‌های بیشتر» باز می‌شوند؛ اگر در Menu
            اضافه شوند، آیکن سه‌نقطهٔ سیستم کنار سه‌نقطهٔ خودِ اپ ظاهر می‌شود. */
         menu.add(0, MENU_MARK_READ, 0, R.string.mark_read)
             .setIcon(R.drawable.ic_mark_read)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
         menu.add(0, MENU_BULK_SPAM, 2, R.string.mark_spam)
             .setIcon(R.drawable.ic_tab_spam)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
         menu.add(0, MENU_BULK_TRASH, 1, R.string.move_to_trash)
             .setIcon(R.drawable.ic_tab_trash)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
         menu.add(0, MENU_BULK_RESTORE, 3, R.string.restore_from_trash)
             .setIcon(R.drawable.ic_archive)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM)
-        menu.add(0, MENU_SELECTION_MORE, 4, R.string.more_actions)
+        menu.add(0, MENU_SELECTION_MORE, 4, R.string.more_short)
             .setIcon(R.drawable.ic_more)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_NEVER)
         menu.add(0, MENU_SELECTION_CLOSE, 5, R.string.cancel)
             .setIcon(R.drawable.ic_close)
-            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
+
+        /* نوار بالا هم مثل نوار انتخاب پیام: آیکن بالا، نام ریز زیرش — تا
+           معلوم باشد کدام «حذف» است، کدام «اسپم» و کدام «بیشتر». */
         listOf(
+            Triple(MENU_SEARCH, R.drawable.ic_search, R.string.search),
+            Triple(MENU_MORE, R.drawable.ic_more, R.string.more_short),
+            Triple(MENU_READ_ALL, R.drawable.ic_mark_read, R.string.mark_all_read),
             Triple(MENU_MARK_READ, R.drawable.ic_mark_read, R.string.mark_read),
             Triple(MENU_BULK_TRASH, R.drawable.ic_tab_trash, R.string.tab_trash),
-            Triple(MENU_BULK_SPAM, R.drawable.ic_tab_spam, R.string.mark_spam)
+            Triple(MENU_BULK_SPAM, R.drawable.ic_tab_spam, R.string.mark_spam),
+            Triple(MENU_SELECTION_MORE, R.drawable.ic_more, R.string.more_short)
         ).forEach { (id, icon, label) ->
             menu.findItem(id)?.let { item ->
-                val ink = ContextCompat.getColor(this, R.color.text_primary)
-                item.actionView = android.widget.LinearLayout(this).apply {
-                    orientation = android.widget.LinearLayout.VERTICAL
-                    gravity = android.view.Gravity.CENTER
-                    minimumWidth = (58 * resources.displayMetrics.density).toInt()
-                    contentDescription = getString(label)
-                    addView(android.widget.ImageView(this@MainActivity).apply {
-                        setImageResource(icon)
-                        imageTintList = ColorStateList.valueOf(ink)
-                    }, android.widget.LinearLayout.LayoutParams(
-                        (21 * resources.displayMetrics.density).toInt(),
-                        (21 * resources.displayMetrics.density).toInt()))
-                    addView(android.widget.TextView(this@MainActivity).apply {
-                        setText(label)
-                        textSize = 10f
-                        maxLines = 1
-                        gravity = android.view.Gravity.CENTER
-                        setTextColor(ink)
-                    })
-                    setOnClickListener { onOptionsItemSelected(item) }
-                }
+                LabeledActions.attach(this, item, icon, label, ink) { onOptionsItemSelected(item) }
             }
         }
         return true

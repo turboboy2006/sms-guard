@@ -591,8 +591,22 @@ class ConversationActivity : BaseActivity() {
         menu.findItem(MENU_SEND_WITH_SIM)?.isVisible = !selecting && address.isNotBlank()
         menu.findItem(MENU_SAVED)?.isVisible = !selecting
         menu.findItem(MENU_CALL)?.isVisible = !selecting && address.isNotBlank()
+        /* نوار بالا مثل نوار انتخاب پیام: آیکن با نام ریز زیرش، تا «حذف» و
+           «سطل زباله» که آیکن یکسانی دارند از هم تشخیص داده شوند. */
+        val danger = ContextCompat.getColor(this, R.color.danger_deep)
+        fun label(id: Int, icon: Int, label: Int, tint: Int) {
+            menu.findItem(id)?.takeIf { it.isVisible }?.let { item ->
+                LabeledActions.attach(this, item, icon, label, tint) { onOptionsItemSelected(item) }
+            }
+        }
+        label(MENU_CALL, R.drawable.ic_cat_mobile, R.string.call_sender, inkColor())
+        label(MENU_SPAM_SELECTED, R.drawable.ic_tab_spam, R.string.mark_spam, danger)
+        label(MENU_DELETE_SELECTED, R.drawable.ic_tab_trash, R.string.delete, danger)
+        label(MENU_TRASH_THREAD, R.drawable.ic_tab_trash, R.string.tab_trash, inkColor())
         return super.onPrepareOptionsMenu(menu)
     }
+
+    private fun inkColor() = ContextCompat.getColor(this, R.color.text_primary)
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
